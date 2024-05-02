@@ -48,6 +48,16 @@ nav ul li a img {
   max-width: 50px;
 }
 
+nav ul li.menu-btn {
+  padding: 10px;
+  font-size: 36px;
+}
+nav ul li.menu-btn button {
+  padding: 20px;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
 .current {
   border-bottom: 4px solid #173B7E;
 }
@@ -105,4 +115,58 @@ nav ul li a img {
 }
 .link-list ul {
   list-style: inside;
+}
+
+.mobile, .hidden{
+  display: none;
+}
+
+@media (max-width: 1200px) {
+  nav ul {
+    justify-content: space-between;
+  }
+  nav ul li:not(:first-child):not(.mobile) {
+    display: none;
+  }
+  .mobile:not(.hidden) {
+    display: block;
+  }
+
+  .mobile-nav-menu {
+    background: white;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+  }
+  .mobile-nav-menu .back-btn {
+    margin: 5px;
+    padding: 20px;
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+
+  .mobile-nav-menu ul {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .mobile-nav-menu ul li a {
+    width: 100%;
+    padding: 20px;
+    display: block;
+    color: #173B7E;
+    text-decoration: none;
+  }
+  .mobile-nav-menu ul li.current {
+    background: #a8b2c3;
+    border-bottom: none;
+  }
+
+  .event-pane {
+    top: 137px;
+  }
 }

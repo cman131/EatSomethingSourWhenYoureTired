@@ -1,7 +1,7 @@
 import { Routes, Route, Outlet, Link, useLocation } from "react-router-dom";
 import './App.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faExternalLink } from '@fortawesome/free-solid-svg-icons/faExternalLink'
+import { faExternalLink, faBars, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 
 export default function App() {
   return (
@@ -50,23 +50,65 @@ function Layout() {
           <li>
             <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
           </li>
+          <li class="mobile menu-btn">
+            <button class="btn secondary-btn" onClick={toggleMobileNavigation}><FontAwesomeIcon icon={faBars} /></button>
+          </li>
         </ul>
       </nav>
+      <div class="mobile mobile-nav-menu hidden">
+        <button class="btn secondary-btn back-btn" onClick={toggleMobileNavigation}><FontAwesomeIcon icon={faArrowLeft} /></button>
+        <ul onClick={toggleMobileNavigation}>
+          <li class={pathname === "/" ? "current" : ""}>
+            <Link title="Home" to="/">Home</Link>
+          </li>
+          <li class={pathname === "/events" ? "current" : ""}>
+            <Link title="Events" to="/events">Events</Link>
+          </li>
+          <li class={pathname === "/tournaments" ? "current" : ""}>
+            <Link title="Tournaments" to="/tournaments">Tournaments</Link>
+          </li>
+          <li class={pathname === "/resources" ? "current" : ""}>
+            <Link title="Resources" to="/resources">Resources</Link>
+          </li>
+          <li>
+            <a title="Merch Shop" rel="noreferrer" target="_blank" href="https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club">Merch Shop<FontAwesomeIcon icon={faExternalLink} /></a>
+          </li>
+          <li>
+            <a title="Meetup" rel="noreferrer" target="_blank" href="https://www.meetup.com/charleston-riichi-mahjong/">Meetup<FontAwesomeIcon icon={faExternalLink} /></a>
+          </li>
+          <li>
+            <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
+          </li>
+        </ul>
+      </div>
 
       <Outlet />
     </div>
   );
 }
 
+function toggleMobileNavigation() {
+  const element = document.querySelector('.mobile-nav-menu');
+  if (element.classList.contains('hidden')) {
+    element.classList.remove('hidden');
+  } else {
+    element.classList.add('hidden');
+  }
+}
+
 function Home() {
   return (
     <div class="text-content">
+      <h3>Welcome to Charleston's Riichi Mahjong Club!</h3>
       <p>
-        Welcome to Charleston's Riichi Mahjong Club!
-        <br />
         We primarily play 10am - 12pm every Sunday at Mercantile and Mash downtown.
-        <br />
-        All skill levels are welcome and we're happy to run teaching games too! Join us sometime, it's super fun!
+      </p>
+      <br/><br/>
+      <h3>What is Riichi Mahjong?</h3>
+      <p>
+        Riichi mahjong is a Japanese variant of the ancient Chinese game of Mahjong - similar to Gin Rummy or Phase 10.
+        <br/>
+        All skill levels are welcome and we're happy to teach! Come learn to play {":)"}
       </p>
     </div>
   );
