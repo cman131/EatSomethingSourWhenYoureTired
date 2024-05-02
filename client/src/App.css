@@ -1,0 +1,57 @@
+html {
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+.app {
+  width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+nav {
+  border-bottom: 1px solid black;
+}
+
+nav ul {
+  list-style: none;
+  display: flex;
+  background-color: white;
+  align-items: center;
+}
+
+nav ul li {
+  padding: 20px;
+}
+
+nav ul li a {
+  color: #173B7E;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+nav ul li a img {
+  max-width: 50px;
+}
+
+.current {
+  border-bottom: 4px solid #173B7E;
+}
+
+p {
+  padding: 20px;
+}
+
+.event-pane {
+  position: absolute;
+  bottom: 5px;
+  left: 0;
+  right: 0;
+  top: 90px;
+}
