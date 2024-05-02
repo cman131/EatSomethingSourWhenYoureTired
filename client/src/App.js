@@ -1,5 +1,7 @@
 import { Routes, Route, Outlet, Link, useLocation } from "react-router-dom";
 import './App.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faExternalLink } from '@fortawesome/free-solid-svg-icons/faExternalLink'
 
 export default function App() {
   return (
@@ -25,28 +27,28 @@ function Layout() {
       <nav>
         <ul>
           <li class={pathname === "/" ? "current" : ""}>
-            <Link to="/">
+            <Link title="Home" to="/">
               <img alt="CHS Riichi Club Logo" src="./logo_alpha.png" />
               <h1>Charleston Riichi Mahjong</h1>
             </Link>
           </li>
           <li class={pathname === "/events" ? "current" : ""}>
-            <Link to="/events">Events</Link>
+            <Link title="Events" to="/events">Events</Link>
           </li>
           <li class={pathname === "/tournaments" ? "current" : ""}>
-            <Link to="/tournaments">Tournaments</Link>
+            <Link title="Tournaments" to="/tournaments">Tournaments</Link>
           </li>
           <li class={pathname === "/resources" ? "current" : ""}>
-            <Link to="/resources">Resources</Link>
+            <Link title="Resources" to="/resources">Resources</Link>
           </li>
           <li>
-            <a rel="noreferrer" target="_blank" href="https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club">Merch Shop</a>
+            <a title="Merch Shop" rel="noreferrer" target="_blank" href="https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club">Merch Shop<FontAwesomeIcon icon={faExternalLink} /></a>
           </li>
           <li>
-            <a rel="noreferrer" target="_blank" href="https://www.meetup.com/charleston-riichi-mahjong/">Meetup</a>
+            <a title="Meetup" rel="noreferrer" target="_blank" href="https://www.meetup.com/charleston-riichi-mahjong/">Meetup<FontAwesomeIcon icon={faExternalLink} /></a>
           </li>
           <li>
-            <a rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server</a>
+            <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
           </li>
         </ul>
       </nav>
