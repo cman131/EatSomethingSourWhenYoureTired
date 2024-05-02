@@ -3,6 +3,7 @@
 # dependencies
 client/node_modules
 server/target
+client/build
 ./*/target
 ./*/node_modules
 ./*/.pnp

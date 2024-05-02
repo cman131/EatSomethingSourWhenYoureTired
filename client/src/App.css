@@ -26,7 +26,7 @@ nav ul {
 }
 
 nav ul li {
-  padding: 20px;
+  border-bottom: 4px transparent solid;
 }
 
 nav ul li a {
@@ -34,6 +34,9 @@ nav ul li a {
   text-decoration: none;
   display: flex;
   align-items: center;
+  min-height: 89px;
+  padding: 20px;
+  padding-bottom: 16px;
 }
 
 nav ul li a img {
@@ -44,8 +47,44 @@ nav ul li a img {
   border-bottom: 4px solid #173B7E;
 }
 
-p {
+.text-content {
   padding: 20px;
+}
+
+.btn {
+  text-decoration: none;
+  background-color: transparent;
+  border-top: 1px solid #cdcfd2;
+  border-bottom: 1px solid #cdcfd2;
+  border-left: 1px solid #cdcfd2;
+  border-right: 1px solid #cdcfd2;
+  border-radius: 3px;
+  color: var(--sky-text-color-default);
+  cursor: pointer;
+  display: inline-block;
+  white-space: nowrap;
+  padding: 6px 12px;
+  line-height: 1.428571429;
+  font-size: 15px;
+}
+
+.btn:hover {
+  border-top: 1px solid #e2e3e4;
+  border-bottom: 1px solid #e2e3e4;
+  border-left: 1px solid #e2e3e4;
+  border-right: 1px solid #e2e3e4;
+  color: var(--sky-text-color-default);
+}
+
+.btn-primary {
+  color: #fff;
+  background-color: #0974a1;
+}
+
+.btn-primary:hover {
+  color: #fff;
+  background-color: #065171;
+  border-color: #065171;
 }
 
 .event-pane {
@@ -54,4 +93,11 @@ p {
   left: 0;
   right: 0;
   top: 90px;
+}
+
+.link-list {
+  padding: 20px;
+}
+.link-list ul {
+  list-style: inside;
 }
