@@ -4,7 +4,7 @@ import './App.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faExternalLink, faBars, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import ProfilePic from "./profile-picture";
-const config = require('../config');
+const config = require('./config');
 
 export default function App() {
   const [user, setUser] = getState();
