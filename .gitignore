@@ -15,6 +15,7 @@ client/build
 # production
 ./*/build
 ./*/dist
+server/config.secrets.toml
 
 # misc
 ./*/.DS_Store
