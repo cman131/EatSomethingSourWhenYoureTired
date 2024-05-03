@@ -4,7 +4,7 @@
 client/node_modules
 server/target
 client/build
-client/config.js
+client/src/config.js
 ./*/target
 ./*/node_modules
 ./*/.pnp
