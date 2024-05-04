@@ -4,6 +4,7 @@ import './App.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faExternalLink, faBars, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
 import ProfilePic from "./profile-picture";
+const config = require('./config');
 
 export default function App() {
   const [user, setUser] = getState();
@@ -34,7 +35,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       };
-      const response = await fetch('http://localhost:8000/requestcode', requestOptions);
+      const response = await fetch(`${config.siteBaseUrl}/requestcode`, requestOptions);
       if (response.ok) {
         updateUser({ email: body.email, codeSent: true, session_id: undefined });
       }
@@ -56,7 +57,7 @@ export default function App() {
       };
 
       setError(undefined);
-      const response = await fetch('http://localhost:8000/login', requestOptions);
+      const response = await fetch(`${config.siteBaseUrl}/login`, requestOptions);
       const data = await response.json();
       if (response.ok) {
         updateUser({ email: body.email, codeSent: false, session_id: data.session_id });
@@ -283,7 +284,7 @@ export default function App() {
               email: user.email
             })
           };
-          const response = await fetch('http://localhost:8000/getuser', requestOptions);
+          const response = await fetch(`${config.siteBaseUrl}/getuser`, requestOptions);
           if (response.ok) {
             const userDetails = await response.json();
             setUserData(userDetails);
@@ -311,7 +312,7 @@ export default function App() {
       };
 
       setError(undefined);
-      const response = await fetch('http://localhost:8000/updateuser', requestOptions);
+      const response = await fetch(`${config.siteBaseUrl}/updateuser`, requestOptions);
       if (response.ok) {
         setUserData(body);
         setEditMode(false);
@@ -333,7 +334,7 @@ export default function App() {
       };
 
       setError(undefined);
-      const response = await fetch('http://localhost:8000/updateuseravatar', requestOptions);
+      const response = await fetch(`${config.siteBaseUrl}/updateuseravatar`, requestOptions);
       if (response.ok) {
         setUserData({ ...userData, avatar: image });
       } else {
