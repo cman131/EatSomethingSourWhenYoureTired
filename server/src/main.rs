@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use actix_cors::Cors;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result};
@@ -274,8 +274,11 @@ fn get_config() -> HashMap<String, String> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let port = u16::from_str(get_config()["port"].as_str()).expect("bad config");
+
     HttpServer::new(|| {
-        let cors_allowed_origin = "http://localhost:3000";
+        let config = get_config();
+        let cors_allowed_origin = config["origin"].to_string();
         let cors = Cors::default()
             .allowed_origin(&cors_allowed_origin)
             .allow_any_header()
@@ -289,7 +292,7 @@ async fn main() -> std::io::Result<()> {
             .route("/updateuser", web::post().to(update_user))
             .route("/updateuseravatar", web::post().to(update_user_avatar))
     })
-    .bind(("127.0.0.1", 8000))?
+    .bind(("127.0.0.1", port))?
     .run()
     .await
 }
