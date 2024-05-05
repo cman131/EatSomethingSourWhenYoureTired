@@ -17,6 +17,7 @@ client/src/config.js
 ./*/build
 ./*/dist
 server/config.secrets.toml
+client/redeploy.sh
 
 # misc
 ./*/.DS_Store
