@@ -36,13 +36,14 @@ struct MatchPlayer {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Match {
+    _id: ObjectId,
     players: Vec<MatchPlayer>,
     date: String
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct User {
-    _id: Option<ObjectId>,
+    _id: ObjectId,
     name: Option<String>,
     majsoul_username: Option<String>,
     discord_username: Option<String>,
@@ -55,7 +56,7 @@ struct User {
 }
 impl User {
     pub fn new(email: String, code: String, code_date: String, match_history: Vec<Match>) -> Self {
-        Self { _id: None, name: None, majsoul_username: None, discord_username: None, email, session_id: None, code, code_date, match_history, avatar: None }
+        Self { _id: ObjectId::new(), name: None, majsoul_username: None, discord_username: None, email, session_id: None, code, code_date, match_history, avatar: None }
     }
     pub fn details(user: User) -> Self {
         Self { _id: user._id, name: user.name, majsoul_username: user.majsoul_username, discord_username: user.discord_username, email: user.email, session_id: None, code: "".to_string(), code_date: "".to_string(), match_history: user.match_history, avatar: user.avatar }
@@ -138,7 +139,7 @@ async fn save_match(req: HttpRequest, client: web::Data<Client>, config: web::Da
     }
 
     let match_collection = database.collection::<Match>("matches");
-    let match_value = Match { players: info.players.to_vec(), date: Utc::now().to_rfc3339() };
+    let match_value = Match { _id: ObjectId::new(), players: info.players.to_vec(), date: Utc::now().to_rfc3339() };
     match_collection.insert_one(match_value, None).await.expect("Failed to create match");
 
     return HttpResponse::NoContent().json(ErrorResponse { message: "Match created".to_string() });
@@ -225,10 +226,7 @@ async fn send_code(client: web::Data<Client>, config: web::Data<HashMap<String, 
 
     // Our user
     if !existing.is_none() {
-        let mut user = existing.unwrap();
-        user.code = code.to_string();
-        user.code_date = code_date;
-        collection.replace_one(doc! { "email": info.email.to_uppercase() }, user, None).await.expect("Failed to replace user");
+        collection.update_one(doc! { "email": info.email.to_uppercase() }, doc! { "$set": { "code": code.to_string(), "code_date": code_date } }, None).await.expect("Failed to replace user");
     } else {
         let user = User::new(info.email.to_uppercase(), code.to_string(), code_date, Vec::new());
         collection.insert_one(user, None).await.expect("Failed to insert user");

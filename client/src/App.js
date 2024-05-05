@@ -16,7 +16,10 @@ export default function App() {
   }
 
   function updateUser(userChanges) {
-    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('user', JSON.stringify({
+      email: user.email,
+      ...userChanges
+    }));
   }
 
   function Login() {
