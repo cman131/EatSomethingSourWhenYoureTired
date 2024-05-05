@@ -29,6 +29,10 @@ nav ul li {
   border-bottom: 4px transparent solid;
 }
 
+nav ul li:hover {
+  background-color: aliceblue;
+}
+
 nav ul li a {
   color: #173B7E;
   text-decoration: none;
@@ -257,6 +261,28 @@ nav ul li.menu-btn button {
   margin-bottom: 1rem;
   border: 0;
   border-top: 1px solid rgba(0, 0, 0, .1);
+}
+
+.report-match-page {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  li {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+  }
+  label {
+    display: flex;
+    justify-content: space-between;
+  }
+  input, select {
+    margin-left: 20px;
+    width: 150px;
+  }
 }
 
 @media (max-width: 1200px) {

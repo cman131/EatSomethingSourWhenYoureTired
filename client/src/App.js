@@ -12,14 +12,11 @@ export default function App() {
 
   function getState() {
     const user = JSON.parse(localStorage.getItem('user') ?? '{}');
-    return [user, value => localStorage.setItem('user', JSON.stringify(value))];
+    return [user, updateUser];
   }
 
   function updateUser(userChanges) {
-    setUser({
-      ...user,
-      ...userChanges
-    });
+    localStorage.setItem('user', JSON.stringify(user));
   }
 
   function Login() {
@@ -37,7 +34,7 @@ export default function App() {
       };
       const response = await fetch(`${config.siteBaseUrl}/requestcode`, requestOptions);
       if (response.ok) {
-        updateUser({ email: body.email, codeSent: true, session_id: undefined });
+        setUser({ email: body.email, codeSent: true, session_id: undefined });
       }
     }
 
@@ -60,7 +57,7 @@ export default function App() {
       const response = await fetch(`${config.siteBaseUrl}/login`, requestOptions);
       const data = await response.json();
       if (response.ok) {
-        updateUser({ email: body.email, codeSent: false, session_id: data.session_id });
+        setUser({ email: body.email, codeSent: false, session_id: data.session_id });
         navigate("/profile");
       } else {
         setError(data.message);
@@ -125,6 +122,11 @@ export default function App() {
             { user?.session_id &&
               <li className={pathname === "/profile" ? "current" : ""}>
                 <Link title="Profile" to="/profile">Profile</Link>
+              </li>
+            }
+            { user?.session_id &&
+              <li className={pathname === "/report_match" ? "current" : ""}>
+                <Link title="Report Match" to="/report_match">Report Match</Link>
               </li>
             }
             <li className="mobile menu-btn">
@@ -269,11 +271,27 @@ export default function App() {
     );
   }
 
-  function Profile() {
-    const [userData, setUserData] = useState({});
-    const [editMode, setEditMode] = useState(false);
-    const [error, setError] = useState(undefined);
+  async function GetMemberList(members, setMembers, setError) {
+    useEffect(() => {
+      if (!members || members.length === 0) {
+        const func = async () => {
+          const requestOptions = {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          };
+          const response = await fetch(`${config.siteBaseUrl}/getmembers`, requestOptions);
+          if (response.ok) {
+            setMembers(await response.json());
+          } else {
+            setError("Failed to retrieve member list.");
+          }
+        };
+        func();
+      }
+    });
+  }
 
+  async function GetUserData(userData, setUserData, callback = () => {}) {
     useEffect(() => {
       if (!userData.email) {
         const func = async () => {
@@ -288,14 +306,23 @@ export default function App() {
           if (response.ok) {
             const userDetails = await response.json();
             setUserData(userDetails);
+            callback(userDetails);
           } else {
-            updateUser({ session_id: undefined, sendCode: undefined });
+            setUser({ session_id: undefined, sendCode: undefined });
             navigate('/login');
           }
         };
         func();
       }
     });
+  }
+
+  function Profile() {
+    const [userData, setUserData] = useState({});
+    const [editMode, setEditMode] = useState(false);
+    const [error, setError] = useState(undefined);
+
+    GetUserData(userData, setUserData);
 
     async function save() {
       const body = {
@@ -399,6 +426,157 @@ export default function App() {
     )
   }
 
+  function ReportMatch() {
+    const [userData, setUserData] = useState({});
+    const [error, setError] = useState(undefined);
+    const [members, setMembers] = useState([]);
+    const [match, setMatch] = useState({
+      player1: {
+        id: userData._id?.$oid,
+        score: 25000
+      },
+      player2: {
+        id: userData._id?.$oid,
+        score: 25000
+      },
+      player3: {
+        id: userData._id?.$oid,
+        score: 25000
+      },
+      player4: {
+        id: userData._id?.$oid,
+        score: 25000
+      },
+    });
+
+    GetUserData(userData, setUserData, userData => {
+      setMatch({
+        player1: {
+          id: userData._id?.$oid,
+          score: 25000
+        },
+        player2: {
+          id: userData._id?.$oid,
+          score: 25000
+        },
+        player3: {
+          id: userData._id?.$oid,
+          score: 25000
+        },
+        player4: {
+          id: userData._id?.$oid,
+          score: 25000
+        },
+      });
+    });
+    GetMemberList(members, setMembers, setError);
+
+    async function saveMatch() {
+      const players = [match.player1, match.player2, match.player3, match.player4];
+      if (new Set(players.map(p => p.id)).size > 4) {
+        setError("Each player must be different");
+      } else {
+        const body = {
+          players: players.map(p => ({ ...p, score: parseInt(p.score) })),
+          date: new Date().toUTCString()
+        };
+        const requestOptions = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authentication-Session-Id': user.session_id },
+          body: JSON.stringify(body)
+        };
+
+        setError(undefined);
+        const response = await fetch(`${config.siteBaseUrl}/savematch`, requestOptions);
+        if (!response.ok) {
+          const data = await response.json();
+          setError(data.message);
+        }
+      }
+    }
+
+    function updateMatch(newStuff) {
+      const newMatch = {
+        player1: {
+          ...match.player1,
+          ...newStuff.player1
+        },
+        player2: {
+          ...match.player2,
+          ...newStuff.player2
+        },
+        player3: {
+          ...match.player3,
+          ...newStuff.player3
+        },
+        player4: {
+          ...match.player4,
+          ...newStuff.player4
+        },
+      };
+      setMatch(newMatch);
+    }
+
+    return (
+      <div className="report-match-page">
+        { error &&
+          <p className="error-banner">{error}</p>
+        }
+        <ul>
+          <li>
+            <label>
+              Player 1:
+              <select value={match.player1.id} disabled={true}>
+                <option value={userData._id?.$oid}>{userData.name ?? userData.email}</option>
+              </select>
+            </label>
+            <label>
+              Score:
+              <input type="number" value={match.player1.score} onChange={e => updateMatch({player1: { score: e.target.value }})}/>
+            </label>
+          </li>
+          <li>
+            <label>
+              Player 2:
+              <select value={match.player2.id} onChange={e => updateMatch({player2: { id: e.target.value }})}>
+                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email}</option>)}
+              </select>
+            </label>
+            <label>
+              Score:
+              <input type="number" value={match.player2.score} onChange={e => updateMatch({player2: { score: e.target.value }})}/>
+            </label>
+          </li>
+          <li>
+            <label>
+              Player 3:
+              <select value={match.player3.id} onChange={e => updateMatch({player3: { id: e.target.value }})}>
+                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email}</option>)}
+              </select>
+            </label>
+            <label>
+              Score:
+              <input type="number" value={match.player3.score} onChange={e => updateMatch({player3: { score: e.target.value }})}/>
+            </label>
+          </li>
+          <li>
+            <label>
+              Player 4:
+              <select value={match.player4.id} onChange={e => updateMatch({player4: { id: e.target.value }})}>
+                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email}</option>)}
+              </select>
+            </label>
+            <label>
+              Score:
+              <input type="number" value={match.player4.score} onChange={e => updateMatch({player4: { score: e.target.value }})}/>
+            </label>
+          </li>
+        </ul>
+        <button className="btn btn-primary" onClick={saveMatch}>Submit</button>
+      </div>
+    );
+  }
+
   function NoMatch() {
     return (
       <div>
@@ -420,6 +598,7 @@ export default function App() {
           <Route path="tournaments" element={<Tournaments />} />
           <Route path="login" element={<Login />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="report_match" element={<ReportMatch />} />
 
           <Route path="*" element={<NoMatch />} />
         </Route>

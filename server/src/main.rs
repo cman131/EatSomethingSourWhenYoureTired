@@ -4,11 +4,11 @@ use actix_cors::Cors;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Result};
 use chrono::{DateTime, Duration, Utc};
 use config::Config;
+use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use rand::{self, distributions::Alphanumeric, Rng};
 use mongodb::{ bson::{doc, oid::ObjectId}, Client, Collection };
 use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
-use serde_json::Number;
 
 #[derive(Serialize)]
 #[derive(Deserialize)]
@@ -28,10 +28,10 @@ struct UserCredentials {
     ip_address: String
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 struct MatchPlayer {
-    player_id: String,
-    final_score: Number,
+    id: ObjectId,
+    score: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,6 +60,9 @@ impl User {
     pub fn details(user: User) -> Self {
         Self { _id: user._id, name: user.name, majsoul_username: user.majsoul_username, discord_username: user.discord_username, email: user.email, session_id: None, code: "".to_string(), code_date: "".to_string(), match_history: user.match_history, avatar: user.avatar }
     }
+    pub fn member_view(user: &User) -> Self {
+        Self { _id: user._id, name: user.name.to_owned(), majsoul_username: None, discord_username: None, email: user.email.to_owned(), session_id: None, code: "".to_string(), code_date: "".to_string(), match_history: Vec::new(), avatar: user.avatar.to_owned() }
+    }
 }
 
 #[derive(Deserialize)]
@@ -76,7 +79,6 @@ struct UserAvatar {
 async fn get_user(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserEmail>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
-    println!("Database connected");
 
     return match get_user_internal(collection, req, info.email.to_string()).await {
         Ok(user) => HttpResponse::Ok().json(User::details(user)),
@@ -84,10 +86,19 @@ async fn get_user(req: HttpRequest, client: web::Data<Client>, config: web::Data
     };
 }
 
+async fn get_member_list(client: web::Data<Client>, config: web::Data<HashMap<String, String>>) -> HttpResponse {
+    let database = client.database(config["db_name"].as_str());
+    let collection = database.collection::<User>("users");
+    let cursor = collection.find(None, None).await.unwrap();
+
+    let users = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
+    let members: Vec<User> = users.iter().map(|user| User::member_view(user)).collect();
+    HttpResponse::Ok().json(members)
+}
+
 async fn update_user_avatar(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserAvatar>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
-    println!("Database connected");
 
     let user = get_user_internal(collection.to_owned(), req, info.email.to_string()).await;
     if user.is_err() {
@@ -97,14 +108,12 @@ async fn update_user_avatar(req: HttpRequest, client: web::Data<Client>, config:
     collection.update_one(doc! { "email": info.email.to_uppercase() }, doc! { "$set": {
         "avatar": info.avatar.to_owned(),
     } }, None).await.expect("Failed to update user");
-    println!("Updated user");
     return HttpResponse::NoContent().json(ErrorResponse { message: "User avatar updated".to_string() });
 }
 
 async fn update_user(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<User>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
-    println!("Database connected");
 
     let user = get_user_internal(collection.to_owned(), req, info.email.to_string()).await;
     if user.is_err() {
@@ -117,14 +126,44 @@ async fn update_user(req: HttpRequest, client: web::Data<Client>, config: web::D
         "discord_username": info.discord_username.to_owned(),
         "majsoul_username": info.majsoul_username.to_owned()
     } }, None).await.expect("Failed to update user");
-    println!("Updated user");
     return HttpResponse::NoContent().json(ErrorResponse { message: "User updated".to_string() });
+}
+
+async fn save_match(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<Match>) -> HttpResponse {
+    let database = client.database(config["db_name"].as_str());
+    let user_collection = database.collection::<User>("users");
+    let user = get_user_internal_by_id(user_collection.to_owned(), req, info.players[0].id).await;
+    if user.is_err() {
+        return HttpResponse::Forbidden().json(ErrorResponse { message: "User not authenticated".to_string() });
+    }
+
+    let match_collection = database.collection::<Match>("matches");
+    let match_value = Match { players: info.players.to_vec(), date: Utc::now().to_rfc3339() };
+    match_collection.insert_one(match_value, None).await.expect("Failed to create match");
+
+    return HttpResponse::NoContent().json(ErrorResponse { message: "Match created".to_string() });
+}
+
+async fn get_user_internal_by_id(collection: Collection<User>, req: HttpRequest, id: ObjectId) -> Result<User, HttpResponse> {
+    let existing = collection.find_one(doc! { "_id": id }, None)
+        .await.expect("Failed to find user");
+
+    if existing.is_none() {
+        return Err(HttpResponse::NotFound().json(ErrorResponse { message: "User not found".to_string() }));
+    }
+
+    let some_existing = existing.unwrap();
+
+    // Failed authentication
+    if !check_authentication(req, some_existing.session_id.to_owned()) {
+        return Err(HttpResponse::Forbidden().json(ErrorResponse { message: "User not authenticated".to_string() }));
+    }
+    return Ok(some_existing);
 }
 
 async fn get_user_internal(collection: Collection<User>, req: HttpRequest, email: String) -> Result<User, HttpResponse> {
     let existing = collection.find_one(doc! { "email": email.to_uppercase() }, None)
         .await.expect("Failed to find user");
-    println!("Found user");
 
     if existing.is_none() {
         return Err(HttpResponse::NotFound().json(ErrorResponse { message: "User not found".to_string() }));
@@ -151,11 +190,9 @@ fn check_authentication(req: HttpRequest, session_id: Option<String>) -> bool {
 async fn login(client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserCredentials>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
-    println!("Database connected");
 
     let existing = collection.find_one(doc! { "email": info.email.to_uppercase() }, None)
         .await.expect("Failed to find user");
-    println!("Found user");
     if existing.is_none() {
         return HttpResponse::NotFound().json(ErrorResponse { message: "User not found".to_string() });
     }
@@ -172,7 +209,6 @@ async fn login(client: web::Data<Client>, config: web::Data<HashMap<String, Stri
     let session_id = uuid::Uuid::new_v4();
     collection.update_one(doc! { "email": info.email.to_uppercase() }, doc! { "$set": { "session_id": session_id.to_string(), "ip_address": info.ip_address.to_string() } }, None)
         .await.expect("Failed to update user");
-    println!("Updated user with session id");
 
     HttpResponse::Ok().json(AuthenticatedSessionId { session_id: session_id.to_string() })
 }
@@ -180,15 +216,12 @@ async fn login(client: web::Data<Client>, config: web::Data<HashMap<String, Stri
 async fn send_code(client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserEmail>) -> HttpResponse {
     let code = generate_code();
     let code_date = Utc::now().to_rfc3339();
-    println!("Email: {}", info.email);
 
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
-    println!("Database connected");
 
     let existing = collection.find_one(doc! { "email": info.email.to_uppercase() }, None)
         .await.expect("Failed to find user");
-    println!("Found user");
 
     // Our user
     if !existing.is_none() {
@@ -196,15 +229,12 @@ async fn send_code(client: web::Data<Client>, config: web::Data<HashMap<String, 
         user.code = code.to_string();
         user.code_date = code_date;
         collection.replace_one(doc! { "email": info.email.to_uppercase() }, user, None).await.expect("Failed to replace user");
-        println!("Replaced user");
     } else {
         let user = User::new(info.email.to_uppercase(), code.to_string(), code_date, Vec::new());
         collection.insert_one(user, None).await.expect("Failed to insert user");
-        println!("Inserted user");
     };
 
     send_email(config, info.email.to_string(), code).await.expect("Failed to send email");
-    println!("Email sent");
 
     HttpResponse::Ok().body("Sent.")
 }
@@ -277,8 +307,10 @@ async fn main() -> std::io::Result<()> {
             .route("/requestcode", web::post().to(send_code))
             .route("/login", web::post().to(login))
             .route("/getuser", web::post().to(get_user))
+            .route("/getmembers", web::get().to(get_member_list))
             .route("/updateuser", web::post().to(update_user))
             .route("/updateuseravatar", web::post().to(update_user_avatar))
+            .route("/savematch", web::post().to(save_match))
     })
     .bind(("127.0.0.1", port))?
     .run()
