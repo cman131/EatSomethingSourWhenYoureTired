@@ -6,7 +6,7 @@ use chrono::{DateTime, Duration, Utc};
 use config::Config;
 use serde::{Deserialize, Serialize};
 use rand::{self, distributions::Alphanumeric, Rng};
-use mongodb::{ bson::{doc, oid::ObjectId}, options::{ ClientOptions, ServerApi, ServerApiVersion }, Client, Collection, Database };
+use mongodb::{ bson::{doc, oid::ObjectId}, Client, Collection };
 use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
 use serde_json::Number;
 
@@ -73,8 +73,8 @@ struct UserAvatar {
     avatar: String,
 }
 
-async fn get_user(req: HttpRequest, info: web::Json<UserEmail>) -> HttpResponse {
-    let database = connect_db().await.expect("Failed to connect to DB");
+async fn get_user(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserEmail>) -> HttpResponse {
+    let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
     println!("Database connected");
 
@@ -84,8 +84,8 @@ async fn get_user(req: HttpRequest, info: web::Json<UserEmail>) -> HttpResponse 
     };
 }
 
-async fn update_user_avatar(req: HttpRequest, info: web::Json<UserAvatar>) -> HttpResponse {
-    let database = connect_db().await.expect("Failed to connect to DB");
+async fn update_user_avatar(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserAvatar>) -> HttpResponse {
+    let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
     println!("Database connected");
 
@@ -101,8 +101,8 @@ async fn update_user_avatar(req: HttpRequest, info: web::Json<UserAvatar>) -> Ht
     return HttpResponse::NoContent().json(ErrorResponse { message: "User avatar updated".to_string() });
 }
 
-async fn update_user(req: HttpRequest, info: web::Json<User>) -> HttpResponse {
-    let database = connect_db().await.expect("Failed to connect to DB");
+async fn update_user(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<User>) -> HttpResponse {
+    let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
     println!("Database connected");
 
@@ -148,8 +148,8 @@ fn check_authentication(req: HttpRequest, session_id: Option<String>) -> bool {
     return false;
 }
 
-async fn login(info: web::Json<UserCredentials>) -> HttpResponse {
-    let database = connect_db().await.expect("Failed to connect to DB");
+async fn login(client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserCredentials>) -> HttpResponse {
+    let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
     println!("Database connected");
 
@@ -177,12 +177,12 @@ async fn login(info: web::Json<UserCredentials>) -> HttpResponse {
     HttpResponse::Ok().json(AuthenticatedSessionId { session_id: session_id.to_string() })
 }
 
-async fn send_code(info: web::Json<UserEmail>) -> HttpResponse {
+async fn send_code(client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserEmail>) -> HttpResponse {
     let code = generate_code();
     let code_date = Utc::now().to_rfc3339();
     println!("Email: {}", info.email);
 
-    let database = connect_db().await.expect("Failed to connect to DB");
+    let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
     println!("Database connected");
 
@@ -203,13 +203,13 @@ async fn send_code(info: web::Json<UserEmail>) -> HttpResponse {
         println!("Inserted user");
     };
 
-    send_email(info.email.to_string(), code).await.expect("Failed to send email");
+    send_email(config, info.email.to_string(), code).await.expect("Failed to send email");
     println!("Email sent");
 
     HttpResponse::Ok().body("Sent.")
 }
 
-async fn send_email(email: String, code: String) -> Result<()> {
+async fn send_email(config: web::Data<HashMap<String, String>>, email: String, code: String) -> Result<()> {
     let email = Message::builder()
         .from("CHS Riichi Mahjong <charlestonriichimahjong@gmail.com>".parse().unwrap())
         .to(email.parse().unwrap())
@@ -218,7 +218,6 @@ async fn send_email(email: String, code: String) -> Result<()> {
         .unwrap();
 
     // Create SMTP client credentials using username and password
-    let config = get_config();
     let creds = Credentials::new(config["email"].to_string(), config["email_pass"].to_string()); 
     let mailer = SmtpTransport::starttls_relay(config["email_server_name"].as_str())
         .unwrap()  // Unwrap the Result, panics in case of error
@@ -243,20 +242,6 @@ fn generate_code() -> String {
         .collect();
 }
 
-async fn connect_db() -> mongodb::error::Result<Database> {
-    let config = get_config();
-    let mut client_options = ClientOptions::parse_async(config["db_uri"].as_str()).await?;
-    // Set the server_api field of the client_options object to Stable API version 1
-    let server_api = ServerApi::builder().version(ServerApiVersion::V1).build();
-    client_options.server_api = Some(server_api);
-    // Create a new client and connect to the server
-    let client = Client::with_options(client_options)?;
-    // Send a ping to confirm a successful connection
-    let db = client.database(config["db_name"].as_str());
-
-    return Ok(db);
-}
-
 fn get_config() -> HashMap<String, String> {
     let settings = Config::builder()
         // Add in `./Settings.toml`
@@ -274,17 +259,20 @@ fn get_config() -> HashMap<String, String> {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = u16::from_str(get_config()["port"].as_str()).expect("bad config");
+    let config = get_config();
+    let cors_allowed_origin = config["origin"].to_string();
+    let port = u16::from_str(config["port"].as_str()).expect("bad config");
+    let client = Client::with_uri_str(config["db_uri"].to_string()).await.expect("failed to connect");
 
-    HttpServer::new(|| {
-        let config = get_config();
-        let cors_allowed_origin = config["origin"].to_string();
+    HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin(&cors_allowed_origin)
             .allow_any_header()
             .allow_any_method()
             .expose_any_header();
         App::new()
+            .app_data(web::Data::new(client.clone()))
+            .app_data(web::Data::new(config.clone()))
             .wrap(cors)
             .route("/requestcode", web::post().to(send_code))
             .route("/login", web::post().to(login))
