@@ -473,7 +473,7 @@ export default function App() {
 
     async function saveMatch() {
       const players = [match.player1, match.player2, match.player3, match.player4];
-      if (new Set(players.map(p => p.id)).size > 4) {
+      if (new Set(players.map(p => p.id)).size < 4) {
         setError("Each player must be different");
       } else {
         const body = {
