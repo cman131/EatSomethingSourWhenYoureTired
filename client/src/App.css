@@ -183,14 +183,14 @@ nav ul li.menu-btn button {
   min-height: 1px;
   padding: 1rem;
 }
-.details-section li {
+.section li {
   display: flex;
   flex-wrap: wrap;
   margin-right: -15px;
   margin-left: -15px;
   min-height: 24px;
 }
-.details-section li label {
+.section li label {
   flex: 0 0 25%;
   max-width: 25%;
   position: relative;
@@ -198,7 +198,7 @@ nav ul li.menu-btn button {
   padding-right: 15px;
   padding-left: 15px;
 }
-.details-section li span {
+.section li span {
   color: #6c757d;
   flex: 0 0 75%;
   max-width: 75%;
@@ -207,7 +207,7 @@ nav ul li.menu-btn button {
   padding-right: 15px;
   padding-left: 15px;
 }
-.details-section li h6 {
+.section li h6 {
   margin-bottom: 0;
   font-size: 1rem;
   font-weight: 500;
@@ -261,6 +261,16 @@ nav ul li.menu-btn button {
   margin-bottom: 1rem;
   border: 0;
   border-top: 1px solid rgba(0, 0, 0, .1);
+}
+
+.profile-page .match-history-section {
+  h2 {
+    margin-bottom: 20px;
+  }
+  p {
+    text-align: center;
+    margin-bottom: 20px;
+  }
 }
 
 .report-match-page {
@@ -334,7 +344,7 @@ nav ul li.menu-btn button {
     top: 137px;
   }
 
-  .details-section {
+  .section {
     flex: 0 0 100%;
     max-width: 100%;
   }

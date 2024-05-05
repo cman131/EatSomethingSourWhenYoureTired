@@ -425,6 +425,20 @@ export default function App() {
             </div>
           }
         </div>
+        <div className="row">
+          <div className="match-history-section section">
+            <h2>Match History</h2>
+            { userData.match_history && <p>No matches found</p>}
+            <ul>
+              {userData.match_history?.map(match => (
+                <div>
+                  <li><label><h6>{ match.date }</h6></label></li>
+                  <hr />
+                </div>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
     )
   }

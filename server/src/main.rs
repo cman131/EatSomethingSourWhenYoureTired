@@ -7,7 +7,7 @@ use config::Config;
 use futures_util::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use rand::{self, distributions::Alphanumeric, Rng};
-use mongodb::{ bson::{doc, oid::ObjectId}, Client, Collection };
+use mongodb::{ bson::{doc, oid::ObjectId}, Client, Database };
 use lettre::{transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
 
 #[derive(Serialize)]
@@ -79,9 +79,8 @@ struct UserAvatar {
 
 async fn get_user(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<UserEmail>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
-    let collection = database.collection::<User>("users");
 
-    return match get_user_internal(collection, req, info.email.to_string()).await {
+    return match get_user_internal(database, req, info.email.to_string(), true).await {
         Ok(user) => HttpResponse::Ok().json(User::details(user)),
         Err(error) => error
     };
@@ -101,7 +100,7 @@ async fn update_user_avatar(req: HttpRequest, client: web::Data<Client>, config:
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
 
-    let user = get_user_internal(collection.to_owned(), req, info.email.to_string()).await;
+    let user = get_user_internal(database.to_owned(), req, info.email.to_string(), false).await;
     if user.is_err() {
         return user.unwrap_err();
     }
@@ -116,7 +115,7 @@ async fn update_user(req: HttpRequest, client: web::Data<Client>, config: web::D
     let database = client.database(config["db_name"].as_str());
     let collection = database.collection::<User>("users");
 
-    let user = get_user_internal(collection.to_owned(), req, info.email.to_string()).await;
+    let user = get_user_internal(database.to_owned(), req, info.email.to_string(), false).await;
     if user.is_err() {
         return user.unwrap_err();
     }
@@ -132,8 +131,7 @@ async fn update_user(req: HttpRequest, client: web::Data<Client>, config: web::D
 
 async fn save_match(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<Match>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
-    let user_collection = database.collection::<User>("users");
-    let user = get_user_internal_by_id(user_collection.to_owned(), req, info.players[0].id).await;
+    let user = get_user_internal_by_id(database.to_owned(), req, info.players[0].id).await;
     if user.is_err() {
         return HttpResponse::Forbidden().json(ErrorResponse { message: "User not authenticated".to_string() });
     }
@@ -145,7 +143,8 @@ async fn save_match(req: HttpRequest, client: web::Data<Client>, config: web::Da
     return HttpResponse::NoContent().json(ErrorResponse { message: "Match created".to_string() });
 }
 
-async fn get_user_internal_by_id(collection: Collection<User>, req: HttpRequest, id: ObjectId) -> Result<User, HttpResponse> {
+async fn get_user_internal_by_id(database: Database, req: HttpRequest, id: ObjectId) -> Result<User, HttpResponse> {
+    let collection = database.collection::<User>("users");
     let existing = collection.find_one(doc! { "_id": id }, None)
         .await.expect("Failed to find user");
 
@@ -162,7 +161,8 @@ async fn get_user_internal_by_id(collection: Collection<User>, req: HttpRequest,
     return Ok(some_existing);
 }
 
-async fn get_user_internal(collection: Collection<User>, req: HttpRequest, email: String) -> Result<User, HttpResponse> {
+async fn get_user_internal(database: Database, req: HttpRequest, email: String, include_matches: bool) -> Result<User, HttpResponse> {
+    let collection = database.collection::<User>("users");
     let existing = collection.find_one(doc! { "email": email.to_uppercase() }, None)
         .await.expect("Failed to find user");
 
@@ -170,11 +170,20 @@ async fn get_user_internal(collection: Collection<User>, req: HttpRequest, email
         return Err(HttpResponse::NotFound().json(ErrorResponse { message: "User not found".to_string() }));
     }
 
-    let some_existing = existing.unwrap();
+    let mut some_existing = existing.unwrap();
 
     // Failed authentication
     if !check_authentication(req, some_existing.session_id.to_owned()) {
         return Err(HttpResponse::Forbidden().json(ErrorResponse { message: "User not authenticated".to_string() }));
+    }
+
+    if include_matches {
+        let cursor = database.collection::<Match>("matches")
+            .find(doc! { "players": { "$elemMatch": { "id": some_existing._id } } }, None)
+            .await.expect("Failed to grab matches");
+
+        let matches = cursor.try_collect().await.unwrap_or_else(|_| vec![]);
+        some_existing.match_history = matches;
     }
     return Ok(some_existing);
 }
