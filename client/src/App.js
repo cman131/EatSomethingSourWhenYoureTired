@@ -61,7 +61,7 @@ export default function App() {
       const data = await response.json();
       if (response.ok) {
         setUser({ email: body.email, codeSent: false, session_id: data.session_id });
-        navigate("/profile");
+        navigate('/profile');
       } else {
         setError(data.message);
       }
@@ -494,6 +494,8 @@ export default function App() {
         if (!response.ok) {
           const data = await response.json();
           setError(data.message);
+        } else {
+          navigate('/profile');
         }
       }
     }
