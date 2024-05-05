@@ -76,7 +76,7 @@ export default function App() {
         </label>
         <label>
           Authentication Code
-          <input id="code" type="password" name="code" defaultValue={user.code} />
+          <input id="code" type="text" name="code" defaultValue={user.code} />
           <button className="btn btn-secondary" onClick={SendCode}>Send code</button>
         </label>
         { error &&
@@ -108,6 +108,16 @@ export default function App() {
             <li className={pathname === "/resources" ? "current" : ""}>
               <Link title="Resources" to="/resources">Resources</Link>
             </li>
+            { user?.session_id &&
+              <li className={pathname === "/profile" ? "current" : ""}>
+                <Link title="Profile" to="/profile">Profile</Link>
+              </li>
+            }
+            { user?.session_id &&
+              <li className={pathname === "/report_match" ? "current" : ""}>
+                <Link title="Report Match" to="/report_match">Report Match</Link>
+              </li>
+            }
             <li>
               <a title="Merch Shop" rel="noreferrer" target="_blank" href="https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club">Merch Shop<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
@@ -120,16 +130,6 @@ export default function App() {
             { !user?.session_id &&
               <li className={pathname === "/login" ? "current" : ""}>
                 <Link title="Login" to="/login">Login</Link>
-              </li>
-            }
-            { user?.session_id &&
-              <li className={pathname === "/profile" ? "current" : ""}>
-                <Link title="Profile" to="/profile">Profile</Link>
-              </li>
-            }
-            { user?.session_id &&
-              <li className={pathname === "/report_match" ? "current" : ""}>
-                <Link title="Report Match" to="/report_match">Report Match</Link>
               </li>
             }
             <li className="mobile menu-btn">
