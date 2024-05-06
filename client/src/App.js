@@ -591,7 +591,7 @@ export default function App() {
             </label>
             <label>
               Score:
-              <input type="number" value={match.player1.score} onChange={e => updateMatch({player1: { score: e.target.value }})}/>
+              <input type="number" step="100" value={match.player1.score} onChange={e => updateMatch({player1: { score: e.target.value }})}/>
             </label>
           </li>
           <li>
@@ -603,7 +603,7 @@ export default function App() {
             </label>
             <label>
               Score:
-              <input type="number" value={match.player2.score} onChange={e => updateMatch({player2: { score: e.target.value }})}/>
+              <input type="number" step="100" value={match.player2.score} onChange={e => updateMatch({player2: { score: e.target.value }})}/>
             </label>
           </li>
           <li>
@@ -615,7 +615,7 @@ export default function App() {
             </label>
             <label>
               Score:
-              <input type="number" value={match.player3.score} onChange={e => updateMatch({player3: { score: e.target.value }})}/>
+              <input type="number" step="100" value={match.player3.score} onChange={e => updateMatch({player3: { score: e.target.value }})}/>
             </label>
           </li>
           <li>
@@ -627,7 +627,7 @@ export default function App() {
             </label>
             <label>
               Score:
-              <input type="number" value={match.player4.score} onChange={e => updateMatch({player4: { score: e.target.value }})}/>
+              <input type="number" step="100" value={match.player4.score} onChange={e => updateMatch({player4: { score: e.target.value }})}/>
             </label>
           </li>
         </ul>
