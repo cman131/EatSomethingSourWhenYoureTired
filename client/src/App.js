@@ -6,6 +6,12 @@ import { faExternalLink, faBars, faArrowLeft } from '@fortawesome/free-solid-svg
 import ProfilePic from "./profile-picture";
 const config = require('./config');
 
+function pressEnter(event, func) {
+  if (event.key === 'Enter' || event.keyCode === 13) {
+    func()
+  }
+}
+
 export default function App() {
   const [user, setUser] = getState();
   const navigate = useNavigate();
@@ -24,6 +30,14 @@ export default function App() {
 
   function Login() {
     const [error, setError] = useState(undefined);
+    const [ourUser, setOurUser] = useState(user);
+
+    function updateUser(userVal) {
+      setOurUser({
+        ...ourUser,
+        ...userVal
+      });
+    }
 
     async function SendCode() {
       const body = {
@@ -37,11 +51,16 @@ export default function App() {
       };
       const response = await fetch(`${config.siteBaseUrl}/requestcode`, requestOptions);
       if (response.ok) {
-        setUser({ email: body.email, codeSent: true, session_id: undefined });
+        updateUser({ email: body.email, codeSent: true, session_id: undefined });
       }
     }
 
     async function SendLogin() {
+      if (!ourUser.email || !ourUser.code) {
+        setError(`Missing required ${!ourUser.email ? 'Email' : 'Authorization code'} field.`);
+        return;
+      }
+
       const ipResponse = await fetch('https://api.ipify.org?format=json');
       const ip = await ipResponse.json();
       const body = {
@@ -49,7 +68,6 @@ export default function App() {
         code: document.querySelector('#code').value,
         ip_address: ip.ip
       };
-      console.log(body);
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,7 +78,9 @@ export default function App() {
       const response = await fetch(`${config.siteBaseUrl}/login`, requestOptions);
       const data = await response.json();
       if (response.ok) {
-        setUser({ email: body.email, codeSent: false, session_id: data.session_id });
+        const newUser = { email: body.email, codeSent: false, session_id: data.session_id };
+        setUser(newUser);
+        updateUser({ email: body.email, codeSent: false, session_id: data.session_id });
         navigate('/profile');
       } else {
         setError(data.message);
@@ -72,17 +92,32 @@ export default function App() {
         <h2>Login</h2>
         <label>
           Email
-          <input id="email" type="email" name="email" defaultValue={user.email} />
+          <input
+            id="email"
+            type="email"
+            name="email"
+            value={ourUser.email}
+            onChange={e => updateUser({ email: e.target.value })}
+            onKeyUp={e => pressEnter(e, SendCode)}
+          />
         </label>
         <label>
           Authentication Code
-          <input id="code" type="text" name="code" defaultValue={user.code} />
-          <button className="btn btn-secondary" onClick={SendCode}>Send code</button>
+          <input
+            disabled={!ourUser.codeSent}
+            id="code"
+            type="text"
+            name="code"
+            value={ourUser.code}
+            onChange={e => updateUser({ code: e.target.value })}
+            onKeyUp={e => pressEnter(e, SendLogin)}
+          />
+          <button className="btn btn-secondary" disabled={!ourUser.email} onClick={SendCode}>{ourUser.codeSent ? "Resend code" : "Send code"}</button>
         </label>
         { error &&
           <p className="error-banner">{error}</p>
         }
-        <button className="btn btn-primary" onClick={SendLogin}>Login</button>
+        <button disabled={!ourUser.email && !ourUser.codeSent} className="btn btn-primary" onClick={SendLogin}>Login</button>
       </div>
     );
   }
@@ -109,13 +144,13 @@ export default function App() {
               <Link title="Resources" to="/resources">Resources</Link>
             </li>
             { user?.session_id &&
-              <li className={pathname === "/profile" ? "current" : ""}>
-                <Link title="Profile" to="/profile">Profile</Link>
+              <li className={pathname === "/report_match" ? "current" : ""}>
+                <Link title="Report Match" to="/report_match">Report Match</Link>
               </li>
             }
             { user?.session_id &&
-              <li className={pathname === "/report_match" ? "current" : ""}>
-                <Link title="Report Match" to="/report_match">Report Match</Link>
+              <li className={pathname === "/profile" ? "current" : ""}>
+                <Link title="Profile" to="/profile">Profile</Link>
               </li>
             }
             <li>
@@ -152,6 +187,21 @@ export default function App() {
             <li className={pathname === "/resources" ? "current" : ""}>
               <Link title="Resources" to="/resources">Resources</Link>
             </li>
+            { !user?.session_id &&
+              <li className={pathname === "/login" ? "current" : ""}>
+                <Link title="Login" to="/login">Login</Link>
+              </li>
+            }
+            { user?.session_id &&
+              <li className={pathname === "/report_match" ? "current" : ""}>
+                <Link title="Report Match" to="/report_match">Report Match</Link>
+              </li>
+            }
+            { user?.session_id &&
+              <li className={pathname === "/profile" ? "current" : ""}>
+                <Link title="Profile" to="/profile">Profile</Link>
+              </li>
+            }
             <li>
               <a title="Merch Shop" rel="noreferrer" target="_blank" href="https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club">Merch Shop<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
@@ -161,16 +211,6 @@ export default function App() {
             <li>
               <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
-            { !user?.session_id &&
-              <li className={pathname === "/login" ? "current" : ""}>
-                <Link title="Login" to="/login">Login</Link>
-              </li>
-            }
-            { user?.session_id &&
-              <li className={pathname === "/profile" ? "current" : ""}>
-                <Link title="Profile" to="/profile">Profile</Link>
-              </li>
-            }
           </ul>
         </div>
 

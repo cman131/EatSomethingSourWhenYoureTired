@@ -95,6 +95,15 @@ nav ul li.menu-btn button {
   color: var(--sky-text-color-default);
 }
 
+.btn:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: .65;
+  box-shadow: none;
+  background-color: #fff;
+  border-color: #cdcfd2;
+}
+
 .btn-primary {
   color: #fff;
   background-color: #0974a1;
@@ -104,6 +113,11 @@ nav ul li.menu-btn button {
   color: #fff;
   background-color: #065171;
   border-color: #065171;
+}
+
+.btn-primary:disabled {
+  background-color: #0974a1;
+  border-color: #0974a1;
 }
 
 .btn-link {
