@@ -315,7 +315,24 @@ export default function App() {
   The tournament will be run a little more similar to NARMA/WRC for practice, but will still be as casual as the previous two.
   <br/>
   Food (almost certainly pizza) will be provided partway into the event. Spectators are also welcome.</p>
+	    <br />
         <a className="btn btn-primary" rel="noreferrer" target="_blank" href="https://forms.gle/Pz8VK4G6fLYPAa8J7">Register Here</a>
+	    <br />
+	    <br />
+	    <h3>Current Registrants (11)</h3>
+	    <ol className="attendee-list">
+	    	<li>Tess Anderson</li>
+	    	<li>Lisaaaa</li>
+	    	<li>Marilyn</li>
+	    	<li>Mirzo A</li>
+	    	<li>Conor Wright</li>
+	    	<li>Jason Frazier</li>
+	    	<li>Mat O'Brien</li>
+	    	<li>Mickey</li>
+	    	<li>Kiersten Meeder</li>
+	    	<li>Jae Dollason</li>
+	    	<li>Kyler Connare</li>
+	    </ol>
       </div>
     );
   }

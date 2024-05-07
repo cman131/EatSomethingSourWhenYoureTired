@@ -134,6 +134,11 @@ nav ul li.menu-btn button {
   outline: none;
 }
 
+.attendee-list {
+  padding-left: 20px;
+  padding-top: 5px;
+}
+
 .event-pane {
   position: absolute;
   bottom: 5px;
