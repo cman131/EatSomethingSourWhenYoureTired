@@ -143,6 +143,11 @@ export default function App() {
             <li className={pathname === "/resources" ? "current" : ""}>
               <Link title="Resources" to="/resources">Resources</Link>
             </li>
+            { !user?.session_id &&
+              <li className={pathname === "/login" ? "current" : ""}>
+                <Link title="Login" to="/login">Login</Link>
+              </li>
+            }
             { user?.session_id &&
               <li className={pathname === "/report_match" ? "current" : ""}>
                 <Link title="Report Match" to="/report_match">Report Match</Link>
@@ -162,11 +167,9 @@ export default function App() {
             <li>
               <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
-            { !user?.session_id &&
-              <li className={pathname === "/login" ? "current" : ""}>
-                <Link title="Login" to="/login">Login</Link>
-              </li>
-            }
+            <li>
+              <a title="Instagram" rel="noreferrer" target="_blank" href="https://www.instagram.com/charlestonriichimahjong/">Instagram<FontAwesomeIcon icon={faExternalLink} /></a>
+            </li>
             <li className="mobile menu-btn">
               <button className="btn secondary-btn" onClick={toggleMobileNavigation}><FontAwesomeIcon icon={faBars} /></button>
             </li>
@@ -210,6 +213,9 @@ export default function App() {
             </li>
             <li>
               <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
+            </li>
+            <li>
+              <a title="Instagram" rel="noreferrer" target="_blank" href="https://www.instagram.com/charlestonriichimahjong/">Instagram<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
           </ul>
         </div>
