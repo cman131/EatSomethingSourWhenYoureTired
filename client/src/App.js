@@ -295,6 +295,22 @@ export default function App() {
   }
 
   function Tournaments() {
+    const [tournamentList, setTournamentList] = useState([]);
+    useEffect(() => {
+      if (tournamentList.length === 0) {
+        const func = async() => {
+          const route = "https://docs.google.com/spreadsheets/d/1yBmk2I0JVn4EiPE1ExGAuh9GwYAS9F-FuDlotmHXxws/export?format=csv&id=1yBmk2I0JVn4EiPE1ExGAuh9GwYAS9F-FuDlotmHXxws"; const requestOptions = { method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          };
+          const response = await fetch(route, requestOptions);
+          const csv = await response.text();
+          const names = csv.split((/\r?\n|\r/)).slice(1).filter(line => line.includes('2024')).map(line => line.split(',')[1]);
+          setTournamentList(names);
+        };
+        func();
+      }
+    });
+
     if (Date.now() > new Date(2024, 27, 27)) {
       return (
         <div className="text-content">
@@ -306,33 +322,24 @@ export default function App() {
       <div className="text-content">
         <h2>3rd Annual Riichi Mahjong Tournament</h2>
         <p>
-  It's that time of year again! We'll be having our Annual Club Tournament! It'll be in the same place as last year (Talison Row Apts Game Room, near mailboxes).
-  <br/>
-  All skill levels are welcome as long as they know how to play the game already. (Can't teach from scratch mid-tourney).
-  <br/>
-  We will have prizes including something particularly cool donated by our own @itsmat124!
-  <br/>
-  The tournament will be run a little more similar to NARMA/WRC for practice, but will still be as casual as the previous two.
-  <br/>
-  Food (almost certainly pizza) will be provided partway into the event. Spectators are also welcome.</p>
-	    <br />
+          It's that time of year again! We'll be having our Annual Club Tournament! It'll be in the same place as last year (Talison Row Apts Game Room, near mailboxes).
+          <br/>
+          All skill levels are welcome as long as they know how to play the game already. (Can't teach from scratch mid-tourney).
+          <br/>
+          We will have prizes including something particularly cool donated by our own @itsmat124!
+          <br/>
+          The tournament will be run a little more similar to NARMA/WRC for practice, but will still be as casual as the previous two.
+          <br/>
+          Food (almost certainly pizza) will be provided partway into the event. Spectators are also welcome.
+        </p>
+        <br />
         <a className="btn btn-primary" rel="noreferrer" target="_blank" href="https://forms.gle/Pz8VK4G6fLYPAa8J7">Register Here</a>
-	    <br />
-	    <br />
-	    <h3>Current Registrants (11)</h3>
-	    <ol className="attendee-list">
-	    	<li>Tess Anderson</li>
-	    	<li>Lisaaaa</li>
-	    	<li>Marilyn</li>
-	    	<li>Mirzo A</li>
-	    	<li>Conor Wright</li>
-	    	<li>Jason Frazier</li>
-	    	<li>Mat O'Brien</li>
-	    	<li>Mickey</li>
-	    	<li>Kiersten Meeder</li>
-	    	<li>Jae Dollason</li>
-	    	<li>Kyler Connare</li>
-	    </ol>
+        <br />
+        <br />
+        <h3>Current Registrants ({tournamentList.length})</h3>
+        <ol className="attendee-list">
+          {tournamentList.map(name => <li>{name}</li>)}
+        </ol>
       </div>
     );
   }
