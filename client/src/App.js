@@ -2,7 +2,7 @@ import { Routes, Route, Outlet, Link, useLocation, useNavigate } from "react-rou
 import { useEffect, useState } from "react";
 import './App.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faExternalLink, faBars, faArrowLeft } from '@fortawesome/free-solid-svg-icons'
+import { faExternalLink, faBars, faArrowLeft, faCaretDown } from '@fortawesome/free-solid-svg-icons'
 import ProfilePic from "./profile-picture";
 const config = require('./config');
 
@@ -162,13 +162,15 @@ export default function App() {
               <a title="Merch Shop" rel="noreferrer" target="_blank" href="https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club">Merch Shop<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
             <li>
-              <a title="Meetup" rel="noreferrer" target="_blank" href="https://www.meetup.com/charleston-riichi-mahjong/">Meetup<FontAwesomeIcon icon={faExternalLink} /></a>
-            </li>
-            <li>
-              <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
-            </li>
-            <li>
-              <a title="Instagram" rel="noreferrer" target="_blank" href="https://www.instagram.com/charlestonriichimahjong/">Instagram<FontAwesomeIcon icon={faExternalLink} /></a>
+              <div className="dropdown">
+                <div className="dropdown-btn" title="Socials">Socials <FontAwesomeIcon icon={faCaretDown} /></div>
+                <div className="dropdown-content">
+                  <a title="Meetup" rel="noreferrer" target="_blank" href="https://www.meetup.com/charleston-riichi-mahjong/">Meetup<FontAwesomeIcon icon={faExternalLink} /></a>
+                  <a title="Discord Server" rel="noreferrer" target="_blank" href="https://discord.gg/xhZtZZF3Jk">Discord Server<FontAwesomeIcon icon={faExternalLink} /></a>
+                  <a title="Instagram" rel="noreferrer" target="_blank" href="https://www.instagram.com/charlestonriichimahjong/">Instagram<FontAwesomeIcon icon={faExternalLink} /></a>
+                  <a title="Facebook" rel="noreferrer" target="_blank" href="https://www.facebook.com/profile.php?id=61559320292988">Facebook<FontAwesomeIcon icon={faExternalLink} /></a>
+                </div>
+              </div>
             </li>
             <li className="mobile menu-btn">
               <button className="btn secondary-btn" onClick={toggleMobileNavigation}><FontAwesomeIcon icon={faBars} /></button>
@@ -216,6 +218,9 @@ export default function App() {
             </li>
             <li>
               <a title="Instagram" rel="noreferrer" target="_blank" href="https://www.instagram.com/charlestonriichimahjong/">Instagram<FontAwesomeIcon icon={faExternalLink} /></a>
+            </li>
+            <li>
+              <a title="Facebook" rel="noreferrer" target="_blank" href="https://www.facebook.com/profile.php?id=61559320292988">Facebook<FontAwesomeIcon icon={faExternalLink} /></a>
             </li>
           </ul>
         </div>
