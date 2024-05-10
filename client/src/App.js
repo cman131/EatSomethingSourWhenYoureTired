@@ -326,6 +326,9 @@ export default function App() {
     return (
       <div className="text-content">
         <h2>3rd Annual Riichi Mahjong Tournament</h2>
+        <h4><b>When:</b> July 27th 1pm - 9pm EST</h4>
+        <h4><b>Where:</b> 480 Seven Farms Dr, Daniel Island, SC 29492</h4>
+        <br/>
         <p>
           It's that time of year again! We'll be having our Annual Club Tournament! It'll be in the same place as last year (Talison Row Apts Game Room, near mailboxes).
           <br/>
