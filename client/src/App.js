@@ -506,11 +506,14 @@ export default function App() {
         <div className="row">
           <div className="match-history-section section">
             <h2>Match History</h2>
-            { userData.match_history && <p>No matches found</p>}
+            { !(userData.match_history?.length > 0) && <p>No matches found</p>}
             <ul>
               {userData.match_history?.map(match => (
                 <div>
-                  <li><label><h6>{ match.date }</h6></label></li>
+                  <li className="match-line">
+                    <h6>{ new Date(match.date)?.toLocaleDateString() }</h6>
+                    <h6>{ match.players?.find(player => player.id?.$oid === userData.id?.$oid)?.score }</h6>
+                  </li>
                   <hr />
                 </div>
               ))}
@@ -532,14 +535,17 @@ export default function App() {
       },
       player2: {
         id: userData._id?.$oid,
+        unregistered_name: undefined,
         score: 25000
       },
       player3: {
         id: userData._id?.$oid,
+        unregistered_name: undefined,
         score: 25000
       },
       player4: {
         id: userData._id?.$oid,
+        unregistered_name: undefined,
         score: 25000
       },
     });
@@ -552,14 +558,17 @@ export default function App() {
         },
         player2: {
           id: userData._id?.$oid,
+          unregistered_name: undefined,
           score: 25000
         },
         player3: {
           id: userData._id?.$oid,
+          unregistered_name: undefined,
           score: 25000
         },
         player4: {
           id: userData._id?.$oid,
+          unregistered_name: undefined,
           score: 25000
         },
       });
@@ -568,7 +577,7 @@ export default function App() {
 
     async function saveMatch() {
       const players = [match.player1, match.player2, match.player3, match.player4];
-      if (new Set(players.map(p => p.id)).size < 4) {
+      if (new Set(players.map(p => p.id ?? p.unregistered_name.toLowerCase())).size < 4) {
         setError("Each player must be different");
       } else {
         const body = {
@@ -624,7 +633,7 @@ export default function App() {
             <label>
               Player 1:
               <select value={match.player1.id} disabled={true}>
-                <option value={userData._id?.$oid}>{userData.name ?? userData.email}</option>
+                <option value={userData._id?.$oid}>{userData.name ?? userData.email?.split('@')[0]}</option>
               </select>
             </label>
             <label>
@@ -635,9 +644,13 @@ export default function App() {
           <li>
             <label>
               Player 2:
-              <select value={match.player2.id} onChange={e => updateMatch({player2: { id: e.target.value }})}>
-                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email}</option>)}
+              <select value={match.player2.id} onChange={e => updateMatch({player2: { id: e.target.value, unregistered_name: undefined }})}>
+                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email?.split('@')[0]}</option>)}
+                <option value="">Unregistered</option>
               </select>
+              { !match.player2.id &&
+                <input type="text" value={match.player2.unregistered_name} onChange={e => updateMatch({player2: { id: undefined, unregistered_name: e.target.value }})} />
+              }
             </label>
             <label>
               Score:
@@ -647,9 +660,13 @@ export default function App() {
           <li>
             <label>
               Player 3:
-              <select value={match.player3.id} onChange={e => updateMatch({player3: { id: e.target.value }})}>
-                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email}</option>)}
+              <select value={match.player3.id} onChange={e => updateMatch({player3: { id: e.target.value, unregistered_name: undefined }})}>
+                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email?.split('@')[0]}</option>)}
+                <option value="">Unregistered</option>
               </select>
+              { !match.player3.id &&
+                <input type="text" value={match.player3.unregistered_name} onChange={e => updateMatch({player3: { id: undefined, unregistered_name: e.target.value }})} />
+              }
             </label>
             <label>
               Score:
@@ -659,9 +676,13 @@ export default function App() {
           <li>
             <label>
               Player 4:
-              <select value={match.player4.id} onChange={e => updateMatch({player4: { id: e.target.value }})}>
-                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email}</option>)}
+              <select value={match.player4.id} onChange={e => updateMatch({player4: { id: e.target.value, unregistered_name: undefined }})}>
+                {members.map(member => <option key={0} value={member._id.$oid}>{member.name ?? member.email?.split('@')[0]}</option>)}
+                <option value="">Unregistered</option>
               </select>
+              { !match.player4.id &&
+                <input type="text" value={match.player4.unregistered_name} onChange={e => updateMatch({player4: { id: undefined, unregistered_name: e.target.value }})} />
+              }
             </label>
             <label>
               Score:

@@ -28,15 +28,16 @@ struct UserCredentials {
     ip_address: String
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct MatchPlayer {
-    id: ObjectId,
+    id: Option<ObjectId>,
+    unregistered_name: Option<String>,
     score: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Match {
-    _id: ObjectId,
+    _id: Option<ObjectId>,
     players: Vec<MatchPlayer>,
     date: String
 }
@@ -131,13 +132,13 @@ async fn update_user(req: HttpRequest, client: web::Data<Client>, config: web::D
 
 async fn save_match(req: HttpRequest, client: web::Data<Client>, config: web::Data<HashMap<String, String>>, info: web::Json<Match>) -> HttpResponse {
     let database = client.database(config["db_name"].as_str());
-    let user = get_user_internal_by_id(database.to_owned(), req, info.players[0].id).await;
+    let user = get_user_internal_by_id(database.to_owned(), req, info.players[0].id.unwrap()).await;
     if user.is_err() {
         return HttpResponse::Forbidden().json(ErrorResponse { message: "User not authenticated".to_string() });
     }
 
     let match_collection = database.collection::<Match>("matches");
-    let match_value = Match { _id: ObjectId::new(), players: info.players.to_vec(), date: Utc::now().to_rfc3339() };
+    let match_value = Match { _id: Some(ObjectId::new()), players: info.players.to_vec(), date: Utc::now().to_rfc3339() };
     match_collection.insert_one(match_value, None).await.expect("Failed to create match");
 
     return HttpResponse::NoContent().json(ErrorResponse { message: "Match created".to_string() });
