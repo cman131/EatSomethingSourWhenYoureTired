@@ -4,6 +4,7 @@
 client/node_modules
 server/target
 client/build
+client/src/config.js
 ./*/target
 ./*/node_modules
 ./*/.pnp
@@ -15,6 +16,8 @@ client/build
 # production
 ./*/build
 ./*/dist
+server/config.secrets.toml
+client/redeploy.sh
 
 # misc
 ./*/.DS_Store
