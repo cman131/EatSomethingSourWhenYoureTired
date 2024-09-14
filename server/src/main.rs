@@ -162,6 +162,16 @@ async fn get_user_internal_by_id(database: Database, req: HttpRequest, id: Objec
     return Ok(some_existing);
 }
 
+async fn get_events_list() -> HttpResponse {
+  return match reqwest::get("https://www.meetup.com/_next/data/d10114fc400472e5cd0a026a4690f7b567613904/en-US/charleston-riichi-mahjong/events.json?slug=charleston-riichi-mahjong").await {
+      Ok(resp) => match resp.json::<serde_json::Value>().await {
+        Ok(response) => HttpResponse::Ok().json(response), 
+        Err(error) => HttpResponse::BadRequest().json(ErrorResponse { message: error.to_string() })
+      },
+      Err(error) => HttpResponse::BadRequest().json(ErrorResponse { message: error.to_string() })
+    };
+}
+
 async fn get_user_internal(database: Database, req: HttpRequest, email: String, include_matches: bool) -> Result<User, HttpResponse> {
     let collection = database.collection::<User>("users");
     let existing = collection.find_one(doc! { "email": email.to_uppercase() }, None)
@@ -316,6 +326,7 @@ async fn main() -> std::io::Result<()> {
             .route("/login", web::post().to(login))
             .route("/getuser", web::post().to(get_user))
             .route("/getmembers", web::get().to(get_member_list))
+            .route("/getevents", web::get().to(get_events_list))
             .route("/updateuser", web::post().to(update_user))
             .route("/updateuseravatar", web::post().to(update_user_avatar))
             .route("/savematch", web::post().to(save_match))
