@@ -11,3 +11,17 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.event-record {
+  width: 100%;
+  display: flex;
+  margin-bottom: 20px;
+}
+.event-record img {
+  width: 100%;
+}
+.event-image,
+.event-details {
+  width: 50%;
+  padding: 10px;
+}

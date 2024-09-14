@@ -257,10 +257,67 @@ export default function App() {
     );
   }
 
+/* export interface MeetupEvent {
+  dateTime: Date,
+  description: string,
+  endTime: Date,
+  eventUrl: string,
+  featuredEventPhoto: { __ref: string },
+  id: string,
+  status: string,
+  title: string,
+  venue: { __ref: string }
+} */
+
   function Events() {
+    const [eventList, setEventList] = useState([]);
+    useEffect(() => {
+      if (eventList.length === 0) {
+        const func = async() => {
+          const requestOptions = {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+          };
+          const response = await fetch(`${config.siteBaseUrl}/getevents`, requestOptions);
+          const responseValue = await response.json();
+          const valueSet = responseValue.pageProps.__APOLLO_STATE__;
+          const events = Object.keys(valueSet).filter(key => key.includes('Event')).map(key => {
+            const dateTime = new Date(valueSet[key].dateTime);
+            const dateTimeLocaleString = dateTime.toLocaleDateString();
+            const endTime = new Date(valueSet[key].endTime);
+            const endTimeLocaleString = endTime.toLocaleDateString();
+            return {
+              ...valueSet[key],
+              whenLabel: `${dateTimeLocaleString} @ ${dateTime.toLocaleTimeString()} - ` + (dateTimeLocaleString === endTimeLocaleString ? endTime.toLocaleTimeString() : `${endTimeLocaleString} @ ${endTime.toLocaleTimeString()}`),
+              dateTime: dateTime,
+              endTime: endTime,
+              image: valueSet[key].featuredEventPhoto ? valueSet[valueSet[key].featuredEventPhoto.__ref] : undefined,
+              venue: valueSet[key].venue ? valueSet[valueSet[key].venue.__ref] : undefined,
+            };
+          }).sort((a, b) => a.dateTime < b.dateTime);
+          setEventList(events);
+        };
+        func();
+      }
+    });
     return (
       <div className="event-pane">
-        <iframe src='https://widgets.sociablekit.com/meetup-group-events/iframe/25406359' frameborder='0' width='100%' height='100%' title="Upcoming events"></iframe>
+        <ul>
+          {eventList.map((event, index) =>
+            <li key={index} className="event-record">
+              <a rel="noreferrer" target="_blank" href={event.eventUrl} className="event-image">
+                <img src={event.image.highResUrl} alt='Graphic of people playing mahjong' />
+              </a>
+              <div className="event-details">
+                <a rel="noreferrer" target="_blank" href={event.eventUrl}>
+                  <h1>{event.title}</h1>
+                </a>
+                <p><b>When: </b>{event.whenLabel}</p>
+                <p><b>Description: </b>{event.description}</p>
+              </div>
+            </li>
+          )}
+        </ul>
       </div>
     );
   }
@@ -300,54 +357,9 @@ export default function App() {
   }
 
   function Tournaments() {
-    const [tournamentList, setTournamentList] = useState([]);
-    useEffect(() => {
-      if (tournamentList.length === 0) {
-        const func = async() => {
-          const route = "https://docs.google.com/spreadsheets/d/1yBmk2I0JVn4EiPE1ExGAuh9GwYAS9F-FuDlotmHXxws/export?format=csv&id=1yBmk2I0JVn4EiPE1ExGAuh9GwYAS9F-FuDlotmHXxws"; const requestOptions = { method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-          };
-          const response = await fetch(route, requestOptions);
-          const csv = await response.text();
-          const names = csv.split((/\r?\n|\r/)).slice(1).filter(line => line.includes('2024')).map(line => line.split(',')[1]);
-          setTournamentList(names);
-        };
-        func();
-      }
-    });
-
-    if (Date.now() > new Date(2024, 27, 27)) {
-      return (
-        <div className="text-content">
-          <p>Sorry no scheduled tournaments at the moment.</p>
-        </div>
-      );
-    }
     return (
       <div className="text-content">
-        <h2>3rd Annual Riichi Mahjong Tournament</h2>
-        <h4><b>When:</b> July 27th 1pm - 9pm EST</h4>
-        <h4><b>Where:</b> 480 Seven Farms Dr, Daniel Island, SC 29492</h4>
-        <br/>
-        <p>
-          It's that time of year again! We'll be having our Annual Club Tournament! It'll be in the same place as last year (Talison Row Apts Game Room, near mailboxes).
-          <br/>
-          All skill levels are welcome as long as they know how to play the game already. (Can't teach from scratch mid-tourney).
-          <br/>
-          We will have prizes including something particularly cool donated by our own @itsmat124!
-          <br/>
-          The tournament will be run a little more similar to NARMA/WRC for practice, but will still be as casual as the previous two.
-          <br/>
-          Food (almost certainly pizza) will be provided partway into the event. Spectators are also welcome.
-        </p>
-        <br />
-        <a className="btn btn-primary" rel="noreferrer" target="_blank" href="https://forms.gle/Pz8VK4G6fLYPAa8J7">Register Here</a>
-        <br />
-        <br />
-        <h3>Current Registrants ({tournamentList.length})</h3>
-        <ol className="attendee-list">
-          {tournamentList.map(name => <li>{name}</li>)}
-        </ol>
+        <p>Sorry no scheduled tournaments at the moment.</p>
       </div>
     );
   }
