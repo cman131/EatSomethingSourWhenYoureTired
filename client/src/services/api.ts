@@ -28,6 +28,7 @@ export interface Game {
   gameDate: string;
   notes?: string;
   pointsLeftOnTable?: number;
+  isEastOnly?: boolean;
   verified: boolean;
   verifiedBy?: User;
   verifiedAt?: string;
@@ -165,6 +166,7 @@ export const gamesApi = {
     gameDate?: Date;
     notes?: string;
     pointsLeftOnTable?: number;
+    isEastOnly?: boolean;
   }) => {
     return apiRequest<ApiResponse<{ game: Game }>>('/games', {
       method: 'POST',

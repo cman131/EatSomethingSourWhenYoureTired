@@ -36,6 +36,10 @@ const gameSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isEastOnly: {
+    type: Boolean,
+    default: false
+  },
   comments: [{
     comment: {
       type: String,

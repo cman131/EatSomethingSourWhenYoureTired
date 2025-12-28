@@ -28,7 +28,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Home', href: '/', icon: HomeIcon },
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
-    { name: 'Games', href: '/games', icon: ChartBarIcon },
+    ...(isAuthenticated ? [
+      { name: 'Games', href: '/games', icon: ChartBarIcon }
+    ] : []),
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
   ];
 
