@@ -31,11 +31,40 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
-    const { avatar } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName } = req.body;
     const user = await User.findById(req.user._id);
+
+    if (displayName !== undefined) {
+      // Check if displayName is already taken by another user
+      const existingUser = await User.findOne({ 
+        displayName, 
+        _id: { $ne: user._id } 
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Display name already taken'
+        });
+      }
+      
+      user.displayName = displayName;
+    }
 
     if (avatar !== undefined) {
       user.avatar = avatar;
+    }
+
+    if (realName !== undefined) {
+      user.realName = realName.trim() === '' ? null : realName.trim();
+    }
+
+    if (discordName !== undefined) {
+      user.discordName = discordName.trim() === '' ? null : discordName.trim();
+    }
+
+    if (mahjongSoulName !== undefined) {
+      user.mahjongSoulName = mahjongSoulName.trim() === '' ? null : mahjongSoulName.trim();
     }
 
     await user.save();
@@ -57,7 +86,7 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
 });
 
 // @route   GET /api/users/search
-// @desc    Search users by username
+// @desc    Search users by display name
 // @access  Private
 router.get('/search', async (req, res) => {
   try {
@@ -74,9 +103,14 @@ router.get('/search', async (req, res) => {
     }
 
     const users = await User.find({
-      username: { $regex: q.trim(), $options: 'i' }
+      $or: [
+        { displayName: { $regex: q.trim(), $options: 'i' } },
+        { realName: { $regex: q.trim(), $options: 'i' } },
+        { discordName: { $regex: q.trim(), $options: 'i' } },
+        { mahjongSoulName: { $regex: q.trim(), $options: 'i' } }
+      ]
     })
-      .select('username email avatar')
+      .select('displayName realName avatar')
       .limit(limit);
 
     res.json({
@@ -161,9 +195,9 @@ router.get('/:id/games', async (req, res) => {
     const games = await Game.find({
       'players.player': req.params.id
     })
-      .populate('submittedBy', 'username email avatar')
-      .populate('players.player', 'username email avatar')
-      .populate('verifiedBy', 'username')
+      .populate('submittedBy', 'displayName email avatar')
+      .populate('players.player', 'displayName email avatar')
+      .populate('verifiedBy', 'displayName')
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);

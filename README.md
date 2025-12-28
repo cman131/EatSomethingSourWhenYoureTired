@@ -123,7 +123,7 @@ new-mahjong-site/
 ### Users
 - `GET /api/users/profile` - Get current user profile
 - `PUT /api/users/profile` - Update user profile
-- `GET /api/users/search` - Search users by username
+- `GET /api/users/search` - Search users by name
 - `GET /api/users/:id` - Get user by ID
 - `GET /api/users/:id/games` - Get games for a user
 

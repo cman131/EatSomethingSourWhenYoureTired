@@ -1,7 +1,9 @@
 const express = require('express');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { generateToken, createRateLimit } = require('../middleware/auth');
-const { validateUserRegistration, validateUserLogin } = require('../middleware/validation');
+const { validateUserRegistration, validateUserLogin, validateForgotPassword, validateResetPassword } = require('../middleware/validation');
+const { sendPasswordResetEmail, sendPasswordResetConfirmationEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -14,25 +16,28 @@ const authLimiter = createRateLimit(15 * 60 * 1000, 15, 'Too many authentication
 // @access  Public
 router.post('/register', authLimiter, validateUserRegistration, async (req, res) => {
   try {
-    const { email, username, password } = req.body;
+    const { email, displayName, password, realName, discordName, mahjongSoulName } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
+      $or: [{ email }, { displayName }]
     });
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: existingUser.email === email ? 'Email already registered' : 'Username already taken'
+        message: existingUser.email === email ? 'Email already registered' : 'Display name already taken'
       });
     }
 
     // Create new user
     const user = new User({
       email,
-      username,
-      password
+      displayName,
+      password,
+      ...(realName && { realName }),
+      ...(discordName && { discordName }),
+      ...(mahjongSoulName && { mahjongSoulName })
     });
 
     await user.save();
@@ -146,6 +151,108 @@ router.post('/refresh-token', async (req, res) => {
     res.status(401).json({
       success: false,
       message: 'Invalid token'
+    });
+  }
+});
+
+// @route   POST /api/auth/forgot-password
+// @desc    Request password reset
+// @access  Public
+router.post('/forgot-password', authLimiter, validateForgotPassword, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+
+    // Always return success to prevent email enumeration
+    if (user) {
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+      // Hash token and save to database
+      user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      user.passwordResetExpires = resetTokenExpiry;
+      await user.save();
+
+      // Send password reset email
+      try {
+        await sendPasswordResetEmail(email, resetToken);
+      } catch (emailError) {
+        // Log error but don't fail the request - we've already saved the token
+        console.error('Failed to send password reset email:', emailError);
+        // The email service will have already logged the reset link as a fallback
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.'
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing password reset request'
+    });
+  }
+});
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password with token
+// @access  Public
+router.post('/reset-password', authLimiter, validateResetPassword, async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    // Hash the token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with valid reset token
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    }).select('+password');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired password reset token'
+      });
+    }
+
+    // Update password and clear reset token
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    // Send confirmation email
+    try {
+      await sendPasswordResetConfirmationEmail(user.email, user.displayName);
+    } catch (emailError) {
+      // Log error but don't fail the request - password has already been reset
+      console.error('Failed to send password reset confirmation email:', emailError);
+      // The email service will have already logged the confirmation as a fallback
+    }
+
+    // Generate JWT token for immediate login
+    const authToken = generateToken(user._id);
+
+    res.json({
+      success: true,
+      message: 'Password reset successful',
+      data: {
+        user: user.toJSON(),
+        token: authToken
+      }
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error resetting password'
     });
   }
 });

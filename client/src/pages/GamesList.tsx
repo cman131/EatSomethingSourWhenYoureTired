@@ -30,13 +30,13 @@ const GamesList: React.FC = () => {
 
     const searchLower = searchTerm.toLowerCase();
     return games.filter((game: Game) => {
-      // Search in player usernames
+      // Search in player display names
       const playerNames = game.players
-        .map(p => p.player.username.toLowerCase())
+        .map(p => p.player.displayName.toLowerCase())
         .join(' ');
       
-      // Search in submitter username
-      const submitterName = game.submittedBy.username.toLowerCase();
+      // Search in submitter display name
+      const submitterName = game.submittedBy.displayName.toLowerCase();
       
       // Search in game date
       const gameDate = new Date(game.gameDate).toLocaleDateString().toLowerCase();
@@ -144,7 +144,7 @@ const GamesList: React.FC = () => {
                           to={`/profile/${game.submittedBy._id}`}
                           className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                         >
-                          {game.submittedBy.username}
+                          {game.submittedBy.displayName}
                         </Link>
                         {game.verifiedBy && (
                           <>
@@ -153,7 +153,7 @@ const GamesList: React.FC = () => {
                               to={`/profile/${game.verifiedBy._id}`}
                               className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                             >
-                              {game.verifiedBy.username}
+                              {game.verifiedBy.displayName}
                             </Link>
                           </>
                         )}
@@ -173,7 +173,7 @@ const GamesList: React.FC = () => {
                                   {player.player.avatar && (
                                     <img
                                       src={player.player.avatar}
-                                      alt={player.player.username}
+                                      alt={player.player.displayName}
                                       className="w-8 h-8 rounded-full object-cover"
                                       onError={(e) => {
                                         // Hide image if it fails to load
@@ -185,7 +185,7 @@ const GamesList: React.FC = () => {
                                     to={`/profile/${player.player._id}`}
                                     className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
                                   >
-                                    {player.player.username}
+                                    {player.player.displayName}
                                   </Link>
                                 </div>
                               <div className="text-sm text-gray-700 mt-1">

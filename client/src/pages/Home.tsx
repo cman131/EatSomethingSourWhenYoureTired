@@ -62,7 +62,7 @@ const Home: React.FC = () => {
       <div className="bg-gradient-to-r from-primary-600 to-primary-800 rounded-lg shadow-lg p-8 text-white">
         <div className="max-w-3xl">
           <h1 className="text-4xl font-bold mb-4">
-            {isAuthenticated ? `Welcome back, ${user?.username}!` : 'Welcome to Charleston\'s Riichi Mahjong Club!'}
+            {isAuthenticated ? `Welcome back, ${user?.displayName}!` : 'Welcome to Charleston\'s Riichi Mahjong Club!'}
           </h1>
           <p className="text-xl text-primary-100 mb-6">
             We primarily play 10am - 12pm every Sunday at <b>
@@ -170,7 +170,7 @@ const Home: React.FC = () => {
                         to={`/profile/${game.submittedBy._id}`}
                         className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                       >
-                        {game.submittedBy.username}
+                        {game.submittedBy.displayName}
                       </Link>
                       {game.verifiedBy && (
                         <>
@@ -179,7 +179,7 @@ const Home: React.FC = () => {
                             to={`/profile/${game.verifiedBy._id}`}
                             className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                           >
-                            {game.verifiedBy.username}
+                            {game.verifiedBy.displayName}
                           </Link>
                         </>
                       )}
@@ -199,7 +199,7 @@ const Home: React.FC = () => {
                               {player.player.avatar && (
                                 <img
                                   src={player.player.avatar}
-                                  alt={player.player.username}
+                                      alt={player.player.displayName}
                                   className="w-8 h-8 rounded-full object-cover"
                                   onError={(e) => {
                                     // Hide image if it fails to load
@@ -211,7 +211,7 @@ const Home: React.FC = () => {
                                 to={`/profile/${player.player._id}`}
                                 className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
                               >
-                                {player.player.username}
+                                    {player.player.displayName}
                               </Link>
                             </div>
                             <div className="text-sm text-gray-700 mt-1">

@@ -1,25 +1,30 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { authApi } from '../services/api';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
-const Register: React.FC = () => {
+const ResetPassword: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
-    email: '',
-    displayName: '',
     password: '',
-    confirmPassword: '',
-    realName: '',
-    discordName: '',
-    mahjongSoulName: ''
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const tokenParam = searchParams.get('token');
+    if (!tokenParam) {
+      setError('Invalid reset link. Please request a new password reset.');
+    } else {
+      setToken(tokenParam);
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -32,7 +37,13 @@ const Register: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
+    if (!token) {
+      setError('Invalid reset token');
+      setIsLoading(false);
+      return;
+    }
+
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -46,135 +57,68 @@ const Register: React.FC = () => {
       setIsLoading(false);
       return;
     }
-    
+
     try {
-      await register({
-        email: formData.email,
-        displayName: formData.displayName,
-        password: formData.password,
-        realName: formData.realName.trim() || undefined,
-        discordName: formData.discordName.trim() || undefined,
-        mahjongSoulName: formData.mahjongSoulName.trim() || undefined
-      });
-      navigate('/');
+      const response = await authApi.resetPassword(token, formData.password);
+      
+      // Auto-login the user after successful password reset
+      if (response.data?.token && response.data?.user) {
+        localStorage.setItem('authToken', response.data.token);
+        // Reload the page to initialize auth context with new token
+        window.location.href = '/';
+      } else {
+        navigate('/login');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : 'Failed to reset password');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!token) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-sm text-red-600">{error || 'Invalid reset link'}</p>
+          </div>
+          <div className="text-center">
+            <Link
+              to="/forgot-password"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
+              Request a new password reset
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
+            Reset your password
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              sign in to your existing account
-            </Link>
+            Enter your new password below
           </p>
         </div>
-        
+
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-md p-4">
             <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="input-field mt-1"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                Display Name
-              </label>
-              <input
-                id="displayName"
-                name="displayName"
-                type="text"
-                autoComplete="display-name"
-                required
-                className="input-field mt-1"
-                placeholder="Choose a display name"
-                value={formData.displayName}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="realName" className="block text-sm font-medium text-gray-700">
-                Real Name <span className="text-gray-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="realName"
-                name="realName"
-                type="text"
-                className="input-field mt-1"
-                placeholder="Your real name"
-                value={formData.realName}
-                onChange={handleChange}
-                maxLength={30}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="discordName" className="block text-sm font-medium text-gray-700">
-                Discord Name <span className="text-gray-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="discordName"
-                name="discordName"
-                type="text"
-                className="input-field mt-1"
-                placeholder="Your Discord username"
-                value={formData.discordName}
-                onChange={handleChange}
-                maxLength={30}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="mahjongSoulName" className="block text-sm font-medium text-gray-700">
-                Mahjong Soul Name <span className="text-gray-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="mahjongSoulName"
-                name="mahjongSoulName"
-                type="text"
-                className="input-field mt-1"
-                placeholder="Your Mahjong Soul username"
-                value={formData.mahjongSoulName}
-                onChange={handleChange}
-                maxLength={30}
-              />
-            </div>
-            
-            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+                New Password
               </label>
               <div className="mt-1 relative">
                 <input
@@ -184,7 +128,7 @@ const Register: React.FC = () => {
                   autoComplete="new-password"
                   required
                   className="input-field pr-10"
-                  placeholder="Enter your password"
+                  placeholder="Enter your new password"
                   value={formData.password}
                   onChange={handleChange}
                 />
@@ -204,7 +148,7 @@ const Register: React.FC = () => {
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
+                Confirm New Password
               </label>
               <div className="mt-1 relative">
                 <input
@@ -214,7 +158,7 @@ const Register: React.FC = () => {
                   autoComplete="new-password"
                   required
                   className="input-field pr-10"
-                  placeholder="Confirm your password"
+                  placeholder="Confirm your new password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                 />
@@ -239,8 +183,17 @@ const Register: React.FC = () => {
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating account...' : 'Create account'}
+              {isLoading ? 'Resetting password...' : 'Reset password'}
             </button>
+          </div>
+
+          <div className="text-center">
+            <Link
+              to="/login"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
+              Back to login
+            </Link>
           </div>
         </form>
       </div>
@@ -248,5 +201,5 @@ const Register: React.FC = () => {
   );
 };
 
-export default Register;
+export default ResetPassword;
 
