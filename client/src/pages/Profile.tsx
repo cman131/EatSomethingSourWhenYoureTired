@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi } from '../hooks/useApi';
 import { usersApi, Game } from '../services/api';
 import { Link } from 'react-router-dom';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 const Profile: React.FC = () => {
   useRequireAuth();
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ username: '', avatar: '' });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   // Memoize the API call function to prevent infinite loops
   const getUserGames = React.useCallback(
@@ -27,6 +32,55 @@ const Profile: React.FC = () => {
     1,
     10
   );
+
+  // Initialize form data when user changes or edit mode is enabled
+  React.useEffect(() => {
+    if (user && isEditing) {
+      setFormData({
+        username: user.username || '',
+        avatar: user.avatar || '',
+      });
+    }
+  }, [user, isEditing]);
+
+  // Handle form input changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setError(null);
+    setSuccess(false);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(false);
+    setIsLoading(true);
+
+    try {
+      await updateProfile({
+        username: formData.username.trim(),
+        avatar: formData.avatar.trim(),
+      });
+      setSuccess(true);
+      setIsEditing(false);
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle cancel
+  const handleCancel = () => {
+    setIsEditing(false);
+    setFormData({ username: user?.username || '', avatar: user?.avatar || '' });
+    setError(null);
+    setSuccess(false);
+  };
 
   // Calculate statistics
   const stats = React.useMemo(() => {
@@ -74,17 +128,140 @@ const Profile: React.FC = () => {
 
       {/* User Info */}
       <div className="card">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">User Information</h2>
-        <div className="space-y-2">
-          <div>
-            <span className="text-sm font-medium text-gray-700">Username:</span>
-            <span className="ml-2 text-gray-900">{user?.username}</span>
-          </div>
-          <div>
-            <span className="text-sm font-medium text-gray-700">Email:</span>
-            <span className="ml-2 text-gray-900">{user?.email}</span>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">User Information</h2>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            >
+              <PencilIcon className="h-4 w-4" />
+              Edit
+            </button>
+          )}
         </div>
+
+        {error && (
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-4 bg-green-50 border border-green-200 rounded-md p-3">
+            <p className="text-sm text-green-600">Profile updated successfully!</p>
+          </div>
+        )}
+
+        {isEditing ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-start gap-6">
+              <div className="flex-shrink-0">
+                {formData.avatar ? (
+                  <img
+                    src={formData.avatar}
+                    alt="Avatar preview"
+                    className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                    onError={(e) => {
+                      e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="96" height="96"%3E%3Crect width="96" height="96" fill="%23e5e7eb"/%3E%3C/svg%3E';
+                    }}
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gray-200 border-2 border-gray-200 flex items-center justify-center">
+                    <span className="text-gray-400 text-xs">No avatar</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4 flex-1">
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    value={formData.username}
+                    onChange={handleChange}
+                    className="input-field"
+                    required
+                    minLength={3}
+                    maxLength={30}
+                    pattern="^[a-zA-Z0-9_]+$"
+                    title="Username can only contain letters, numbers, and underscores"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-1">
+                    Avatar URL
+                  </label>
+                  <input
+                    id="avatar"
+                    name="avatar"
+                    type="url"
+                    value={formData.avatar}
+                    onChange={handleChange}
+                    className="input-field"
+                    placeholder="https://example.com/avatar.jpg"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Enter a URL to an image for your avatar
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Email:</span>
+                  <span className="ml-2 text-gray-900">{user?.email}</span>
+                  <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <CheckIcon className="h-4 w-4" />
+                    {isLoading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={isLoading}
+                    className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <div className="flex items-start gap-6">
+            {user?.avatar && (
+              <div className="flex-shrink-0">
+                <img
+                  src={user.avatar}
+                  alt={`${user.username}'s avatar`}
+                  className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                  onError={(e) => {
+                    // Hide image if it fails to load
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+            <div className="space-y-2 flex-1">
+              <div>
+                <span className="text-sm font-medium text-gray-700">Username:</span>
+                <span className="ml-2 text-gray-900">{user?.username}</span>
+              </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700">Email:</span>
+                <span className="ml-2 text-gray-900">{user?.email}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Statistics */}

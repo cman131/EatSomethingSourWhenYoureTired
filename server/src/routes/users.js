@@ -76,7 +76,7 @@ router.get('/search', async (req, res) => {
     const users = await User.find({
       username: { $regex: q.trim(), $options: 'i' }
     })
-      .select('username email')
+      .select('username email avatar')
       .limit(limit);
 
     res.json({

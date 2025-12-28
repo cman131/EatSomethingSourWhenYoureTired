@@ -112,7 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             
             {/* Auth controls */}
-            <div className="hidden sm:flex sm:items-stretch sm:space-x-4">
+            <div className="hidden sm:flex sm:items-center sm:space-x-4">
               {isAuthenticated ? (
                 <>
                   <Link
@@ -144,7 +144,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Link>
                   <Link
                     to="/register"
-                    className="btn-primary text-sm"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors duration-200"
                   >
                     Register
                   </Link>

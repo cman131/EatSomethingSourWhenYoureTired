@@ -212,6 +212,19 @@ const GameSubmission: React.FC = () => {
                                 }`}
                               >
                                 <div className="flex items-center gap-3">
+                                  {user.avatar && (
+                                    <div className="flex-shrink-0">
+                                      <img
+                                        src={user.avatar}
+                                        alt={`${user.username}'s avatar`}
+                                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                        onError={(e) => {
+                                          // Hide image if it fails to load
+                                          e.currentTarget.style.display = 'none';
+                                        }}
+                                      />
+                                    </div>
+                                  )}
                                   <div className="flex-1">
                                     <div className="font-medium text-gray-900">{user.username}</div>
                                     {user.email && (
