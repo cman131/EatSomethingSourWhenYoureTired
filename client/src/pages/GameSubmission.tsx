@@ -21,6 +21,7 @@ const GameSubmission: React.FC = () => {
   const [gameDate, setGameDate] = useState(new Date());
   const [notes, setNotes] = useState('');
   const [pointsLeftOnTable, setPointsLeftOnTable] = useState(0);
+  const [isEastOnly, setIsEastOnly] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
@@ -80,6 +81,7 @@ const GameSubmission: React.FC = () => {
       gameDate: Date;
       notes?: string;
       pointsLeftOnTable?: number;
+      isEastOnly?: boolean;
     }) => gamesApi.createGame(gameData)
   );
 
@@ -160,7 +162,8 @@ const GameSubmission: React.FC = () => {
         })),
         gameDate,
         notes: notes || undefined,
-        pointsLeftOnTable: pointsLeftOnTable || undefined
+        pointsLeftOnTable: pointsLeftOnTable || undefined,
+        isEastOnly: isEastOnly || undefined
       });
       navigate('/games');
     } catch (err) {
@@ -310,6 +313,21 @@ const GameSubmission: React.FC = () => {
             className="input-field"
             placeholder="0"
           />
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isEastOnly}
+              onChange={(e) => setIsEastOnly(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm font-medium text-gray-700">East Only Game</span>
+          </label>
+          <p className="mt-1 text-xs text-gray-500 ml-6">
+            Check this if the game was played with only the East prevalent wind round
+          </p>
         </div>
 
         <div>

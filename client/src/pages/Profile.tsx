@@ -374,6 +374,11 @@ const Profile: React.FC = () => {
                               day: 'numeric'
                             })}
                           </Link>
+                          {game.isEastOnly && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                              East Only
+                            </span>
+                          )}
                           <span
                             className={`text-xs px-2 py-1 rounded-full ${
                               game.verified

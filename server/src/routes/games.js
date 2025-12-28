@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
 // @access  Private
 router.post('/', validateGameCreation, async (req, res) => {
   try {
-    const { players, gameDate, notes, pointsLeftOnTable } = req.body;
+    const { players, gameDate, notes, pointsLeftOnTable, isEastOnly } = req.body;
 
     // Verify all player IDs exist
     const playerIds = players.map(p => p.player);
@@ -69,7 +69,8 @@ router.post('/', validateGameCreation, async (req, res) => {
       players,
       gameDate: gameDate || new Date(),
       notes,
-      pointsLeftOnTable: pointsLeftOnTable || 0
+      pointsLeftOnTable: pointsLeftOnTable || 0,
+      isEastOnly: isEastOnly || false
     });
 
     await game.save();

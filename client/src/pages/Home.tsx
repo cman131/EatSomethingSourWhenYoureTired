@@ -6,11 +6,13 @@ import { gamesApi, Game } from '../services/api';
 import { 
   ChartBarIcon,
   TrophyIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 
 const Home: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
+  const PlayerSeats = ['East', 'South', 'West', 'North'];
   
   // Memoize the API call function to prevent infinite loops
   const getGames = React.useCallback(
@@ -32,7 +34,7 @@ const Home: React.FC = () => {
       icon: CalendarIcon,
       href: 'https://www.meetup.com/charleston-riichi-mahjong/events/',
       color: 'bg-blue-500',
-      requiresAuth: true
+      requiresAuth: false
     },
     {
       name: 'View Games',
@@ -40,7 +42,7 @@ const Home: React.FC = () => {
       icon: ChartBarIcon,
       href: '/games',
       color: 'bg-green-500',
-      requiresAuth: false
+      requiresAuth: true
     },
     {
       name: 'Your Profile',
@@ -60,11 +62,14 @@ const Home: React.FC = () => {
       <div className="bg-gradient-to-r from-primary-600 to-primary-800 rounded-lg shadow-lg p-8 text-white">
         <div className="max-w-3xl">
           <h1 className="text-4xl font-bold mb-4">
-            {isAuthenticated ? `Welcome back, ${user?.username}!` : 'Welcome to Mahjong Club'}
+            {isAuthenticated ? `Welcome back, ${user?.username}!` : 'Welcome to Charleston\'s Riichi Mahjong Club!'}
           </h1>
           <p className="text-xl text-primary-100 mb-6">
-            Track and record your mahjong games. Submit completed games with 4 players and their scores 
-            to keep a record of your club's mahjong sessions.
+            We primarily play 10am - 12pm every Sunday at <b>
+              <a href="https://blumsc.com" rel="noreferrer" target="_blank"><ArrowTopRightOnSquareIcon className="h-4 w-4 inline-block mr-1" />Blum downtown
+              </a></b>.
+            <br/>
+            All skill levels are welcome and we're happy to teach! Come learn to play {":)"}
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             {isAuthenticated ? (
@@ -119,40 +124,119 @@ const Home: React.FC = () => {
       </div>
 
       {/* Recent Games */}
+      {isAuthenticated && (
       <div className="card">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Games</h2>
         {gamesLoading ? (
-          <p className="text-gray-500 text-center py-4">Loading games...</p>
+          <p className="text-gray-500 text-center py-8">Loading games...</p>
         ) : games && games.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {games.slice(0, 5).map((game: Game) => (
-              <div key={game._id} className="flex items-center justify-between py-2 border-b border-gray-100">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    Game on {new Date(game.gameDate).toLocaleDateString()}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Submitted by {game.submittedBy.username} • {game.players.length} players
-                  </p>
-                  <div className="text-xs text-gray-600 mt-1">
-                    {game.players
-                      .sort((a, b) => b.position - a.position)
-                      .map(p => `${p.player.username}: ${p.score}`)
-                      .join(' • ')}
+              <div
+                key={game._id}
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Link
+                        to={`/games/${game._id}`}
+                        className="text-lg font-semibold text-gray-900 hover:text-primary-600 transition-colors cursor-pointer"
+                      >
+                        Game on {new Date(game.gameDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </Link>
+                      {game.isEastOnly && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-800">
+                          East Only
+                        </span>
+                      )}
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          game.verified
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {game.verified ? 'Verified' : 'Pending'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Submitted by{' '}
+                      <Link
+                        to={`/profile/${game.submittedBy._id}`}
+                        className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                      >
+                        {game.submittedBy.username}
+                      </Link>
+                      {game.verifiedBy && (
+                        <>
+                          {' '}• Verified by{' '}
+                          <Link
+                            to={`/profile/${game.verifiedBy._id}`}
+                            className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                          >
+                            {game.verifiedBy.username}
+                          </Link>
+                        </>
+                      )}
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+                      {game.players
+                        .sort((a, b) => b.score - a.score)
+                        .map((player) => (
+                          <div
+                            key={player.player._id}
+                            className="bg-gray-50 rounded-md p-3"
+                          >
+                            <div className="text-xs text-gray-500 mb-1">
+                              {PlayerSeats[player.position - 1]}
+                            </div>
+                            <div className="flex items-center gap-2 mb-1">
+                              {player.player.avatar && (
+                                <img
+                                  src={player.player.avatar}
+                                  alt={player.player.username}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                  onError={(e) => {
+                                    // Hide image if it fails to load
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <Link
+                                to={`/profile/${player.player._id}`}
+                                className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
+                              >
+                                {player.player.username}
+                              </Link>
+                            </div>
+                            <div className="text-sm text-gray-700 mt-1">
+                              Score: <span className="font-semibold">{player.score}</span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {game.notes && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Notes:</span> {game.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  game.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {game.verified ? 'Verified' : 'Pending'}
-                </span>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-gray-500 text-center py-4">No games submitted yet</p>
-        )}
-      </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No games submitted yet</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
