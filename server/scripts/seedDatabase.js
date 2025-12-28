@@ -10,37 +10,37 @@ const Game = require('../src/models/Game');
 const sampleUsers = [
   {
     email: 'alice@mahjong.com',
-    username: 'alice_mahjong',
+    displayName: 'alice_mahjong',
     password: 'password123',
     avatar: ''
   },
   {
     email: 'bob@mahjong.com',
-    username: 'bob_tiles',
+    displayName: 'bob_tiles',
     password: 'password123',
     avatar: ''
   },
   {
     email: 'charlie@mahjong.com',
-    username: 'charlie_dragon',
+    displayName: 'charlie_dragon',
     password: 'password123',
     avatar: ''
   },
   {
     email: 'diana@mahjong.com',
-    username: 'diana_wind',
+    displayName: 'diana_wind',
     password: 'password123',
     avatar: ''
   },
   {
     email: 'eve@mahjong.com',
-    username: 'eve_bamboo',
+    displayName: 'eve_bamboo',
     password: 'password123',
     avatar: ''
   },
   {
     email: 'frank@mahjong.com',
-    username: 'frank_circle',
+    displayName: 'frank_circle',
     password: 'password123',
     avatar: ''
   }
@@ -186,11 +186,11 @@ const seedDatabase = async () => {
     for (const userData of sampleUsers) {
       // Check if user already exists
       const existingUser = await User.findOne({
-        $or: [{ email: userData.email }, { username: userData.username }]
+        $or: [{ email: userData.email }, { displayName: userData.displayName }]
       });
       
       if (existingUser) {
-        console.log(`  - User ${userData.username} already exists, skipping...`);
+        console.log(`  - User ${userData.displayName} already exists, skipping...`);
         createdUsers.push(existingUser);
       } else {
         // Hash password before creating user
@@ -201,7 +201,7 @@ const seedDatabase = async () => {
           ...userData,
           password: hashedPassword
         });
-        console.log(`  ✓ Created user: ${user.username} (${user.email})`);
+        console.log(`  ✓ Created user: ${user.displayName} (${user.email})`);
         createdUsers.push(user);
       }
     }

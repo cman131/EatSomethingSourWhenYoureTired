@@ -12,14 +12,32 @@ const userSchema = new mongoose.Schema({
       'Please provide a valid email'
     ]
   },
-  username: {
+  displayName: {
     type: String,
-    required: [true, 'Username is required'],
+    required: [true, 'Display name is required'],
     unique: true,
     trim: true,
-    minlength: [3, 'Username must be at least 3 characters'],
-    maxlength: [30, 'Username cannot be more than 30 characters'],
-    match: [/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores']
+    minlength: [3, 'Display name must be at least 3 characters'],
+    maxlength: [30, 'Display name cannot be more than 30 characters'],
+    match: [/^[a-zA-Z0-9_]+$/, 'Display name can only contain letters, numbers, and underscores']
+  },
+  realName: {
+    type: String,
+    trim: true,
+    minlength: [1, 'Real name must be at least 1 character'],
+    maxlength: [30, 'Real name cannot be more than 30 characters']
+  },
+  discordName: {
+    type: String,
+    trim: true,
+    minlength: [1, 'Real name must be at least 1 character'],
+    maxlength: [30, 'Real name cannot be more than 30 characters']
+  },
+  mahjongSoulName: {
+    type: String,
+    trim: true,
+    minlength: [1, 'Real name must be at least 1 character'],
+    maxlength: [30, 'Real name cannot be more than 30 characters']
   },
   password: {
     type: String,
@@ -39,11 +57,11 @@ const userSchema = new mongoose.Schema({
 
 // Index for better query performance
 userSchema.index({ email: 1 });
-userSchema.index({ username: 1 });
+userSchema.index({ displayName: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  console.info('Saving user: ', this.email, this.username);
+  console.info('Saving user: ', this.email, this.displayName);
   if (!this.isModified('password')) return next();
   
   try {

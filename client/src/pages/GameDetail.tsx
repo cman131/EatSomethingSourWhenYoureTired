@@ -200,7 +200,7 @@ const GameDetail: React.FC = () => {
                 to={`/profile/${game.submittedBy._id}`}
                 className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
               >
-                {game.submittedBy.username}
+                {game.submittedBy.displayName}
               </Link>
             </div>
             {game.verifiedBy && (
@@ -210,7 +210,7 @@ const GameDetail: React.FC = () => {
                   to={`/profile/${game.verifiedBy._id}`}
                   className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
                 >
-                  {game.verifiedBy.username}
+                  {game.verifiedBy.displayName}
                 </Link>
               </div>
             )}
@@ -257,7 +257,7 @@ const GameDetail: React.FC = () => {
                         {player.player.avatar && (
                           <img
                             src={player.player.avatar}
-                            alt={player.player.username}
+                            alt={player.player.displayName}
                             className="w-10 h-10 rounded-full object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
@@ -268,7 +268,7 @@ const GameDetail: React.FC = () => {
                           to={`/profile/${player.player._id}`}
                           className="font-semibold text-lg text-gray-900 hover:text-primary-600 hover:underline transition-colors"
                         >
-                          {player.player.username}
+                          {player.player.displayName}
                         </Link>
                       </div>
                     </div>
@@ -366,7 +366,7 @@ const GameDetail: React.FC = () => {
                     {comment.commenter.avatar && (
                       <img
                         src={comment.commenter.avatar}
-                        alt={comment.commenter.username}
+                        alt={comment.commenter.displayName}
                         className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -379,7 +379,7 @@ const GameDetail: React.FC = () => {
                           to={`/profile/${comment.commenter._id}`}
                           className="font-semibold text-sm text-gray-900 hover:text-primary-600 hover:underline transition-colors"
                         >
-                          {comment.commenter.username}
+                          {comment.commenter.displayName}
                         </Link>
                         <span className="text-xs text-gray-500">
                           {new Date(comment.createdAt).toLocaleDateString('en-US', {

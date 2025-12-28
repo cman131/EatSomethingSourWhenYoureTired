@@ -103,7 +103,7 @@ const GameSubmission: React.FC = () => {
     if (selectedPlayerIndex !== null) {
       const newPlayers = [...players];
       newPlayers[selectedPlayerIndex].player = user._id;
-      newPlayers[selectedPlayerIndex].playerName = user.username;
+      newPlayers[selectedPlayerIndex].playerName = user.displayName;
       setPlayers(newPlayers);
       setSearchTerm('');
       setSearchResults([]);
@@ -251,7 +251,7 @@ const GameSubmission: React.FC = () => {
                                     <div className="flex-shrink-0">
                                       <img
                                         src={user.avatar}
-                                        alt={`${user.username}'s avatar`}
+                                        alt={`${user.displayName}'s avatar`}
                                         className="w-8 h-8 rounded-full object-cover border border-gray-200"
                                         onError={(e) => {
                                           // Hide image if it fails to load
@@ -261,9 +261,9 @@ const GameSubmission: React.FC = () => {
                                     </div>
                                   )}
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{user.username}</div>
-                                    {user.email && (
-                                      <div className="text-xs text-gray-500">{user.email}</div>
+                                    <div className="font-medium text-gray-900">{user.displayName}</div>
+                                    {user.realName && (
+                                      <div className="text-xs text-gray-500">{user.realName}</div>
                                     )}
                                   </div>
                                   {isSelected && (

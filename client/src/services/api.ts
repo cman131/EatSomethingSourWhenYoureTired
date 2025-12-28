@@ -4,8 +4,11 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api
 export interface User {
   _id: string;
   email: string;
-  username: string;
+  displayName: string;
   avatar: string;
+  realName?: string;
+  discordName?: string;
+  mahjongSoulName?: string;
 }
 
 export interface GamePlayer {
@@ -102,8 +105,11 @@ const apiRequest = async <T>(
 export const authApi = {
   register: async (userData: {
     email: string;
-    username: string;
+    displayName: string;
     password: string;
+    realName?: string;
+    discordName?: string;
+    mahjongSoulName?: string;
   }) => {
     return apiRequest<ApiResponse<{ user: User; token: string }>>('/auth/register', {
       method: 'POST',
@@ -121,6 +127,20 @@ export const authApi = {
   refreshToken: async () => {
     return apiRequest<ApiResponse<{ token: string }>>('/auth/refresh-token', {
       method: 'POST',
+    });
+  },
+
+  forgotPassword: async (email: string) => {
+    return apiRequest<ApiResponse<{ message: string }>>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  resetPassword: async (token: string, password: string) => {
+    return apiRequest<ApiResponse<{ user: User; token: string }>>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
     });
   },
 };

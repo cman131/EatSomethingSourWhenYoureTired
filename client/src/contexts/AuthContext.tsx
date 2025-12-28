@@ -9,8 +9,11 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: {
     email: string;
-    username: string;
+    displayName: string;
     password: string;
+    realName?: string;
+    discordName?: string;
+    mahjongSoulName?: string;
   }) => Promise<void>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
@@ -75,8 +78,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: {
     email: string;
-    username: string;
+    displayName: string;
     password: string;
+    realName?: string;
+    discordName?: string;
+    mahjongSoulName?: string;
   }) => {
     try {
       const response = await authApi.register(userData);

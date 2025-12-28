@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,6 +6,7 @@ import { usePaginatedApi, useApi } from '../hooks/useApi';
 import { usersApi, Game, UserStats, User } from '../services/api';
 import { Link } from 'react-router-dom';
 import { PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const PlayerSeats = ['East', 'South', 'West', 'North'];
 
@@ -43,7 +44,13 @@ const Profile: React.FC = () => {
   // Use profile user for display, fallback to current user
   const user = profileUser || (isOwnProfile ? currentUser : null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ username: '', avatar: '' });
+  const [formData, setFormData] = useState({ 
+    displayName: '', 
+    avatar: '',
+    realName: '',
+    discordName: '',
+    mahjongSoulName: ''
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -65,6 +72,49 @@ const Profile: React.FC = () => {
     1,
     10
   );
+
+  // Fetch last 10 games for performance chart
+  const getRecentGames = React.useCallback(
+    async () => {
+      if (!profileUserId) {
+        return Promise.reject(new Error('User not available'));
+      }
+      const response = await usersApi.getUserGames(profileUserId, 1, 10);
+      return response.data.items;
+    },
+    [profileUserId]
+  );
+
+  const { data: recentGames, loading: recentGamesLoading } = useApi<Game[]>(
+    getRecentGames,
+    [profileUserId]
+  );
+
+  // Calculate performance data for chart
+  const performanceData = useMemo(() => {
+    if (!recentGames || !profileUserId || recentGames.length === 0) {
+      return [];
+    }
+
+    return recentGames
+      .map((game) => {
+        // Find the user's player data in this game
+        const userPlayer = game.players.find(p => p.player._id === profileUserId);
+        if (!userPlayer) return null;
+
+        // Sort players by score (descending) to determine ranking
+        const sortedPlayers = [...game.players].sort((a, b) => b.score - a.score);
+        const ranking = sortedPlayers.findIndex(p => p.player._id === profileUserId) + 1;
+
+        return {
+          date: new Date(game.gameDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          ranking: ranking,
+          score: userPlayer.score,
+        };
+      })
+      .filter((item): item is { date: string; ranking: number; score: number } => item !== null)
+      .reverse(); // Reverse to show oldest to newest
+  }, [recentGames, profileUserId]);
 
   const handlePageChange = (page: number) => {
     loadPage(page);
@@ -102,8 +152,11 @@ const Profile: React.FC = () => {
   React.useEffect(() => {
     if (user && isEditing) {
       setFormData({
-        username: user.username || '',
+        displayName: user.displayName || '',
         avatar: user.avatar || '',
+        realName: user.realName || '',
+        discordName: user.discordName || '',
+        mahjongSoulName: user.mahjongSoulName || '',
       });
     }
   }, [user, isEditing]);
@@ -125,8 +178,11 @@ const Profile: React.FC = () => {
 
     try {
       await updateProfile({
-        username: formData.username.trim(),
+        displayName: formData.displayName.trim(),
         avatar: formData.avatar.trim(),
+        realName: formData.realName.trim(),
+        discordName: formData.discordName.trim(),
+        mahjongSoulName: formData.mahjongSoulName.trim(),
       });
       setSuccess(true);
       setIsEditing(false);
@@ -142,7 +198,13 @@ const Profile: React.FC = () => {
   // Handle cancel
   const handleCancel = () => {
     setIsEditing(false);
-    setFormData({ username: user?.username || '', avatar: user?.avatar || '' });
+    setFormData({ 
+      displayName: user?.displayName || '', 
+      avatar: user?.avatar || '',
+      realName: user?.realName || '',
+      discordName: user?.discordName || '',
+      mahjongSoulName: user?.mahjongSoulName || ''
+    });
     setError(null);
     setSuccess(false);
   };
@@ -160,7 +222,7 @@ const Profile: React.FC = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">
-          {isOwnProfile ? 'Profile' : `${user.username}'s Profile`}
+          {isOwnProfile ? 'Profile' : `${user.displayName}'s Profile`}
         </h1>
       </div>
 
@@ -212,21 +274,21 @@ const Profile: React.FC = () => {
               </div>
               <div className="space-y-4 flex-1">
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                    Username
+                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Display Name
                   </label>
                   <input
-                    id="username"
-                    name="username"
+                    id="displayName"
+                    name="displayName"
                     type="text"
-                    value={formData.username}
+                    value={formData.displayName}
                     onChange={handleChange}
                     className="input-field"
                     required
                     minLength={3}
                     maxLength={30}
                     pattern="^[a-zA-Z0-9_]+$"
-                    title="Username can only contain letters, numbers, and underscores"
+                    title="Display name can only contain letters, numbers, and underscores"
                   />
                 </div>
                 <div>
@@ -245,6 +307,51 @@ const Profile: React.FC = () => {
                   <p className="mt-1 text-xs text-gray-500">
                     Enter a URL to an image for your avatar
                   </p>
+                </div>
+                <div>
+                  <label htmlFor="realName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Real Name
+                  </label>
+                  <input
+                    id="realName"
+                    name="realName"
+                    type="text"
+                    value={formData.realName}
+                    onChange={handleChange}
+                    className="input-field"
+                    maxLength={30}
+                    placeholder="Your real name (optional)"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="discordName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Discord Name
+                  </label>
+                  <input
+                    id="discordName"
+                    name="discordName"
+                    type="text"
+                    value={formData.discordName}
+                    onChange={handleChange}
+                    className="input-field"
+                    maxLength={30}
+                    placeholder="Your Discord username (optional)"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="mahjongSoulName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Mahjong Soul Name
+                  </label>
+                  <input
+                    id="mahjongSoulName"
+                    name="mahjongSoulName"
+                    type="text"
+                    value={formData.mahjongSoulName}
+                    onChange={handleChange}
+                    className="input-field"
+                    maxLength={30}
+                    placeholder="Your Mahjong Soul username (optional)"
+                  />
                 </div>
                 {isOwnProfile && (
                   <div>
@@ -276,32 +383,60 @@ const Profile: React.FC = () => {
             </div>
           </form>
         ) : (
-          <div className="flex items-start gap-6">
-            {user?.avatar && (
-              <div className="flex-shrink-0">
-                <img
-                  src={user.avatar}
-                  alt={`${user.username}'s avatar`}
-                  className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
-                  onError={(e) => {
-                    // Hide image if it fails to load
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
-            <div className="space-y-2 flex-1">
-              <div>
-                <span className="text-sm font-medium text-gray-700">Username:</span>
-                <span className="ml-2 text-gray-900">{user?.username}</span>
-              </div>
-              {isOwnProfile && (
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Email:</span>
-                  <span className="ml-2 text-gray-900">{user?.email}</span>
+          <div className="space-y-4">
+            {/* Avatar and Display Name */}
+            <div className="flex items-center gap-6">
+              {user?.avatar ? (
+                <div className="flex-shrink-0">
+                  <img
+                    src={user.avatar}
+                    alt={`${user.displayName}'s avatar`}
+                    className="w-24 h-24 rounded-full object-cover border-2 border-gray-200"
+                    onError={(e) => {
+                      // Hide image if it fails to load
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-gray-200 border-2 border-gray-200 flex items-center justify-center flex-shrink-0">
+                  <span className="text-gray-400 text-xs">No avatar</span>
                 </div>
               )}
+              <div>
+                <h3 className="text-3xl font-bold text-gray-900">{user?.displayName}</h3>
+              </div>
             </div>
+            
+            {/* Other Information */}
+            {(user?.realName || user?.discordName || user?.mahjongSoulName || (isOwnProfile && user?.email)) && (
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                {user?.realName && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Real Name:</span>
+                    <span className="ml-2 text-gray-900">{user.realName}</span>
+                  </div>
+                )}
+                {user?.discordName && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Discord Name:</span>
+                    <span className="ml-2 text-gray-900">{user.discordName}</span>
+                  </div>
+                )}
+                {user?.mahjongSoulName && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Mahjong Soul Name:</span>
+                    <span className="ml-2 text-gray-900">{user.mahjongSoulName}</span>
+                  </div>
+                )}
+                {isOwnProfile && user?.email && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Email:</span>
+                    <span className="ml-2 text-gray-900">{user.email}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -340,6 +475,70 @@ const Profile: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Recent Game Performance */}
+      {performanceData.length > 0 && (
+        <div className="card">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Game Performance</h2>
+          {recentGamesLoading ? (
+            <p className="text-gray-500 text-center py-8">Loading performance data...</p>
+          ) : (
+            <div className="w-full" style={{ height: '300px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={performanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    domain={[1, 4]}
+                    reversed={true}
+                    stroke="#6b7280"
+                    style={{ fontSize: '12px' }}
+                    label={{ value: 'Ranking', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6b7280' } }}
+                    ticks={[1, 2, 3, 4]}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#fff', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '6px',
+                      fontSize: '12px'
+                    }}
+                    formatter={(value: any, name: any, props: any) => {
+                      if (value === undefined || value === null) return '';
+                      const rankLabels = ['', '1st', '2nd', '3rd', '4th'];
+                      const score = props?.payload?.score;
+                      return [
+                        `${rankLabels[value] || value}${score ? ` (Score: ${score})` : ''}`,
+                        'Ranking'
+                      ];
+                    }}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Legend 
+                    wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+                    formatter={(value) => 'Ranking'}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="ranking" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                Lower ranking (1st) is better. Shows your position in the last 10 games.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Game History */}
       <div className="card">
@@ -395,7 +594,7 @@ const Profile: React.FC = () => {
                             to={`/profile/${game.submittedBy._id}`}
                             className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                           >
-                            {game.submittedBy.username}
+                            {game.submittedBy.displayName}
                           </Link>
                           {game.verifiedBy && (
                             <>
@@ -404,7 +603,7 @@ const Profile: React.FC = () => {
                                 to={`/profile/${game.verifiedBy._id}`}
                                 className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                               >
-                                {game.verifiedBy.username}
+                                {game.verifiedBy.displayName}
                               </Link>
                             </>
                           )}
@@ -426,7 +625,7 @@ const Profile: React.FC = () => {
                                   {player.player.avatar && (
                                     <img
                                       src={player.player.avatar}
-                                      alt={player.player.username}
+                                      alt={player.player.displayName}
                                       className="w-8 h-8 rounded-full object-cover"
                                       onError={(e) => {
                                         e.currentTarget.style.display = 'none';
@@ -438,9 +637,9 @@ const Profile: React.FC = () => {
                                       to={`/profile/${player.player._id}`}
                                       className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
                                     >
-                                      {player.player.username}
+                                      {player.player.displayName}
                                     </Link>
-                                  : <span className="font-medium text-gray-900">{player.player.username}</span>}
+                                  : <span className="font-medium text-gray-900">{player.player.displayName}</span>}
                                 </div>
                                 <div className="text-sm text-gray-700 mt-1">
                                   Score: <span className="font-semibold">{player.score}</span>

@@ -15,9 +15,9 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const games = await Game.find()
-      .populate('submittedBy', 'username')
-      .populate('players.player', 'username avatar')
-      .populate('verifiedBy', 'username')
+      .populate('submittedBy', 'displayName')
+      .populate('players.player', 'displayName avatar')
+      .populate('verifiedBy', 'displayName')
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);
@@ -76,8 +76,8 @@ router.post('/', validateGameCreation, async (req, res) => {
     await game.save();
 
     // Populate before sending response
-    await game.populate('submittedBy', 'username email');
-    await game.populate('players.player', 'username email');
+    await game.populate('submittedBy', 'displayName email');
+    await game.populate('players.player', 'displayName email');
 
     res.status(201).json({
       success: true,
@@ -101,10 +101,10 @@ router.post('/', validateGameCreation, async (req, res) => {
 router.get('/:id', validateMongoId('id'), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id)
-      .populate('submittedBy', 'username email')
-      .populate('players.player', 'username email avatar')
-      .populate('verifiedBy', 'username')
-      .populate('comments.commenter', 'username avatar');
+      .populate('submittedBy', 'displayName email')
+      .populate('players.player', 'displayName email avatar')
+      .populate('verifiedBy', 'displayName')
+      .populate('comments.commenter', 'displayName avatar');
 
     if (!game) {
       return res.status(404).json({
@@ -155,10 +155,10 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
 
     await game.save();
 
-    await game.populate('submittedBy', 'username email');
-    await game.populate('players.player', 'username email');
-    await game.populate('verifiedBy', 'username');
-    await game.populate('comments.commenter', 'username avatar');
+    await game.populate('submittedBy', 'displayName email');
+    await game.populate('players.player', 'displayName email');
+    await game.populate('verifiedBy', 'displayName');
+    await game.populate('comments.commenter', 'displayName avatar');
 
     res.json({
       success: true,
@@ -216,10 +216,10 @@ router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
     await game.save();
 
     // Populate all fields before sending response
-    await game.populate('submittedBy', 'username email');
-    await game.populate('players.player', 'username email avatar');
-    await game.populate('verifiedBy', 'username');
-    await game.populate('comments.commenter', 'username avatar');
+    await game.populate('submittedBy', 'displayName email');
+    await game.populate('players.player', 'displayName email avatar');
+    await game.populate('verifiedBy', 'displayName');
+    await game.populate('comments.commenter', 'displayName avatar');
 
     res.status(201).json({
       success: true,

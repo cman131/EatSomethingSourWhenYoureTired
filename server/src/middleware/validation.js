@@ -20,12 +20,12 @@ const validateUserRegistration = [
     .withMessage('Please provide a valid email')
     .normalizeEmail({ gmail_remove_dots: false }),
   
-  body('username')
+  body('displayName')
     .trim()
     .isLength({ min: 3, max: 30 })
-    .withMessage('Username must be between 3 and 30 characters')
+    .withMessage('Display name must be between 3 and 30 characters')
     .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
+    .withMessage('Display name can only contain letters, numbers, and underscores'),
   
   body('password')
     .isLength({ min: 6 })
@@ -48,10 +48,36 @@ const validateUserLogin = [
 ];
 
 const validateUserUpdate = [
+  body('displayName')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 30 })
+    .withMessage('Display name must be between 3 and 30 characters')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Display name can only contain letters, numbers, and underscores'),
+  
   body('avatar')
     .optional()
     .isString()
     .withMessage('Avatar must be a string'),
+  
+  body('realName')
+    .optional()
+    .trim()
+    .isLength({ min: 0, max: 30 })
+    .withMessage('Real name cannot be more than 30 characters'),
+  
+  body('discordName')
+    .optional()
+    .trim()
+    .isLength({ min: 0, max: 30 })
+    .withMessage('Discord name cannot be more than 30 characters'),
+  
+  body('mahjongSoulName')
+    .optional()
+    .trim()
+    .isLength({ min: 0, max: 30 })
+    .withMessage('Mahjong Soul name cannot be more than 30 characters'),
   
   handleValidationErrors
 ];
@@ -87,6 +113,28 @@ const validateGameCreation = [
   handleValidationErrors
 ];
 
+// Password reset validation
+const validateForgotPassword = [
+  body('email')
+    .isEmail()
+    .withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  
+  handleValidationErrors
+];
+
+const validateResetPassword = [
+  body('token')
+    .notEmpty()
+    .withMessage('Reset token is required'),
+  
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
+  
+  handleValidationErrors
+];
+
 // Parameter validation
 const validateMongoId = (paramName) => [
   param(paramName)
@@ -102,6 +150,8 @@ module.exports = {
   validateUserLogin,
   validateUserUpdate,
   validateGameCreation,
+  validateForgotPassword,
+  validateResetPassword,
   validateMongoId
 };
 
