@@ -15,8 +15,8 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const games = await Game.find()
-      .populate('submittedBy', 'username email')
-      .populate('players.player', 'username email')
+      .populate('submittedBy', 'username')
+      .populate('players.player', 'username avatar')
       .populate('verifiedBy', 'username')
       .sort({ gameDate: -1 })
       .skip(skip)
@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
 // @access  Private
 router.post('/', validateGameCreation, async (req, res) => {
   try {
-    const { players, gameDate, notes } = req.body;
+    const { players, gameDate, notes, pointsLeftOnTable } = req.body;
 
     // Verify all player IDs exist
     const playerIds = players.map(p => p.player);
@@ -68,7 +68,8 @@ router.post('/', validateGameCreation, async (req, res) => {
       submittedBy: req.user._id,
       players,
       gameDate: gameDate || new Date(),
-      notes
+      notes,
+      pointsLeftOnTable: pointsLeftOnTable || 0
     });
 
     await game.save();
@@ -100,8 +101,9 @@ router.get('/:id', validateMongoId('id'), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id)
       .populate('submittedBy', 'username email')
-      .populate('players.player', 'username email')
-      .populate('verifiedBy', 'username');
+      .populate('players.player', 'username email avatar')
+      .populate('verifiedBy', 'username')
+      .populate('comments.commenter', 'username avatar');
 
     if (!game) {
       return res.status(404).json({
@@ -155,6 +157,7 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
     await game.populate('submittedBy', 'username email');
     await game.populate('players.player', 'username email');
     await game.populate('verifiedBy', 'username');
+    await game.populate('comments.commenter', 'username avatar');
 
     res.json({
       success: true,
@@ -168,6 +171,67 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to verify game'
+    });
+  }
+});
+
+// @route   POST /api/games/:id/comments
+// @desc    Add a comment to a game
+// @access  Private
+router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
+  try {
+    const { comment } = req.body;
+
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment is required'
+      });
+    }
+
+    if (comment.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment must be 500 characters or less'
+      });
+    }
+
+    const game = await Game.findById(req.params.id);
+
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    // Add comment to game
+    game.comments.push({
+      comment: comment.trim(),
+      commenter: req.user._id,
+      createdAt: new Date()
+    });
+
+    await game.save();
+
+    // Populate all fields before sending response
+    await game.populate('submittedBy', 'username email');
+    await game.populate('players.player', 'username email avatar');
+    await game.populate('verifiedBy', 'username');
+    await game.populate('comments.commenter', 'username avatar');
+
+    res.status(201).json({
+      success: true,
+      message: 'Comment added successfully',
+      data: {
+        game
+      }
+    });
+  } catch (error) {
+    console.error('Add comment error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add comment'
     });
   }
 });

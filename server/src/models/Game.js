@@ -32,6 +32,24 @@ const gameSchema = new mongoose.Schema({
     type: String,
     maxlength: 500
   },
+  pointsLeftOnTable: {
+    type: Number,
+    default: 0
+  },
+  comments: [{
+    comment: {
+      type: String,
+      maxlength: 500
+    },
+    commenter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   verified: {
     type: Boolean,
     default: false

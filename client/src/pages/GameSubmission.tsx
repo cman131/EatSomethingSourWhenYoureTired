@@ -2,20 +2,25 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useMutation } from '../hooks/useApi';
+import { useAuth } from '../contexts/AuthContext';
 import { gamesApi, usersApi, User } from '../services/api';
+import Flatpickr from 'react-flatpickr';
+import 'flatpickr/dist/themes/airbnb.css';
 
 const GameSubmission: React.FC = () => {
   useRequireAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [players, setPlayers] = useState([
-    { player: '', playerName: '', score: 2500, position: 1 },
-    { player: '', playerName: '', score: 2500, position: 2 },
-    { player: '', playerName: '', score: 2500, position: 3 },
-    { player: '', playerName: '', score: 2500, position: 4 },
+    { player: '', playerName: '', score: 25000, position: 1 },
+    { player: '', playerName: '', score: 25000, position: 2 },
+    { player: '', playerName: '', score: 25000, position: 3 },
+    { player: '', playerName: '', score: 25000, position: 4 },
   ]);
-  const [gameDate, setGameDate] = useState(new Date().toISOString().split('T')[0]);
+  const [gameDate, setGameDate] = useState(new Date());
   const [notes, setNotes] = useState('');
+  const [pointsLeftOnTable, setPointsLeftOnTable] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
@@ -72,8 +77,9 @@ const GameSubmission: React.FC = () => {
   const { mutate: createGame, loading, error } = useMutation(
     (gameData: {
       players: Array<{ player: string; score: number; position: number }>;
-      gameDate: string;
+      gameDate: Date;
       notes?: string;
+      pointsLeftOnTable?: number;
     }) => gamesApi.createGame(gameData)
   );
 
@@ -125,6 +131,26 @@ const GameSubmission: React.FC = () => {
       return;
     }
 
+    // Validate that the authenticated user is one of the players
+    if (!user || !playerIds.includes(user._id)) {
+      alert('You must include yourself as one of the players');
+      return;
+    }
+
+    // Validate points left on table is a multiple of 100
+    if (pointsLeftOnTable % 1000 !== 0) {
+      alert('Points left on table must be a multiple of 1000');
+      return;
+    }
+
+    // Validate total score (players + table) equals 100000 or 120000
+    const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
+    const totalScore = playersTotal + pointsLeftOnTable;
+    if (totalScore !== 100000 && totalScore !== 120000) {
+      alert(`Total score (players + table) must equal exactly 100000 or 120000. Current total: ${totalScore}`);
+      return;
+    }
+
     try {
       await createGame({
         players: players.map(p => ({
@@ -133,9 +159,10 @@ const GameSubmission: React.FC = () => {
           position: p.position
         })),
         gameDate,
-        notes: notes || undefined
+        notes: notes || undefined,
+        pointsLeftOnTable: pointsLeftOnTable || undefined
       });
-      navigate('/');
+      navigate('/games');
     } catch (err) {
       console.error('Failed to submit game:', err);
     }
@@ -156,13 +183,18 @@ const GameSubmission: React.FC = () => {
           <label htmlFor="gameDate" className="block text-sm font-medium text-gray-700 mb-2">
             Game Date
           </label>
-          <input
+          <Flatpickr
             id="gameDate"
-            type="date"
-            value={gameDate}
-            onChange={(e) => setGameDate(e.target.value)}
             className="input-field"
             required
+            value={gameDate ? new Date(gameDate) : undefined}
+            onChange={(date) => setGameDate(date[0])}
+            options={{
+              enableTime: true,
+              time_24hr: false,
+              minuteIncrement: 10,
+              dateFormat: 'm-d-Y h:i K',
+            }}
           />
         </div>
 
@@ -262,6 +294,22 @@ const GameSubmission: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="pointsLeftOnTable" className="block text-sm font-medium text-gray-700 mb-2">
+            Points Left on Table (optional)
+          </label>
+          <input
+            id="pointsLeftOnTable"
+            type="number"
+            value={pointsLeftOnTable}
+            step={1000}
+            min={0}
+            onChange={(e) => setPointsLeftOnTable(Number(e.target.value) || 0)}
+            className="input-field"
+            placeholder="0"
+          />
         </div>
 
         <div>

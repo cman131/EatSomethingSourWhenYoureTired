@@ -7,6 +7,7 @@ import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 const GamesList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const pageLimit = 20;
+  const PlayerSeats = ['East', 'South', 'West', 'North'];
 
   // Memoize the API call function to prevent infinite loops
   const getGames = React.useCallback(
@@ -112,13 +113,16 @@ const GamesList: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <Link
+                          to={`/games/${game._id}`}
+                          className="text-lg font-semibold text-gray-900 hover:text-primary-600 transition-colors cursor-pointer"
+                        >
                           Game on {new Date(game.gameDate).toLocaleDateString('en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
                           })}
-                        </h3>
+                        </Link>
                         <span
                           className={`text-xs px-2 py-1 rounded-full ${
                             game.verified
@@ -130,25 +134,55 @@ const GamesList: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mb-3">
-                        Submitted by <span className="font-medium">{game.submittedBy.username}</span>
+                        Submitted by{' '}
+                        <Link
+                          to={`/profile/${game.submittedBy._id}`}
+                          className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                        >
+                          {game.submittedBy.username}
+                        </Link>
                         {game.verifiedBy && (
-                          <> • Verified by {game.verifiedBy.username}</>
+                          <>
+                            {' '}• Verified by{' '}
+                            <Link
+                              to={`/profile/${game.verifiedBy._id}`}
+                              className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                            >
+                              {game.verifiedBy.username}
+                            </Link>
+                          </>
                         )}
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
                         {game.players
-                          .sort((a, b) => b.position - a.position)
+                          .sort((a, b) => b.score - a.score)
                           .map((player) => (
                             <div
                               key={player.player._id}
                               className="bg-gray-50 rounded-md p-3"
                             >
                               <div className="text-xs text-gray-500 mb-1">
-                                Position {player.position}
+                                {PlayerSeats[player.position - 1]}
                               </div>
-                              <div className="font-medium text-gray-900">
-                                {player.player.username}
-                              </div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  {player.player.avatar && (
+                                    <img
+                                      src={player.player.avatar}
+                                      alt={player.player.username}
+                                      className="w-8 h-8 rounded-full object-cover"
+                                      onError={(e) => {
+                                        // Hide image if it fails to load
+                                        e.currentTarget.style.display = 'none';
+                                      }}
+                                    />
+                                  )}
+                                  <Link
+                                    to={`/profile/${player.player._id}`}
+                                    className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
+                                  >
+                                    {player.player.username}
+                                  </Link>
+                                </div>
                               <div className="text-sm text-gray-700 mt-1">
                                 Score: <span className="font-semibold">{player.score}</span>
                               </div>
