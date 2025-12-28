@@ -14,15 +14,24 @@ export interface GamePlayer {
   position: number;
 }
 
+export interface GameComment {
+  _id?: string;
+  comment: string;
+  commenter: User;
+  createdAt: string;
+}
+
 export interface Game {
   _id: string;
   submittedBy: User;
   players: GamePlayer[];
   gameDate: string;
   notes?: string;
+  pointsLeftOnTable?: number;
   verified: boolean;
   verifiedBy?: User;
   verifiedAt?: string;
+  comments?: GameComment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +55,15 @@ export interface PaginationData {
   limit: number;
   total: number;
   pages: number;
+}
+
+export interface UserStats {
+  totalGames: number;
+  gamesSubmitted: number;
+  gamesPlayed: number;
+  averageScore: number;
+  highestScore: number;
+  lowestScore: number;
 }
 
 // Helper function to get auth token
@@ -127,6 +145,10 @@ export const usersApi = {
     return apiRequest<PaginatedResponse<Game>>(`/users/${userId}/games?page=${page}&limit=${limit}`);
   },
 
+  getUserStats: async (userId: string) => {
+    return apiRequest<ApiResponse<{ stats: UserStats }>>(`/users/${userId}/stats`);
+  },
+
   searchUsers: async (query: string, limit = 10) => {
     return apiRequest<ApiResponse<{ users: User[] }>>(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
   },
@@ -140,8 +162,9 @@ export const gamesApi = {
 
   createGame: async (gameData: {
     players: Array<{ player: string; score: number; position: number }>;
-    gameDate?: string;
+    gameDate?: Date;
     notes?: string;
+    pointsLeftOnTable?: number;
   }) => {
     return apiRequest<ApiResponse<{ game: Game }>>('/games', {
       method: 'POST',
@@ -162,6 +185,13 @@ export const gamesApi = {
   deleteGame: async (gameId: string) => {
     return apiRequest<ApiResponse<null>>(`/games/${gameId}`, {
       method: 'DELETE',
+    });
+  },
+
+  addComment: async (gameId: string, comment: string) => {
+    return apiRequest<ApiResponse<{ game: Game }>>(`/games/${gameId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comment }),
     });
   },
 };

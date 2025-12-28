@@ -94,6 +94,105 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// @route   GET /api/users/:id/stats
+// @desc    Get statistics for a user
+// @access  Private
+router.get('/:id/stats', async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Get all games where user is involved (submitted or played)
+    const allGames = await Game.find({
+      $or: [
+        { submittedBy: userId },
+        { 'players.player': userId }
+      ]
+    });
+
+    // Calculate statistics
+    const gamesSubmitted = allGames.filter(g => g.submittedBy.toString() === userId).length;
+    const gamesPlayed = allGames.length;
+
+    // Get all scores from games where user played
+    const allScores = [];
+    allGames.forEach(game => {
+      const userPlayer = game.players.find(p => p.player.toString() === userId);
+      if (userPlayer) {
+        allScores.push(userPlayer.score);
+      }
+    });
+
+    const totalScore = allScores.reduce((sum, score) => sum + score, 0);
+    const averageScore = allScores.length > 0 ? Math.round((totalScore / allScores.length) * 100) / 100 : 0;
+    const highestScore = allScores.length > 0 ? Math.max(...allScores) : 0;
+    const lowestScore = allScores.length > 0 ? Math.min(...allScores) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        stats: {
+          totalGames: gamesPlayed,
+          gamesSubmitted,
+          gamesPlayed,
+          averageScore,
+          highestScore,
+          lowestScore
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get user stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user stats'
+    });
+  }
+});
+
+// @route   GET /api/users/:id/games
+// @desc    Get games for a user (only games where user was a player)
+// @access  Private
+router.get('/:id/games', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const games = await Game.find({
+      'players.player': req.params.id
+    })
+      .populate('submittedBy', 'username email avatar')
+      .populate('players.player', 'username email avatar')
+      .populate('verifiedBy', 'username')
+      .sort({ gameDate: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Game.countDocuments({
+      'players.player': req.params.id
+    });
+
+    res.json({
+      success: true,
+      data: {
+        items: games,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get user games error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user games'
+    });
+  }
+});
+
 // @route   GET /api/users/:id
 // @desc    Get user by ID
 // @access  Private
@@ -118,55 +217,6 @@ router.get('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get user'
-    });
-  }
-});
-
-// @route   GET /api/users/:id/games
-// @desc    Get games for a user
-// @access  Private
-router.get('/:id/games', async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const games = await Game.find({
-      $or: [
-        { submittedBy: req.params.id },
-        { 'players.player': req.params.id }
-      ]
-    })
-      .populate('submittedBy', 'username email')
-      .populate('players.player', 'username email')
-      .sort({ gameDate: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Game.countDocuments({
-      $or: [
-        { submittedBy: req.params.id },
-        { 'players.player': req.params.id }
-      ]
-    });
-
-    res.json({
-      success: true,
-      data: {
-        games,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Get user games error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get user games'
     });
   }
 });

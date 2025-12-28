@@ -8,6 +8,7 @@ import Register from './pages/Register';
 import GameSubmission from './pages/GameSubmission';
 import Profile from './pages/Profile';
 import GamesList from './pages/GamesList';
+import GameDetail from './pages/GameDetail';
 import Resources from './pages/Resources';
 
 function App() {
@@ -20,8 +21,10 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/submit-game" element={<GameSubmission />} />
+            <Route path="/profile/:id" element={<Profile />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/games" element={<GamesList />} />
+            <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/resources" element={<Resources />} />
           </Routes>
         </Layout>

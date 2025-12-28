@@ -7,7 +7,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "seed": "node src/scripts/seedDatabase.js"
+    "seed": "node scripts/seedDatabase.js"
   },
   "dependencies": {
     "express": "^4.18.2",
