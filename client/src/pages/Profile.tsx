@@ -140,7 +140,7 @@ const Profile: React.FC = () => {
   );
 
   const statsData = stats || {
-    totalGames: 0,
+    gamesVerified: 0,
     gamesSubmitted: 0,
     gamesPlayed: 0,
     averageScore: 0,
@@ -449,16 +449,16 @@ const Profile: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-primary-600 mb-2">{statsData.totalGames}</div>
-              <div className="text-sm text-gray-600">Total Games</div>
+              <div className="text-3xl font-bold text-blue-600 mb-2">{statsData.gamesPlayed}</div>
+              <div className="text-sm text-gray-600">Games Played</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600 mb-2">{statsData.gamesSubmitted}</div>
               <div className="text-sm text-gray-600">Games Submitted</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-2">{statsData.gamesPlayed}</div>
-              <div className="text-sm text-gray-600">Games Played</div>
+              <div className="text-3xl font-bold text-primary-600 mb-2">{statsData.gamesVerified}</div>
+              <div className="text-sm text-gray-600">Games Verified</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-600 mb-2">{statsData.averageScore}</div>
