@@ -13,6 +13,7 @@ import GamesList from './pages/GamesList';
 import GameDetail from './pages/GameDetail';
 import Resources from './pages/Resources';
 import MembersList from './pages/MembersList';
+import ScoreCalculator from './pages/ScoreCalculator';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/members" element={<MembersList />} />
             <Route path="/resources" element={<Resources />} />
+            <Route path="/calculator" element={<ScoreCalculator />} />
           </Routes>
         </Layout>
       </Router>

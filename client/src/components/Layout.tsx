@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  HomeIcon, 
   UserIcon, 
   ChartBarIcon,
   Bars3Icon,
@@ -11,7 +10,8 @@ import {
   LinkIcon,
   CalendarIcon,
   BookOpenIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  CalculatorIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -27,12 +27,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { isAuthenticated, logout } = useAuth();
 
   const navigation = [
-    { name: 'Home', href: '/', icon: HomeIcon },
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
     ...(isAuthenticated ? [
       { name: 'Games', href: '/games', icon: ChartBarIcon },
       { name: 'Members', href: '/members', icon: UserGroupIcon }
     ] : []),
+    { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
   ];
 
