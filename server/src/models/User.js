@@ -19,7 +19,6 @@ const userSchema = new mongoose.Schema({
     trim: true,
     minlength: [3, 'Display name must be at least 3 characters'],
     maxlength: [30, 'Display name cannot be more than 30 characters'],
-    match: [/^[a-zA-Z0-9_]+$/, 'Display name can only contain letters, numbers, and underscores']
   },
   realName: {
     type: String,

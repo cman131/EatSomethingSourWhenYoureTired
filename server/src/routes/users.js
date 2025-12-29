@@ -184,6 +184,11 @@ router.get('/:id/stats', async (req, res) => {
     // Calculate statistics
     const gamesSubmitted = allGames.filter(g => g.submittedBy.toString() === userId).length;
     const gamesPlayed = allGames.length;
+    
+    // Count games verified by this user
+    const gamesVerified = await Game.countDocuments({
+      verifiedBy: userId
+    });
 
     // Get all scores from games where user played
     const allScores = [];
@@ -203,7 +208,7 @@ router.get('/:id/stats', async (req, res) => {
       success: true,
       data: {
         stats: {
-          totalGames: gamesPlayed,
+          gamesVerified,
           gamesSubmitted,
           gamesPlayed,
           averageScore,

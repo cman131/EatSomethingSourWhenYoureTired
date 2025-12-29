@@ -62,7 +62,7 @@ export interface PaginationData {
 }
 
 export interface UserStats {
-  totalGames: number;
+  gamesVerified: number;
   gamesSubmitted: number;
   gamesPlayed: number;
   averageScore: number;
