@@ -10,7 +10,8 @@ import {
   ArrowTopRightOnSquareIcon,
   LinkIcon,
   CalendarIcon,
-  BookOpenIcon
+  BookOpenIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -29,7 +30,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Home', href: '/', icon: HomeIcon },
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
     ...(isAuthenticated ? [
-      { name: 'Games', href: '/games', icon: ChartBarIcon }
+      { name: 'Games', href: '/games', icon: ChartBarIcon },
+      { name: 'Members', href: '/members', icon: UserGroupIcon }
     ] : []),
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
   ];

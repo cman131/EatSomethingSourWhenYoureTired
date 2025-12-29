@@ -147,6 +147,10 @@ export const authApi = {
 
 // Users API
 export const usersApi = {
+  getUsers: async (page = 1, limit = 20) => {
+    return apiRequest<PaginatedResponse<User>>(`/users?page=${page}&limit=${limit}`);
+  },
+
   getProfile: async () => {
     return apiRequest<ApiResponse<{ user: User }>>('/users/profile');
   },

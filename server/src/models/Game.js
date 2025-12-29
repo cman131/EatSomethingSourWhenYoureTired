@@ -40,6 +40,14 @@ const gameSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isInPerson: {
+    type: Boolean,
+    default: true
+  },
+  ranOutOfTime: {
+    type: Boolean,
+    default: false
+  },
   comments: [{
     comment: {
       type: String,

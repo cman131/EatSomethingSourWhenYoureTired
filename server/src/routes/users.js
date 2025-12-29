@@ -85,6 +85,44 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
   }
 });
 
+// @route   GET /api/users
+// @desc    Get all users with pagination
+// @access  Private
+router.get('/', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const users = await User.find()
+      .select('displayName avatar realName discordName mahjongSoulName')
+      .sort({ displayName: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await User.countDocuments();
+
+    res.json({
+      success: true,
+      data: {
+        items: users,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get users'
+    });
+  }
+});
+
 // @route   GET /api/users/search
 // @desc    Search users by display name
 // @access  Private
