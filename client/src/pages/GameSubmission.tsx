@@ -22,6 +22,8 @@ const GameSubmission: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [pointsLeftOnTable, setPointsLeftOnTable] = useState(0);
   const [isEastOnly, setIsEastOnly] = useState(false);
+  const [isInPerson, setIsInPerson] = useState(true);
+  const [ranOutOfTime, setRanOutOfTime] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
@@ -82,6 +84,8 @@ const GameSubmission: React.FC = () => {
       notes?: string;
       pointsLeftOnTable?: number;
       isEastOnly?: boolean;
+      isInPerson?: boolean;
+      ranOutOfTime?: boolean;
     }) => gamesApi.createGame(gameData)
   );
 
@@ -163,7 +167,9 @@ const GameSubmission: React.FC = () => {
         gameDate,
         notes: notes || undefined,
         pointsLeftOnTable: pointsLeftOnTable || undefined,
-        isEastOnly: isEastOnly || undefined
+        isEastOnly: isEastOnly || undefined,
+        isInPerson: isInPerson || undefined,
+        ranOutOfTime: ranOutOfTime || undefined
       });
       navigate('/games');
     } catch (err) {
@@ -286,10 +292,11 @@ const GameSubmission: React.FC = () => {
                 <div className="w-24">
                   <label className="block text-xs text-gray-600 mb-1">Score</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={player.score}
-                    step={100}
-                    onChange={(e) => handleScoreChange(index, Number(e.target.value))}
+                    step={1000}
+                    onChange={(e) => handleScoreChange(index, Number(e.target.value) || 0)}
                     className="input-field"
                     required
                   />
@@ -305,7 +312,8 @@ const GameSubmission: React.FC = () => {
           </label>
           <input
             id="pointsLeftOnTable"
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={pointsLeftOnTable}
             step={1000}
             min={0}
@@ -313,10 +321,28 @@ const GameSubmission: React.FC = () => {
             className="input-field"
             placeholder="0"
           />
+          <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Total:</span>
+              <span className="text-lg font-semibold text-gray-900">
+                {(players.reduce((sum, p) => sum + Number(p.score), 0) + pointsLeftOnTable).toLocaleString()}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label className="flex items-center gap-2 cursor-pointer">
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2 cursor-pointer" title="Check this if the game was played in person">
+            <input
+              type="checkbox"
+              checked={isInPerson}
+              onChange={(e) => setIsInPerson(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm font-medium text-gray-700">In Person</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer" title="Check this if the game was played with only the East prevalent wind round">
             <input
               type="checkbox"
               checked={isEastOnly}
@@ -325,9 +351,16 @@ const GameSubmission: React.FC = () => {
             />
             <span className="text-sm font-medium text-gray-700">East Only Game</span>
           </label>
-          <p className="mt-1 text-xs text-gray-500 ml-6">
-            Check this if the game was played with only the East prevalent wind round
-          </p>
+
+          <label className="flex items-center gap-2 cursor-pointer" title="Check this if the game was ended because of time running out">
+            <input
+              type="checkbox"
+              checked={ranOutOfTime}
+              onChange={(e) => setRanOutOfTime(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Ran Out of Time</span>
+          </label>
         </div>
 
         <div>
