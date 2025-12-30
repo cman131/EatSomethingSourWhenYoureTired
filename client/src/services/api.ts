@@ -1,6 +1,23 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Types
+export interface Notification {
+  _id: string;
+  name: string;
+  description: string;
+  type: 'Game' | 'Comment' | 'Other';
+  url?: string;
+  viewed: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface NotificationPreferences {
+  emailNotificationsEnabled?: boolean;
+  emailNotificationsForComments?: boolean;
+  emailNotificationsForNewGames?: boolean;
+}
+
 export interface User {
   _id: string;
   email: string;
@@ -9,6 +26,8 @@ export interface User {
   realName?: string;
   discordName?: string;
   mahjongSoulName?: string;
+  notifications?: Notification[];
+  notificationPreferences?: NotificationPreferences;
 }
 
 export interface GamePlayer {
@@ -94,6 +113,20 @@ const apiRequest = async <T>(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
   
   if (!response.ok) {
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      // Don't redirect if we're already on the login page
+      if (window.location.pathname === '/login') {
+        // Already on login page, don't redirect
+        throw new Error('Unauthorized');
+      }
+      const currentPath = window.location.pathname + window.location.search;
+      const loginUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      window.location.href = loginUrl;
+      // Throw error to stop execution
+      throw new Error('Unauthorized - redirecting to login');
+    }
+    
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
   }
@@ -176,6 +209,44 @@ export const usersApi = {
 
   searchUsers: async (query: string, limit = 10) => {
     return apiRequest<ApiResponse<{ users: User[] }>>(`/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  },
+
+  updateNotificationPreferences: async (preferences: NotificationPreferences) => {
+    return apiRequest<ApiResponse<{ user: User }>>('/users/notification-preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    });
+  },
+};
+
+// Notifications API
+export const notificationsApi = {
+  getNotifications: async () => {
+    return apiRequest<ApiResponse<{ notifications: Notification[] }>>('/users/notifications');
+  },
+
+  markAsViewed: async (notificationId: string) => {
+    return apiRequest<ApiResponse<{ user: User }>>(`/users/notifications/${notificationId}/view`, {
+      method: 'PUT',
+    });
+  },
+
+  markAllAsViewed: async () => {
+    return apiRequest<ApiResponse<{ user: User }>>('/users/notifications/view-all', {
+      method: 'PUT',
+    });
+  },
+
+  deleteNotification: async (notificationId: string) => {
+    return apiRequest<ApiResponse<{ user: User }>>(`/users/notifications/${notificationId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  clearAllNotifications: async () => {
+    return apiRequest<ApiResponse<{ user: User }>>('/users/notifications', {
+      method: 'DELETE',
+    });
   },
 };
 

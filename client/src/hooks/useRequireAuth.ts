@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
@@ -12,13 +12,25 @@ import { useAuth } from '../contexts/AuthContext';
 export const useRequireAuth = (redirectTo = '/login') => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Only redirect after auth has finished loading
     if (!authLoading && !isAuthenticated) {
-      navigate(redirectTo);
+      // If redirecting to login, include the current path as a redirect parameter
+      if (redirectTo === '/login' || redirectTo.startsWith('/login')) {
+        // Don't add redirect parameter if we're already on the login page
+        if (location.pathname === '/login') {
+          navigate('/login');
+        } else {
+          const currentPath = location.pathname + location.search;
+          navigate(`/login?redirect=${encodeURIComponent(currentPath)}`);
+        }
+      } else {
+        navigate(redirectTo);
+      }
     }
-  }, [isAuthenticated, authLoading, navigate, redirectTo]);
+  }, [isAuthenticated, authLoading, navigate, redirectTo, location]);
 
   return {
     isLoading: authLoading,

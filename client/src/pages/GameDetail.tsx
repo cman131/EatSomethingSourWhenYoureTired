@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { gamesApi, Game } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import { ArrowLeftIcon, TrophyIcon, CheckCircleIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 
 const GameDetail: React.FC = () => {
+  useRequireAuth();
   const { id } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuth();
   const [game, setGame] = useState<Game | null>(null);

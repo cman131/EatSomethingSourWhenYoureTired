@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePaginatedApi } from '../hooks/useApi';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import { usersApi, User } from '../services/api';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const MembersList: React.FC = () => {
+  useRequireAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const pageLimit = 20;
 

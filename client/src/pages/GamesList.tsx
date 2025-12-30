@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePaginatedApi } from '../hooks/useApi';
+import { useRequireAuth } from '../hooks/useRequireAuth';
 import { gamesApi, Game } from '../services/api';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 const GamesList: React.FC = () => {
+  useRequireAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const pageLimit = 20;
   const PlayerSeats = ['East', 'South', 'West', 'North'];

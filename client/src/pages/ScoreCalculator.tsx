@@ -6,8 +6,7 @@ interface ScoreResult {
   basePoints: number;
   tsumoDealer: number;
   tsumoNonDealer: number;
-  ronDealer: number;
-  ronNonDealer: number;
+  ron: number;
   isMangan: boolean;
   isHaneman: boolean;
   isBaiman: boolean;
@@ -16,18 +15,27 @@ interface ScoreResult {
 }
 
 const ScoreCalculator: React.FC = () => {
-  const [han, setHan] = useState<number>(1);
-  const [fu, setFu] = useState<number>(30);
+  const [han, setHan] = useState<string>('1');
+  const [fu, setFu] = useState<string>('30');
   const [isTsumo, setIsTsumo] = useState<boolean>(false);
   const [isDealer, setIsDealer] = useState<boolean>(false);
   const [isFuModalOpen, setIsFuModalOpen] = useState<boolean>(false);
 
   const calculateScore = useMemo((): ScoreResult | null => {
-    if (han < 1 || fu < 20 || fu > 110) return null;
+    const hanNum = han === '' ? 1 : parseInt(han, 10);
+    const fuNum = fu === '' ? 20 : parseInt(fu, 10);
+    
+    // Check for invalid values
+    if (hanNum < 1 || hanNum > 13 || fuNum < 20 || fuNum > 110) return null;
+    
+    // Use numeric values for calculation
+    const hanValue = hanNum;
+    const fuValue = fuNum;
 
     // Fixed values for mangan and above
-    if (han >= 5) {
+    if (hanValue >= 5) {
       // Fixed values for ron (total received)
+      // Dealer ron: 6× base, Non-dealer ron: 4× base
       const ronValues: Record<number, { dealer: number; nonDealer: number }> = {
         5: { dealer: 12000, nonDealer: 8000 }, // Mangan
         6: { dealer: 18000, nonDealer: 12000 }, // Haneman
@@ -51,11 +59,11 @@ const ScoreCalculator: React.FC = () => {
         12: { dealerFromNonDealer: 12000, nonDealerFromDealer: 12000, nonDealerFromNonDealer: 6000 }, // Sanbaiman
       };
 
-      const yakuman = han >= 13;
-      const sanbaiman = han >= 11 && han < 13;
-      const baiman = han >= 8 && han < 11;
-      const haneman = han >= 6 && han < 8;
-      const mangan = han === 5;
+      const yakuman = hanValue >= 13;
+      const sanbaiman = hanValue >= 11 && hanValue < 13;
+      const baiman = hanValue >= 8 && hanValue < 11;
+      const haneman = hanValue >= 6 && hanValue < 8;
+      const mangan = hanValue === 5;
 
       if (yakuman) {
         // Yakuman: dealer tsumo gets 16000 from each non-dealer, non-dealer tsumo gets 16000 from dealer and 8000 from each non-dealer
@@ -64,8 +72,7 @@ const ScoreCalculator: React.FC = () => {
           basePoints: 0,
           tsumoDealer: isDealer ? 0 : 16000, // 0 for dealer tsumo (not used), 16000 from dealer for non-dealer tsumo
           tsumoNonDealer: isDealer ? 16000 : 8000, // 16000 from each non-dealer (dealer tsumo) or 8000 from each non-dealer (non-dealer tsumo)
-          ronDealer: 48000,
-          ronNonDealer: 32000,
+          ron: isDealer ? 48000 : 32000, // Dealer ron: 48000, Non-dealer ron: 32000
           isMangan: false,
           isHaneman: false,
           isBaiman: false,
@@ -74,15 +81,14 @@ const ScoreCalculator: React.FC = () => {
         };
       }
 
-      const ronValue = ronValues[Math.min(han, 12)] || ronValues[12];
-      const tsumoValue = tsumoValues[Math.min(han, 12)] || tsumoValues[12];
+      const ronValue = ronValues[Math.min(hanValue, 12)] || ronValues[12];
+      const tsumoValue = tsumoValues[Math.min(hanValue, 12)] || tsumoValues[12];
       
       return {
         basePoints: 0,
         tsumoDealer: tsumoValue.nonDealerFromDealer,
         tsumoNonDealer: isDealer ? tsumoValue.dealerFromNonDealer : tsumoValue.nonDealerFromNonDealer,
-        ronDealer: ronValue.dealer,
-        ronNonDealer: ronValue.nonDealer,
+        ron: isDealer ? ronValue.dealer : ronValue.nonDealer,
         isMangan: mangan,
         isHaneman: haneman,
         isBaiman: baiman,
@@ -92,13 +98,12 @@ const ScoreCalculator: React.FC = () => {
     }
 
     // Calculate base points: fu × 2^(han+2)
-    let basePoints = fu * Math.pow(2, han + 2);
+    let basePoints = fuValue * Math.pow(2, hanValue + 2);
 
     // Calculate scores
     let tsumoDealer = 0;
     let tsumoNonDealer = 0;
-    let ronDealer = 0;
-    let ronNonDealer = 0;
+    let ron = 0;
 
     if (isTsumo) {
       // Tsumo: dealer pays 2×base, non-dealer pays base
@@ -109,29 +114,21 @@ const ScoreCalculator: React.FC = () => {
         tsumoDealer = basePoints * 2; // Dealer pays winner
         tsumoNonDealer = basePoints; // Each non-dealer pays winner
       }
+      // Round up to nearest 100
+      tsumoDealer = Math.ceil(tsumoDealer / 100) * 100;
+      tsumoNonDealer = Math.ceil(tsumoNonDealer / 100) * 100;
     } else {
-      // Ron: dealer pays 6×base, non-dealer pays 4×base
-      if (isDealer) {
-        ronDealer = basePoints * 6;
-        ronNonDealer = 0;
-      } else {
-        ronDealer = basePoints * 4;
-        ronNonDealer = 0;
-      }
+      // Ron: dealer winner gets 6×base, non-dealer winner gets 4×base
+      ron = isDealer ? basePoints * 6 : basePoints * 4;
+      // Round up to nearest 100
+      ron = Math.ceil(ron / 100) * 100;
     }
-
-    // Round up to nearest 100
-    tsumoDealer = Math.ceil(tsumoDealer / 100) * 100;
-    tsumoNonDealer = Math.ceil(tsumoNonDealer / 100) * 100;
-    ronDealer = Math.ceil(ronDealer / 100) * 100;
-    ronNonDealer = Math.ceil(ronNonDealer / 100) * 100;
 
     return {
       basePoints,
       tsumoDealer,
       tsumoNonDealer,
-      ronDealer,
-      ronNonDealer,
+      ron,
       isMangan: false,
       isHaneman: false,
       isBaiman: false,
@@ -140,6 +137,9 @@ const ScoreCalculator: React.FC = () => {
     };
   }, [han, fu, isTsumo, isDealer]);
 
+  // Check for missing values
+  const hasMissingValues = han === '' || (han !== '' && parseInt(han, 10) < 5 && fu === '');
+
   const getHandName = (): string => {
     if (!calculateScore) return '';
     if (calculateScore.isYakuman) return 'Yakuman';
@@ -147,7 +147,9 @@ const ScoreCalculator: React.FC = () => {
     if (calculateScore.isBaiman) return 'Baiman';
     if (calculateScore.isHaneman) return 'Haneman';
     if (calculateScore.isMangan) return 'Mangan';
-    return `${han} Han ${fu} Fu`;
+    const hanNum = han === '' ? 1 : parseInt(han, 10);
+    const fuNum = fu === '' ? 20 : parseInt(fu, 10);
+    return `${hanNum} Han ${fuNum} Fu`;
   };
 
   return (
@@ -185,12 +187,16 @@ const ScoreCalculator: React.FC = () => {
                 Han
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 id="han"
-                min="1"
-                max="13"
                 value={han}
-                onChange={(e) => setHan(Math.max(1, Math.min(13, parseInt(e.target.value) || 1)))}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setHan(value);
+                  }
+                }}
                 className="input-field"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -199,24 +205,27 @@ const ScoreCalculator: React.FC = () => {
             </div>
 
             {/* Fu Input */}
-            {han < 5 && (
+            {han !== '' && parseInt(han, 10) < 5 && (
                 <div>
                     <label htmlFor="fu" className="block text-sm font-medium text-gray-700 mb-2">
                         Fu
                     </label>
                     <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         id="fu"
-                        min="20"
-                        max="110"
-                        step="10"
                         value={fu}
-                        onChange={(e) => setFu(Math.max(20, Math.min(110, parseInt(e.target.value) || 30)))}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '' || /^\d+$/.test(value)) {
+                            setFu(value);
+                          }
+                        }}
                         className="input-field"
-                        disabled={han >= 5}
+                        disabled={han !== '' && parseInt(han, 10) >= 5}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                        {han >= 5 
+                        {han !== '' && parseInt(han, 10) >= 5 
                         ? 'Fu is not used for mangan and above' 
                         : 'Number of fu in your hand (20-110, typically 30, 40, 50, etc.)'}
                     </p>
@@ -293,7 +302,17 @@ const ScoreCalculator: React.FC = () => {
         <div className="card">
           <h2 className="text-xl font-semibold text-gray-900 mb-6">Score Calculation</h2>
 
-          {calculateScore ? (
+          {hasMissingValues ? (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="text-sm font-medium text-yellow-800 mb-1">Missing Values</div>
+              <div className="text-sm text-yellow-700">
+                {han === '' && <div>• Please enter a Han value (1-13)</div>}
+                {han !== '' && parseInt(han, 10) < 5 && fu === '' && (
+                  <div>• Please enter a Fu value (20-110)</div>
+                )}
+              </div>
+            </div>
+          ) : calculateScore ? (
             <div className="space-y-6">
               {/* Hand Name */}
               <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
@@ -304,14 +323,14 @@ const ScoreCalculator: React.FC = () => {
               </div>
 
               {/* Base Points (only for non-fixed hands) */}
-              {han < 5 && (
+              {han !== '' && parseInt(han, 10) < 5 && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="text-sm text-gray-600 mb-1">Base Points</div>
                   <div className="text-xl font-semibold text-gray-900">
                     {calculateScore.basePoints.toLocaleString()}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Formula: {fu} × 2<sup>{han + 2}</sup> = {calculateScore.basePoints.toLocaleString()}
+                    Formula: {fu} × 2<sup>{parseInt(han, 10) + 2}</sup> = {calculateScore.basePoints.toLocaleString()}
                   </div>
                 </div>
               )}
@@ -361,21 +380,12 @@ const ScoreCalculator: React.FC = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Ron Score</h3>
                   
-                  {isDealer ? (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="text-sm text-gray-600 mb-2">From discarder:</div>
-                      <div className="text-2xl font-bold text-green-700">
-                        {calculateScore.ronDealer.toLocaleString()}
-                      </div>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="text-sm text-gray-600 mb-2">From discarder:</div>
+                    <div className="text-2xl font-bold text-green-700">
+                      {calculateScore.ron.toLocaleString()}
                     </div>
-                  ) : (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <div className="text-sm text-gray-600 mb-2">From discarder:</div>
-                      <div className="text-2xl font-bold text-green-700">
-                        {calculateScore.ronNonDealer.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -400,8 +410,16 @@ const ScoreCalculator: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              Please enter valid han and fu values
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="text-sm font-medium text-red-800 mb-1">Invalid Values</div>
+              <div className="text-sm text-red-700">
+                {han !== '' && (parseInt(han, 10) < 1 || parseInt(han, 10) > 13) && (
+                  <div>• Han must be between 1 and 13</div>
+                )}
+                {fu !== '' && (parseInt(fu, 10) < 20 || parseInt(fu, 10) > 110) && (
+                  <div>• Fu must be between 20 and 110</div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -411,9 +429,9 @@ const ScoreCalculator: React.FC = () => {
       <FuCalculatorModal
         isOpen={isFuModalOpen}
         onClose={() => setIsFuModalOpen(false)}
-        onSave={(calculatedFu) => setFu(calculatedFu)}
+        onSave={(calculatedFu) => setFu(calculatedFu.toString())}
         currentTsumo={isTsumo}
-        hanCount={han}
+        hanCount={han === '' ? 1 : parseInt(han, 10)}
       />
     </div>
   );

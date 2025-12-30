@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationDropdown from './NotificationDropdown';
 import { 
   UserIcon, 
   ChartBarIcon,
@@ -119,6 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="hidden sm:flex sm:items-center sm:space-x-4">
               {isAuthenticated ? (
                 <>
+                  <NotificationDropdown />
                   <Link
                     key={'Profile'}
                     to={'/profile'}
@@ -228,15 +230,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 )}
               </div>
               {isAuthenticated ? (
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
-                >
-                  Logout
-                </button>
+                <>
+                  <div className="pl-3 pr-4 py-2">
+                    <NotificationDropdown />
+                  </div>
+                  <Link
+                    to="/profile"
+                    className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <div className="flex items-center">
+                      <UserIcon className="h-5 w-5 mr-3" />
+                      Profile
+                    </div>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
+                  >
+                    Logout
+                  </button>
+                </>
               ) : (
                 <>
                   <Link

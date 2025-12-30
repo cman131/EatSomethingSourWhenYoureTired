@@ -3,9 +3,10 @@ import { useParams } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi, useApi } from '../hooks/useApi';
-import { usersApi, Game, UserStats, User } from '../services/api';
+import { usersApi, Game, UserStats, User, NotificationPreferences } from '../services/api';
+import NotificationPreferencesModal from '../components/NotificationPreferencesModal';
 import { Link } from 'react-router-dom';
-import { PencilIcon, XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, XMarkIcon, CheckIcon, BellIcon } from '@heroicons/react/24/outline';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const PlayerSeats = ['East', 'South', 'West', 'North'];
@@ -54,6 +55,7 @@ const Profile: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
   // Memoize the API call function to prevent infinite loops
   const getUserGames = React.useCallback(
@@ -209,6 +211,12 @@ const Profile: React.FC = () => {
     setSuccess(false);
   };
 
+  // Handle notification preferences save
+  const handleNotificationPreferencesSave = async (preferences: NotificationPreferences) => {
+    await usersApi.updateNotificationPreferences(preferences);
+    user!.notificationPreferences = preferences;
+  };
+
 
   if (profileUserLoading || !user) {
     return (
@@ -231,13 +239,22 @@ const Profile: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900">User Information</h2>
           {isOwnProfile && !isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            >
-              <PencilIcon className="h-4 w-4" />
-              Edit
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                <PencilIcon className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => setIsNotificationModalOpen(true)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                <BellIcon className="h-4 w-4" />
+                Notification Preferences
+              </button>
+            </div>
           )}
         </div>
 
@@ -483,8 +500,8 @@ const Profile: React.FC = () => {
           {recentGamesLoading ? (
             <p className="text-gray-500 text-center py-8">Loading performance data...</p>
           ) : (
-            <div className="w-full" style={{ height: '300px' }}>
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full" style={{ height: '300px', minWidth: 0 }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                 <LineChart data={performanceData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis 
@@ -715,6 +732,16 @@ const Profile: React.FC = () => {
           <p className="text-gray-500 text-center py-8">No games found</p>
         )}
       </div>
+
+      {/* Notification Preferences Modal */}
+      {isOwnProfile && (
+        <NotificationPreferencesModal
+          isOpen={isNotificationModalOpen}
+          onClose={() => setIsNotificationModalOpen(false)}
+          onSave={handleNotificationPreferencesSave}
+          currentPreferences={user?.notificationPreferences}
+        />
+      )}
     </div>
   );
 };

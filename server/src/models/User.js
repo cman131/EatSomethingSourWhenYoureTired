@@ -49,7 +49,47 @@ const userSchema = new mongoose.Schema({
     default: ''
   },
   passwordResetToken: String,
-  passwordResetExpires: Date
+  passwordResetExpires: Date,
+  notificationPreferences: {
+    emailNotificationsEnabled: {
+      type: Boolean,
+      default: true
+    },
+    emailNotificationsForComments: {
+      type: Boolean,
+      default: true
+    },
+    emailNotificationsForNewGames: {
+      type: Boolean,
+      default: true
+    }
+  },
+  notifications: [{
+    name: {
+      type: String,
+      required: [true, 'Notification name is required'],
+      trim: true
+    },
+    description: {
+      type: String,
+      required: [true, 'Notification description is required'],
+      trim: true
+    },
+    type: {
+      type: String,
+      required: [true, 'Notification type is required'],
+      enum: ['Game', 'Comment', 'Other'],
+      default: 'Other'
+    },
+    url: {
+      type: String,
+      trim: true
+    },
+    viewed: {
+      type: Boolean,
+      default: false
+    }
+  }]
 }, {
   timestamps: true
 });
@@ -70,6 +110,32 @@ userSchema.pre('save', async function(next) {
   } catch (error) {
     next(error);
   }
+});
+
+// Enforce email notification preferences: if top level is off, all others must be off
+userSchema.pre('save', function(next) {
+  // Initialize notificationPreferences if it doesn't exist
+  if (!this.notificationPreferences) {
+    this.notificationPreferences = {};
+  }
+  
+  // Set defaults if not present
+  if (this.notificationPreferences.emailNotificationsEnabled === undefined) {
+    this.notificationPreferences.emailNotificationsEnabled = true;
+  }
+  if (this.notificationPreferences.emailNotificationsForComments === undefined) {
+    this.notificationPreferences.emailNotificationsForComments = true;
+  }
+  if (this.notificationPreferences.emailNotificationsForNewGames === undefined) {
+    this.notificationPreferences.emailNotificationsForNewGames = true;
+  }
+  
+  // If top level is off, all others must be off
+  if (this.notificationPreferences.emailNotificationsEnabled === false) {
+    this.notificationPreferences.emailNotificationsForComments = false;
+    this.notificationPreferences.emailNotificationsForNewGames = false;
+  }
+  next();
 });
 
 // Compare password method

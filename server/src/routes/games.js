@@ -2,6 +2,7 @@ const express = require('express');
 const Game = require('../models/Game');
 const User = require('../models/User');
 const { validateGameCreation, validateMongoId } = require('../middleware/validation');
+const { sendNewGameNotificationEmail, sendNewCommentNotificationEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -81,6 +82,61 @@ router.post('/', validateGameCreation, async (req, res) => {
     await game.populate('submittedBy', 'displayName email');
     await game.populate('players.player', 'displayName email');
 
+    // Send notifications to players who aren't the submitter
+    const submitterId = req.user._id.toString();
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+    const gameUrl = `${frontendUrl}/games/${game._id}`;
+    const submittedByDisplayName = game.submittedBy.displayName;
+
+    // Get all players who aren't the submitter
+    const otherPlayers = game.players.filter(p => p.player._id.toString() !== submitterId);
+    
+    // Process notifications for each player (don't await - run in background)
+    Promise.all(
+      otherPlayers.map(async (playerData) => {
+        try {
+          const player = await User.findById(playerData.player._id);
+          if (!player) return;
+
+          // Check notification preferences
+          const prefs = player.notificationPreferences || {};
+          const emailEnabled = prefs.emailNotificationsEnabled !== false; // default to true
+          const newGameNotificationsEnabled = prefs.emailNotificationsForNewGames !== false; // default to true
+
+          // Send email if enabled
+          if (emailEnabled && newGameNotificationsEnabled) {
+            try {
+              await sendNewGameNotificationEmail(
+                player.email,
+                player.displayName,
+                game._id.toString(),
+                submittedByDisplayName
+              );
+            } catch (emailError) {
+              console.error(`Failed to send email to ${player.email}:`, emailError);
+              // Continue processing even if email fails
+            }
+          }
+
+          // Add notification to user's queue
+          player.notifications.push({
+            name: 'New Game Submitted',
+            description: `A new game you participated in has been submitted by ${submittedByDisplayName}.`,
+            type: 'Game',
+            url: gameUrl
+          });
+
+          await player.save();
+        } catch (playerError) {
+          console.error(`Failed to process notification for player ${playerData.player._id}:`, playerError);
+          // Continue processing other players even if one fails
+        }
+      })
+    ).catch(error => {
+      console.error('Error processing game notifications:', error);
+      // Don't fail the request if notifications fail
+    });
+
     res.status(201).json({
       success: true,
       message: 'Game submitted successfully',
@@ -93,6 +149,54 @@ router.post('/', validateGameCreation, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to create game'
+    });
+  }
+});
+
+// @route   GET /api/games/pending-verification
+// @desc    Get all unverified games where user was a player (but not submitter)
+// @access  Private
+router.get('/pending-verification', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const games = await Game.find({
+      'players.player': req.user._id,
+      verified: false,
+      submittedBy: { $ne: req.user._id }
+    })
+      .populate('submittedBy', 'displayName email avatar')
+      .populate('players.player', 'displayName email avatar')
+      .populate('verifiedBy', 'displayName')
+      .sort({ gameDate: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Game.countDocuments({
+      'players.player': req.user._id,
+      verified: false,
+      submittedBy: { $ne: req.user._id }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        items: games,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get pending verification games error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get pending verification games'
     });
   }
 });
@@ -208,9 +312,12 @@ router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
       });
     }
 
+    const commentText = comment.trim();
+    const commenterId = req.user._id.toString();
+
     // Add comment to game
     game.comments.push({
-      comment: comment.trim(),
+      comment: commentText,
       commenter: req.user._id,
       createdAt: new Date()
     });
@@ -222,6 +329,83 @@ router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
     await game.populate('players.player', 'displayName email avatar');
     await game.populate('verifiedBy', 'displayName');
     await game.populate('comments.commenter', 'displayName avatar');
+
+    // Send notifications to relevant users
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+    const gameUrl = `${frontendUrl}/games/${game._id}`;
+    const commenterDisplayName = req.user.displayName;
+
+    // Collect all users who should be notified:
+    // 1. All players in the game
+    // 2. All previous commenters (before this new comment)
+    const userIdsToNotify = new Set();
+    
+    // Add all players
+    game.players.forEach(player => {
+      const playerId = player.player._id.toString();
+      if (playerId !== commenterId) {
+        userIdsToNotify.add(playerId);
+      }
+    });
+
+    // Add all previous commenters (exclude the new comment we just added)
+    const previousComments = game.comments.slice(0, -1); // All comments except the last one (the new one)
+    previousComments.forEach(comment => {
+      if (comment.commenter) {
+        // Handle both populated and unpopulated commenter
+        const commenterIdStr = (comment.commenter._id || comment.commenter).toString();
+        if (commenterIdStr !== commenterId) {
+          userIdsToNotify.add(commenterIdStr);
+        }
+      }
+    });
+
+    // Process notifications for each user
+    Promise.all(
+      Array.from(userIdsToNotify).map(async (userId) => {
+        try {
+          const user = await User.findById(userId);
+          if (!user) return;
+
+          // Check notification preferences
+          const prefs = user.notificationPreferences || {};
+          const emailEnabled = prefs.emailNotificationsEnabled !== false; // default to true
+          const commentNotificationsEnabled = prefs.emailNotificationsForComments !== false; // default to true
+
+          // Send email if enabled
+          if (emailEnabled && commentNotificationsEnabled) {
+            try {
+              await sendNewCommentNotificationEmail(
+                user.email,
+                user.displayName,
+                game._id.toString(),
+                commenterDisplayName,
+                commentText
+              );
+            } catch (emailError) {
+              console.error(`Failed to send email to ${user.email}:`, emailError);
+              // Continue processing even if email fails
+            }
+          }
+
+          // Add notification to user's queue
+          user.notifications.push({
+            name: 'New Comment',
+            description: `${commenterDisplayName} left a comment on a game you participated in or commented on.`,
+            type: 'Comment',
+            url: gameUrl
+          });
+
+          await user.save();
+        } catch (userError) {
+          console.error(`Failed to process notification for user ${userId}:`, userError);
+          // Continue processing other users even if one fails
+        }
+      })
+    ).catch(error => {
+      console.error('Error processing comment notifications:', error);
+      // Don't fail the request if notifications fail
+    });
 
     res.status(201).json({
       success: true,
