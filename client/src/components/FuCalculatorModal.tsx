@@ -16,14 +16,14 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
   const [isHandOpen, setIsHandOpen] = useState<boolean>(false);
   const [waitType, setWaitType] = useState<'ryanmen' | 'kanchan' | 'penchan' | 'tanki' | 'shabo' | 'none'>('none');
   const [pairType, setPairType] = useState<'none' | 'dragon' | 'seatWind' | 'roundWind' | 'bothWinds'>('none');
-  const [openTripletsSimples, setOpenTripletsSimples] = useState<number>(0);
-  const [closedTripletsSimples, setClosedTripletsSimples] = useState<number>(0);
-  const [openTripletsHonors, setOpenTripletsHonors] = useState<number>(0);
-  const [closedTripletsHonors, setClosedTripletsHonors] = useState<number>(0);
-  const [openKansSimples, setOpenKansSimples] = useState<number>(0);
-  const [closedKansSimples, setClosedKansSimples] = useState<number>(0);
-  const [openKansHonors, setOpenKansHonors] = useState<number>(0);
-  const [closedKansHonors, setClosedKansHonors] = useState<number>(0);
+  const [openTripletsSimples, setOpenTripletsSimples] = useState<string>('0');
+  const [closedTripletsSimples, setClosedTripletsSimples] = useState<string>('0');
+  const [openTripletsHonors, setOpenTripletsHonors] = useState<string>('0');
+  const [closedTripletsHonors, setClosedTripletsHonors] = useState<string>('0');
+  const [openKansSimples, setOpenKansSimples] = useState<string>('0');
+  const [closedKansSimples, setClosedKansSimples] = useState<string>('0');
+  const [openKansHonors, setOpenKansHonors] = useState<string>('0');
+  const [closedKansHonors, setClosedKansHonors] = useState<string>('0');
 
   // Reset form when modal opens
   useEffect(() => {
@@ -34,14 +34,14 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
       setIsHandOpen(false);
       setWaitType('none');
       setPairType('none');
-      setOpenTripletsSimples(0);
-      setClosedTripletsSimples(0);
-      setOpenTripletsHonors(0);
-      setClosedTripletsHonors(0);
-      setOpenKansSimples(0);
-      setClosedKansSimples(0);
-      setOpenKansHonors(0);
-      setClosedKansHonors(0);
+      setOpenTripletsSimples('0');
+      setClosedTripletsSimples('0');
+      setOpenTripletsHonors('0');
+      setClosedTripletsHonors('0');
+      setOpenKansSimples('0');
+      setClosedKansSimples('0');
+      setOpenKansHonors('0');
+      setClosedKansHonors('0');
     }
   }, [isOpen]);
 
@@ -82,15 +82,25 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
 
     // Meld fu
     // Triplets: simples +2 (open) / +4 (closed), honors/terminals +4 (open) / +8 (closed)
-    totalFu += openTripletsSimples * 2;
-    totalFu += closedTripletsSimples * 4;
-    totalFu += openTripletsHonors * 4;
-    totalFu += closedTripletsHonors * 8;
+    // Treat empty strings as 0
+    const openTripletsSimplesNum = openTripletsSimples === '' ? 0 : parseInt(openTripletsSimples, 10) || 0;
+    const closedTripletsSimplesNum = closedTripletsSimples === '' ? 0 : parseInt(closedTripletsSimples, 10) || 0;
+    const openTripletsHonorsNum = openTripletsHonors === '' ? 0 : parseInt(openTripletsHonors, 10) || 0;
+    const closedTripletsHonorsNum = closedTripletsHonors === '' ? 0 : parseInt(closedTripletsHonors, 10) || 0;
+    const openKansSimplesNum = openKansSimples === '' ? 0 : parseInt(openKansSimples, 10) || 0;
+    const closedKansSimplesNum = closedKansSimples === '' ? 0 : parseInt(closedKansSimples, 10) || 0;
+    const openKansHonorsNum = openKansHonors === '' ? 0 : parseInt(openKansHonors, 10) || 0;
+    const closedKansHonorsNum = closedKansHonors === '' ? 0 : parseInt(closedKansHonors, 10) || 0;
+    
+    totalFu += openTripletsSimplesNum * 2;
+    totalFu += closedTripletsSimplesNum * 4;
+    totalFu += openTripletsHonorsNum * 4;
+    totalFu += closedTripletsHonorsNum * 8;
     // Kans: simples +8 (open) / +16 (closed), honors/terminals +16 (open) / +32 (closed)
-    totalFu += openKansSimples * 8;
-    totalFu += closedKansSimples * 16;
-    totalFu += openKansHonors * 16;
-    totalFu += closedKansHonors * 32;
+    totalFu += openKansSimplesNum * 8;
+    totalFu += closedKansSimplesNum * 16;
+    totalFu += openKansHonorsNum * 16;
+    totalFu += closedKansHonorsNum * 32;
 
     // Tsumo fu (2 fu, unless pinfu)
     if (currentTsumo && !isPinfu) {
@@ -111,24 +121,47 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
   };
 
   // Calculate total melds (triplets + kans)
+  // Treat empty strings as 0
   const getTotalMelds = useMemo(() => {
-    return openTripletsSimples + closedTripletsSimples + 
-           openTripletsHonors + closedTripletsHonors +
-           openKansSimples + closedKansSimples +
-           openKansHonors + closedKansHonors;
+    const openTripletsSimplesNum = openTripletsSimples === '' ? 0 : parseInt(openTripletsSimples, 10) || 0;
+    const closedTripletsSimplesNum = closedTripletsSimples === '' ? 0 : parseInt(closedTripletsSimples, 10) || 0;
+    const openTripletsHonorsNum = openTripletsHonors === '' ? 0 : parseInt(openTripletsHonors, 10) || 0;
+    const closedTripletsHonorsNum = closedTripletsHonors === '' ? 0 : parseInt(closedTripletsHonors, 10) || 0;
+    const openKansSimplesNum = openKansSimples === '' ? 0 : parseInt(openKansSimples, 10) || 0;
+    const closedKansSimplesNum = closedKansSimples === '' ? 0 : parseInt(closedKansSimples, 10) || 0;
+    const openKansHonorsNum = openKansHonors === '' ? 0 : parseInt(openKansHonors, 10) || 0;
+    const closedKansHonorsNum = closedKansHonors === '' ? 0 : parseInt(closedKansHonors, 10) || 0;
+    
+    return openTripletsSimplesNum + closedTripletsSimplesNum + 
+           openTripletsHonorsNum + closedTripletsHonorsNum +
+           openKansSimplesNum + closedKansSimplesNum +
+           openKansHonorsNum + closedKansHonorsNum;
   }, [openTripletsSimples, closedTripletsSimples, openTripletsHonors, closedTripletsHonors, 
       openKansSimples, closedKansSimples, openKansHonors, closedKansHonors]);
 
   // Helper function to handle meld input changes with validation
   const handleMeldChange = (
-    newValue: number,
-    currentValue: number,
-    setter: (value: number) => void
+    value: string,
+    currentValue: string,
+    setter: (value: string) => void
   ) => {
-    const otherMeldsTotal = getTotalMelds - currentValue;
+    // Allow empty string
+    if (value === '') {
+      setter('');
+      return;
+    }
+    
+    // Only allow numeric digits
+    if (!/^\d+$/.test(value)) {
+      return;
+    }
+    
+    const numValue = parseInt(value, 10);
+    const currentNumValue = currentValue === '' ? 0 : parseInt(currentValue, 10) || 0;
+    const otherMeldsTotal = getTotalMelds - currentNumValue;
     const maxAllowed = Math.max(0, Math.min(4, 4 - otherMeldsTotal));
-    const finalValue = Math.max(0, Math.min(maxAllowed, newValue));
-    setter(finalValue);
+    const finalValue = Math.max(0, Math.min(maxAllowed, numValue));
+    setter(finalValue.toString());
   };
 
   if (!isOpen) return null;
@@ -296,11 +329,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Open Triplets of Simples (2 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={openTripletsSimples}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, openTripletsSimples, setOpenTripletsSimples)}
+                          onChange={(e) => handleMeldChange(e.target.value, openTripletsSimples, setOpenTripletsSimples)}
                           className="input-field"
                         />
                       </div>
@@ -309,11 +341,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Closed Triplets of Simples (4 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={closedTripletsSimples}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, closedTripletsSimples, setClosedTripletsSimples)}
+                          onChange={(e) => handleMeldChange(e.target.value, closedTripletsSimples, setClosedTripletsSimples)}
                           className="input-field"
                         />
                       </div>
@@ -322,11 +353,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Open Triplets of Honors/Terminals (4 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={openTripletsHonors}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, openTripletsHonors, setOpenTripletsHonors)}
+                          onChange={(e) => handleMeldChange(e.target.value, openTripletsHonors, setOpenTripletsHonors)}
                           className="input-field"
                         />
                       </div>
@@ -335,11 +365,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Closed Triplets of Honors/Terminals (8 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={closedTripletsHonors}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, closedTripletsHonors, setClosedTripletsHonors)}
+                          onChange={(e) => handleMeldChange(e.target.value, closedTripletsHonors, setClosedTripletsHonors)}
                           className="input-field"
                         />
                       </div>
@@ -353,11 +382,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Open Kans of Simples (8 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={openKansSimples}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, openKansSimples, setOpenKansSimples)}
+                          onChange={(e) => handleMeldChange(e.target.value, openKansSimples, setOpenKansSimples)}
                           className="input-field"
                         />
                       </div>
@@ -366,11 +394,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Closed Kans of Simples (16 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={closedKansSimples}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, closedKansSimples, setClosedKansSimples)}
+                          onChange={(e) => handleMeldChange(e.target.value, closedKansSimples, setClosedKansSimples)}
                           className="input-field"
                         />
                       </div>
@@ -379,11 +406,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Open Kans of Honors/Terminals (16 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={openKansHonors}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, openKansHonors, setOpenKansHonors)}
+                          onChange={(e) => handleMeldChange(e.target.value, openKansHonors, setOpenKansHonors)}
                           className="input-field"
                         />
                       </div>
@@ -392,11 +418,10 @@ const FuCalculatorModal: React.FC<FuCalculatorModalProps> = ({ isOpen, onClose, 
                           Closed Kans of Honors/Terminals (32 fu each)
                         </label>
                         <input
-                          type="number"
-                          min="0"
-                          max="4"
+                          type="text"
+                          inputMode="numeric"
                           value={closedKansHonors}
-                          onChange={(e) => handleMeldChange(parseInt(e.target.value) || 0, closedKansHonors, setClosedKansHonors)}
+                          onChange={(e) => handleMeldChange(e.target.value, closedKansHonors, setClosedKansHonors)}
                           className="input-field"
                         />
                       </div>

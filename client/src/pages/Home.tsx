@@ -5,9 +5,9 @@ import { usePaginatedApi } from '../hooks/useApi';
 import { gamesApi, Game } from '../services/api';
 import { 
   ChartBarIcon,
-  TrophyIcon,
   CalendarIcon,
-  ArrowTopRightOnSquareIcon
+  ArrowTopRightOnSquareIcon,
+  CalculatorIcon
 } from '@heroicons/react/24/outline';
 
 const Home: React.FC = () => {
@@ -15,12 +15,30 @@ const Home: React.FC = () => {
   const PlayerSeats = ['East', 'South', 'West', 'North'];
   
   // Memoize the API call function to prevent infinite loops
+  // Only fetch games if user is authenticated
   const getGames = React.useCallback(
-    (page: number, limit: number) => gamesApi.getGames(page, limit),
-    [] // No dependencies - gamesApi.getGames is stable
+    (page: number, limit: number) => {
+      if (!isAuthenticated) {
+        // Return empty data when not authenticated
+        return Promise.resolve({
+          success: true,
+          data: {
+            items: [],
+            pagination: {
+              page: 1,
+              limit: 10,
+              total: 0,
+              pages: 0
+            }
+          }
+        });
+      }
+      return gamesApi.getGames(page, limit);
+    },
+    [isAuthenticated]
   );
   
-  // Fetch recent games
+  // Fetch recent games (only when authenticated)
   const { data: games, loading: gamesLoading } = usePaginatedApi<Game>(
     getGames,
     1,
@@ -37,19 +55,19 @@ const Home: React.FC = () => {
       requiresAuth: false
     },
     {
+      name: 'Score a Hand',
+      description: 'Calculate the score for your Riichi Mahjong hand',
+      icon: CalculatorIcon,
+      href: '/calculator',
+      color: 'bg-red-500',
+      requiresAuth: false
+    },
+    {
       name: 'View Games',
       description: 'Browse all submitted games and see game history.',
       icon: ChartBarIcon,
       href: '/games',
       color: 'bg-green-500',
-      requiresAuth: true
-    },
-    {
-      name: 'Your Profile',
-      description: 'View your game history and statistics.',
-      icon: TrophyIcon,
-      href: '/profile',
-      color: 'bg-yellow-500',
       requiresAuth: true
     },
   ];
@@ -82,7 +100,7 @@ const Home: React.FC = () => {
                 </Link>
                 <Link
                   to="/profile"
-                  className="btn-secondary border-white text-white hover:bg-white hover:text-primary-600"
+                  className="btn-primary bg-white text-primary-600 hover:bg-gray-100"
                 >
                   View Profile
                 </Link>

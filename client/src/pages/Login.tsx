@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
@@ -14,6 +14,13 @@ const Login: React.FC = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  let redirectTo = searchParams.get('redirect');
+  
+  // Prevent redirect loops - if redirect points to login, default to home
+  if (redirectTo === '/login' || redirectTo?.startsWith('/login?')) {
+    redirectTo = null;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -29,7 +36,8 @@ const Login: React.FC = () => {
     
     try {
       await login(formData.email, formData.password);
-      navigate('/');
+      // Redirect to the specified page or home page
+      navigate(redirectTo || '/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -71,7 +79,7 @@ const Login: React.FC = () => {
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="email"
+                autoComplete="username"
                 required
                 className="input-field mt-1"
                 placeholder="Enter your email"
