@@ -42,10 +42,37 @@ const verifyConnection = async () => {
   }
 };
 
+// Generate email signature with opt-out information
+const getEmailSignature = (frontendUrl) => {
+  const profileUrl = `${frontendUrl}/profile`;
+  const currentYear = new Date().getFullYear();
+
+  const htmlSignature = `
+    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      <p style="text-align: center; color: #6b7280; font-size: 12px; margin: 10px 0;">
+        You can manage your email notification preferences by visiting your 
+        <a href="${profileUrl}" style="color: #2563eb; text-decoration: underline;">profile settings</a>.
+      </p>
+      <p style="text-align: center; color: #6b7280; font-size: 12px; margin: 0;">
+        © ${currentYear} Charleston Riichi Mahjong Club. All rights reserved.
+      </p>
+    </div>
+  `;
+
+  const textSignature = `
+You can manage your email notification preferences by visiting your profile settings: ${profileUrl}
+
+© ${currentYear} Charleston Riichi Mahjong Club. All rights reserved.
+  `;
+
+  return { html: htmlSignature, text: textSignature };
+};
+
 // Send password reset email
 const sendPasswordResetEmail = async (email, resetToken) => {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
   const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+  const signature = getEmailSignature(frontendUrl);
 
   const mailOptions = {
     from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mahjongclub.com',
@@ -86,9 +113,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
             </p>
           </div>
           
-          <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.</p>
-          </div>
+          ${signature.html}
         </body>
       </html>
     `,
@@ -106,7 +131,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
       
       If you didn't request a password reset, please ignore this email.
       
-      © ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.
+      ${signature.text}
     `
   };
 
@@ -144,6 +169,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
 const sendPasswordResetConfirmationEmail = async (email, displayName) => {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
   const loginUrl = `${frontendUrl}/login`;
+  const signature = getEmailSignature(frontendUrl);
 
   const mailOptions = {
     from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mahjongclub.com',
@@ -188,9 +214,7 @@ const sendPasswordResetConfirmationEmail = async (email, displayName) => {
             </p>
           </div>
           
-          <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.</p>
-          </div>
+          ${signature.html}
         </body>
       </html>
     `,
@@ -208,7 +232,7 @@ const sendPasswordResetConfirmationEmail = async (email, displayName) => {
       
       Tip: For your security, we recommend using a strong, unique password that you don't use for other accounts.
       
-      © ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.
+      ${signature.text}
     `
   };
 
@@ -246,6 +270,7 @@ const sendPasswordResetConfirmationEmail = async (email, displayName) => {
 const sendNewGameNotificationEmail = async (email, displayName, gameId, submittedByDisplayName) => {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
   const gameUrl = `${frontendUrl}/games/${gameId}`;
+  const signature = getEmailSignature(frontendUrl);
 
   const mailOptions = {
     from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mahjongclub.com',
@@ -293,9 +318,7 @@ const sendNewGameNotificationEmail = async (email, displayName, gameId, submitte
             </p>
           </div>
           
-          <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.</p>
-          </div>
+          ${signature.html}
         </body>
       </html>
     `,
@@ -313,7 +336,7 @@ const sendNewGameNotificationEmail = async (email, displayName, gameId, submitte
       
       Note: The game will remain pending until it is verified by a player who was not the submitter.
       
-      © ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.
+      ${signature.text}
     `
   };
 
@@ -351,6 +374,7 @@ const sendNewGameNotificationEmail = async (email, displayName, gameId, submitte
 const sendNewCommentNotificationEmail = async (email, displayName, gameId, commenterDisplayName, commentText) => {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
   const gameUrl = `${frontendUrl}/games/${gameId}`;
+  const signature = getEmailSignature(frontendUrl);
 
   // Truncate comment if too long for email
   const truncatedComment = commentText.length > 200 
@@ -396,9 +420,7 @@ const sendNewCommentNotificationEmail = async (email, displayName, gameId, comme
             <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${gameUrl}</p>
           </div>
           
-          <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-            <p>© ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.</p>
-          </div>
+          ${signature.html}
         </body>
       </html>
     `,
@@ -413,7 +435,7 @@ const sendNewCommentNotificationEmail = async (email, displayName, gameId, comme
       
       View game and comment: ${gameUrl}
       
-      © ${new Date().getFullYear()} Charleston Riichi Mahjong Club. All rights reserved.
+      ${signature.text}
     `
   };
 
