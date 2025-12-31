@@ -283,9 +283,8 @@ router.put('/:id/response', async (req, res) => {
     
     // Check if user already submitted a response for this tile
     const userIdString = userId.toString();
-    const alreadyResponded = currentResponses.some(
-      id => id.toString() === userIdString
-    );
+    var users = [...quiz.responses.values()].flat();
+    var alreadyResponded = users.some(id => id.toString() == userIdString);
 
     if (alreadyResponded) {
       return res.status(400).json({
@@ -294,9 +293,12 @@ router.put('/:id/response', async (req, res) => {
       });
     }
 
-    // Add user ID to the responses array for this tile
-    currentResponses.push(userId);
-    quiz.responses.set(tileId, currentResponses);
+    // Create a new array with the user ID added (don't mutate the existing array)
+    const updatedResponses = [...currentResponses, userId];
+    quiz.responses.set(tileId, updatedResponses);
+    
+    // Mark the responses Map as modified so Mongoose saves it
+    quiz.markModified('responses');
 
     await quiz.save();
 

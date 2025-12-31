@@ -32,7 +32,7 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
-    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, clubAffiliation } = req.body;
     const user = await User.findById(req.user._id);
 
     if (displayName !== undefined) {
@@ -70,6 +70,10 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
 
     if (favoriteYaku !== undefined) {
       user.favoriteYaku = favoriteYaku === '' || favoriteYaku === null ? null : favoriteYaku;
+    }
+
+    if (clubAffiliation !== undefined) {
+      user.clubAffiliation = clubAffiliation;
     }
 
     await user.save();

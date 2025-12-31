@@ -134,7 +134,15 @@ const DiscardQuizPage: React.FC = () => {
   };
 
   const handleTileNameClick = async (tileId: string) => {
-    if (!quiz || !quiz.responses[tileId]) return;
+    if (!quiz) return;
+
+    const responsesObj = quiz.responses instanceof Map 
+      ? Object.fromEntries(quiz.responses) 
+      : quiz.responses;
+    
+    if (!responsesObj[tileId] || !Array.isArray(responsesObj[tileId]) || responsesObj[tileId].length === 0) {
+      return;
+    }
 
     setSelectedTileForModal(tileId);
     setModalLoading(true);
@@ -142,8 +150,8 @@ const DiscardQuizPage: React.FC = () => {
 
     try {
       // Fetch all users who selected this tile
-      const userIds = quiz.responses[tileId];
-      const userPromises = userIds.map(userId => usersApi.getUser(userId));
+      const userIds = responsesObj[tileId];
+      const userPromises = userIds.map((userId: string) => usersApi.getUser(userId));
       const userResponses = await Promise.all(userPromises);
       const users = userResponses.map(response => response.data.user);
       setModalUsers(users);
@@ -196,8 +204,23 @@ const DiscardQuizPage: React.FC = () => {
       
       const response = await discardQuizzesApi.submitResponse(quiz.id, tileId);
       if (response.success) {
+        // Update quiz with the response data (includes all responses from all users)
         setQuiz(response.data.quiz);
         setHasResponded(true);
+        
+        // Reload the quiz after a short delay to ensure we get the latest responses
+        // from all users (in case others responded while we were submitting)
+        setTimeout(async () => {
+          try {
+            const reloadResponse = await discardQuizzesApi.getQuiz(quiz.id);
+            if (reloadResponse.success) {
+              setQuiz(reloadResponse.data.quiz);
+            }
+          } catch (reloadErr) {
+            // If reload fails, we still have the response data, so continue
+            console.warn('Failed to reload quiz after submission:', reloadErr);
+          }
+        }, 500);
       } else {
         setError('Failed to submit response');
         setSelectedTile(null);
@@ -214,9 +237,14 @@ const DiscardQuizPage: React.FC = () => {
   const calculatePercentages = () => {
     if (!quiz || !quiz.responses) return {};
 
+    // Ensure responses is an object (not a Map)
+    const responsesObj: Record<string, string[]> = quiz.responses instanceof Map 
+      ? Object.fromEntries(quiz.responses) 
+      : quiz.responses;
+
     // Count total responses
-    const totalResponses = Object.values(quiz.responses).reduce(
-      (sum, userIds) => sum + userIds.length,
+    const totalResponses = Object.values(responsesObj).reduce(
+      (sum: number, userIds: string[] | unknown) => sum + (Array.isArray(userIds) ? userIds.length : 0),
       0
     );
 
@@ -224,8 +252,10 @@ const DiscardQuizPage: React.FC = () => {
 
     // Calculate percentage for each tile
     const percentages: Record<string, number> = {};
-    for (const [tileId, userIds] of Object.entries(quiz.responses)) {
-      percentages[tileId] = (userIds.length / totalResponses) * 100;
+    for (const [tileId, userIds] of Object.entries(responsesObj)) {
+      if (Array.isArray(userIds)) {
+        percentages[tileId] = (userIds.length / totalResponses) * 100;
+      }
     }
 
     return percentages;
@@ -399,7 +429,12 @@ const DiscardQuizPage: React.FC = () => {
             {sortedHand.map((tile, index) => {
               const isSelected = selectedTile === tile.id;
               const percentage = percentages[tile.id] || 0;
-              const responseCount = quiz.responses[tile.id]?.length || 0;
+              const responsesObj = quiz.responses instanceof Map 
+                ? Object.fromEntries(quiz.responses) 
+                : quiz.responses;
+              const responseCount = Array.isArray(responsesObj[tile.id]) 
+                ? responsesObj[tile.id].length 
+                : 0;
 
               return (
                 <button
@@ -475,7 +510,14 @@ const DiscardQuizPage: React.FC = () => {
                           {percentage.toFixed(1)}%
                         </span>
                         <span className="text-xs text-gray-500">
-                          {quiz.responses[tileId]?.length || 0} votes
+                          {(() => {
+                            const responsesObj = quiz.responses instanceof Map 
+                              ? Object.fromEntries(quiz.responses) 
+                              : quiz.responses;
+                            return Array.isArray(responsesObj[tileId]) 
+                              ? responsesObj[tileId].length 
+                              : 0;
+                          })()} votes
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">

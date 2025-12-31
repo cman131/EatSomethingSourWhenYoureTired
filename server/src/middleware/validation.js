@@ -83,6 +83,11 @@ const validateUserUpdate = [
     .isIn([...getAllYaku(), null])
     .withMessage('Favorite Yaku must be a valid Yaku from the enum or null'),
   
+  body('clubAffiliation')
+    .optional()
+    .isIn(['Charleston', 'Charlotte', 'Washington D.C.'])
+    .withMessage('Club affiliation must be Charleston, Charlotte, or Washington D.C.'),
+  
   handleValidationErrors
 ];
 

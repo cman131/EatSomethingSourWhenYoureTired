@@ -11,7 +11,8 @@ const Register: React.FC = () => {
     confirmPassword: '',
     realName: '',
     discordName: '',
-    mahjongSoulName: ''
+    mahjongSoulName: '',
+    clubAffiliation: 'Charleston' as 'Charleston' | 'Charlotte' | 'Washington D.C.'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -21,7 +22,7 @@ const Register: React.FC = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -54,7 +55,8 @@ const Register: React.FC = () => {
         password: formData.password,
         realName: formData.realName.trim() || undefined,
         discordName: formData.discordName.trim() || undefined,
-        mahjongSoulName: formData.mahjongSoulName.trim() || undefined
+        mahjongSoulName: formData.mahjongSoulName.trim() || undefined,
+        clubAffiliation: formData.clubAffiliation
       });
       navigate('/');
     } catch (err) {
@@ -123,54 +125,6 @@ const Register: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
-
-            <div>
-              <label htmlFor="realName" className="block text-sm font-medium text-gray-700">
-                Real Name <span className="text-gray-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="realName"
-                name="realName"
-                type="text"
-                className="input-field mt-1"
-                placeholder="Your real name"
-                value={formData.realName}
-                onChange={handleChange}
-                maxLength={30}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="discordName" className="block text-sm font-medium text-gray-700">
-                Discord Name <span className="text-gray-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="discordName"
-                name="discordName"
-                type="text"
-                className="input-field mt-1"
-                placeholder="Your Discord username"
-                value={formData.discordName}
-                onChange={handleChange}
-                maxLength={30}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="mahjongSoulName" className="block text-sm font-medium text-gray-700">
-                Mahjong Soul Name <span className="text-gray-500 font-normal">(optional)</span>
-              </label>
-              <input
-                id="mahjongSoulName"
-                name="mahjongSoulName"
-                type="text"
-                className="input-field mt-1"
-                placeholder="Your Mahjong Soul username"
-                value={formData.mahjongSoulName}
-                onChange={handleChange}
-                maxLength={30}
-              />
-            </div>
             
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -230,6 +184,72 @@ const Register: React.FC = () => {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="clubAffiliation" className="block text-sm font-medium text-gray-700">
+                Club Affiliation
+              </label>
+              <select
+                id="clubAffiliation"
+                name="clubAffiliation"
+                required
+                className="input-field mt-1"
+                value={formData.clubAffiliation}
+                onChange={handleChange}
+              >
+                <option value="Charleston">Charleston</option>
+                <option value="Charlotte">Charlotte</option>
+                <option value="Washington D.C.">Washington D.C.</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="realName" className="block text-sm font-medium text-gray-700">
+                Real Name <span className="text-gray-500 font-normal">(optional)</span>
+              </label>
+              <input
+                id="realName"
+                name="realName"
+                type="text"
+                className="input-field mt-1"
+                placeholder="Your real name"
+                value={formData.realName}
+                onChange={handleChange}
+                maxLength={30}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="discordName" className="block text-sm font-medium text-gray-700">
+                Discord Name <span className="text-gray-500 font-normal">(optional)</span>
+              </label>
+              <input
+                id="discordName"
+                name="discordName"
+                type="text"
+                className="input-field mt-1"
+                placeholder="Your Discord username"
+                value={formData.discordName}
+                onChange={handleChange}
+                maxLength={30}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="mahjongSoulName" className="block text-sm font-medium text-gray-700">
+                Mahjong Soul Name <span className="text-gray-500 font-normal">(optional)</span>
+              </label>
+              <input
+                id="mahjongSoulName"
+                name="mahjongSoulName"
+                type="text"
+                className="input-field mt-1"
+                placeholder="Your Mahjong Soul username"
+                value={formData.mahjongSoulName}
+                onChange={handleChange}
+                maxLength={30}
+              />
             </div>
           </div>
 

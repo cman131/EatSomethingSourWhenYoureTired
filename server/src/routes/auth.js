@@ -16,7 +16,7 @@ const authLimiter = createRateLimit(15 * 60 * 1000, 15, 'Too many authentication
 // @access  Public
 router.post('/register', authLimiter, validateUserRegistration, async (req, res) => {
   try {
-    const { email, displayName, password, realName, discordName, mahjongSoulName } = req.body;
+    const { email, displayName, password, realName, discordName, mahjongSoulName, clubAffiliation } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -37,7 +37,8 @@ router.post('/register', authLimiter, validateUserRegistration, async (req, res)
       password,
       ...(realName && { realName }),
       ...(discordName && { discordName }),
-      ...(mahjongSoulName && { mahjongSoulName })
+      ...(mahjongSoulName && { mahjongSoulName }),
+      ...(clubAffiliation && { clubAffiliation })
     });
 
     await user.save();
