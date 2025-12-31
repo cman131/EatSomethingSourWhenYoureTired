@@ -93,6 +93,33 @@ export interface UserStats {
   commentsMade: number;
 }
 
+export interface AchievementRequirement {
+  type: string;
+  comparisonType: string;
+  requirementsValue: number;
+  isGrand?: boolean;
+}
+
+export interface Achievement {
+  _id: string;
+  name: string;
+  description: string;
+  icon: string;
+  requirements: AchievementRequirement[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UserAchievement {
+  achievement: Achievement;
+  earned: boolean;
+  requirementResults?: Array<{
+    requirement: AchievementRequirement;
+    met: boolean;
+  }>;
+  userStats?: Partial<UserStats>;
+}
+
 export interface DiscardQuiz {
   id: string;
   hand: Tile[];
@@ -386,6 +413,42 @@ export const discardQuizzesApi = {
       method: 'PUT',
       body: JSON.stringify({ tileId }),
     });
+  },
+};
+
+// Achievements API
+export const achievementsApi = {
+  getAchievements: async (page = 1, limit = 20) => {
+    return apiRequest<PaginatedResponse<Achievement>>(`/achievements?page=${page}&limit=${limit}`);
+  },
+
+  getUserAchievements: async (userId: string) => {
+    return apiRequest<ApiResponse<{
+      achievements: UserAchievement[];
+      earned: UserAchievement[];
+      unearned: UserAchievement[];
+      summary: {
+        total: number;
+        earned: number;
+        unearned: number;
+      };
+    }>>(`/achievements/user/${userId}`);
+  },
+
+  getGrandAchievementHolder: async (achievementIdentifier: string) => {
+    return apiRequest<ApiResponse<{
+      achievement: Achievement;
+      isGrand: boolean;
+      users: Array<{
+        user: User;
+        value: number;
+        stats: Partial<UserStats>;
+      }>;
+      targetValue?: number;
+      requirementType?: string;
+      count: number;
+      message?: string;
+    }>>(`/achievements/grand/${achievementIdentifier}`);
   },
 };
 

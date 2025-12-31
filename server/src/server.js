@@ -11,6 +11,7 @@ const userRoutes = require('./routes/users');
 const gameRoutes = require('./routes/games');
 const tileRoutes = require('./routes/tiles');
 const discardQuizRoutes = require('./routes/discardQuizzes');
+const achievementRoutes = require('./routes/achievements');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -61,6 +62,7 @@ app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/games', authenticateToken, gameRoutes);
 app.use('/api/tiles', authenticateToken, tileRoutes);
 app.use('/api/discard-quizzes', authenticateToken, discardQuizRoutes);
+app.use('/api/achievements', authenticateToken, achievementRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
