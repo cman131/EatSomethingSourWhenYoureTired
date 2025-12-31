@@ -7,14 +7,14 @@ import {
   ChartBarIcon,
   Bars3Icon,
   XMarkIcon,
-  ArrowTopRightOnSquareIcon,
-  LinkIcon,
   CalendarIcon,
   BookOpenIcon,
   UserGroupIcon,
   CalculatorIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  ShoppingBagIcon
 } from '@heroicons/react/24/outline';
+import { FaFacebook, FaInstagram, FaDiscord, FaMeetup } from 'react-icons/fa';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,10 +22,10 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLinksMenuOpen, setIsLinksMenuOpen] = useState(false);
-  const [isMobileLinksOpen, setIsMobileLinksOpen] = useState(false);
   const [isResourcesMenuOpen, setIsResourcesMenuOpen] = useState(false);
   const [isMobileResourcesOpen, setIsMobileResourcesOpen] = useState(false);
+  const [isCommunityMenuOpen, setIsCommunityMenuOpen] = useState(false);
+  const [isMobileCommunityOpen, setIsMobileCommunityOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
@@ -33,36 +33,37 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
     { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
-    ...(isAuthenticated ? [
-      { name: 'Games', href: '/games', icon: ChartBarIcon },
-    ] : []),
   ];
+
+  const communityLinks = isAuthenticated ? [
+    { name: 'Games', href: '/games', icon: ChartBarIcon },
+    { name: 'Members', href: '/members', icon: UserGroupIcon },
+  ] : [];
 
   const resourceLinks = [
     ...(isAuthenticated ? [
-      { name: 'Members', href: '/members', icon: UserGroupIcon },
       { name: 'Discard quiz', href: '/discard-quiz', icon: QuestionMarkCircleIcon },
     ] : []),
-    { name: 'Resource links', href: '/resources', icon: BookOpenIcon },
+    { name: 'Resources', href: '/resources', icon: BookOpenIcon },
   ];
 
   const externalLinks = [
-    { name: 'Merch Shop', href: 'https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club', icon: ArrowTopRightOnSquareIcon },
-    { name: 'Meetup', href: 'https://www.meetup.com/charleston-riichi-mahjong/', icon: ArrowTopRightOnSquareIcon },
-    { name: 'Discord Server', href: 'https://discord.gg/xhZtZZF3Jk', icon: ArrowTopRightOnSquareIcon },
-    { name: 'Instagram', href: 'https://www.instagram.com/charlestonriichimahjong/', icon: ArrowTopRightOnSquareIcon },
-    { name: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61559320292988', icon: ArrowTopRightOnSquareIcon },
-  ];
+    { name: 'Merch Shop', href: 'https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club', icon: ShoppingBagIcon },
+    { name: 'Meetup', href: 'https://www.meetup.com/charleston-riichi-mahjong/', icon: FaMeetup },
+    { name: 'Discord Server', href: 'https://discord.gg/xhZtZZF3Jk', icon: FaDiscord },
+    { name: 'Instagram', href: 'https://www.instagram.com/charlestonriichimahjong/', icon: FaInstagram },
+    { name: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61559320292988', icon: FaFacebook },
+  ] as const;
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  const isActive = (href: string) => location.pathname === href;
+  const isActive = (href: string) => location.pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -90,17 +91,60 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {item.name}
                   </Link>
                 ))}
-                {/* Resources Dropdown */}
+                {/* Community Dropdown - Only show when authenticated */}
+                {isAuthenticated && (
+                  <div
+                    className="relative inline-flex"
+                    onMouseEnter={() => setIsCommunityMenuOpen(true)}
+                    onMouseLeave={() => setIsCommunityMenuOpen(false)}
+                  >
+                    <button
+                      className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                        communityLinks.some(item => isActive(item.href))
+                          ? 'border-primary-500 text-gray-900'
+                          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                      }`}
+                    >
+                      <UserGroupIcon className="h-4 w-4 mr-2" />
+                      Community
+                    </button>
+                    {isCommunityMenuOpen && (
+                      <div className="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                        <div className="py-1">
+                          {communityLinks.map((item) => (
+                            <Link
+                              key={item.name}
+                              to={item.href}
+                              className={`flex items-center px-4 py-2 text-sm ${
+                                isActive(item.href)
+                                  ? 'bg-primary-50 text-primary-700'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              <item.icon className="h-4 w-4 mr-2" />
+                              {item.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Learning Dropdown */}
                 <div
                   className="relative inline-flex"
                   onMouseEnter={() => setIsResourcesMenuOpen(true)}
                   onMouseLeave={() => setIsResourcesMenuOpen(false)}
                 >
                   <button
-                    className="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-transparent text-gray-500 hover:text-gray-700"
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      resourceLinks.some(item => isActive(item.href))
+                        ? 'border-primary-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
                   >
                     <BookOpenIcon className="h-4 w-4 mr-2" />
-                    Resources
+                    Learning
                   </button>
                   {isResourcesMenuOpen && (
                     <div className="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
@@ -118,38 +162,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             <item.icon className="h-4 w-4 mr-2" />
                             {item.name}
                           </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {/* External Links Dropdown */}
-                <div
-                  className="relative inline-flex"
-                  onMouseEnter={() => setIsLinksMenuOpen(true)}
-                  onMouseLeave={() => setIsLinksMenuOpen(false)}
-                >
-                  <button
-                    className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700"
-                  >
-                    <LinkIcon className="h-4 w-4 mr-2" />
-                    Links
-                  </button>
-                  {isLinksMenuOpen && (
-                    <div className="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-                      <div className="py-1">
-                        {externalLinks.map((item) => (
-                          <a
-                            key={item.name}
-                            href={item.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={item.name}
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          >
-                            <item.icon className="h-4 w-4 mr-2" />
-                            {item.name}
-                          </a>
                         ))}
                       </div>
                     </div>
@@ -233,6 +245,51 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                 </Link>
               ))}
+              {/* Mobile Community Collapsible - Only show when authenticated */}
+              {isAuthenticated && (
+                <div>
+                  <button
+                    onClick={() => setIsMobileCommunityOpen(!isMobileCommunityOpen)}
+                    className={`block w-full text-left pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                      communityLinks.some(item => isActive(item.href))
+                        ? 'bg-primary-50 border-primary-500 text-primary-700'
+                        : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <UserGroupIcon className="h-5 w-5 mr-3" />
+                        Community
+                      </div>
+                      <span className="text-xs">{isMobileCommunityOpen ? '−' : '+'}</span>
+                    </div>
+                  </button>
+                  {isMobileCommunityOpen && (
+                    <div className="pl-6 space-y-1">
+                      {communityLinks.map((item) => (
+                        <Link
+                          key={item.name}
+                          to={item.href}
+                          className={`block pl-3 pr-4 py-2 border-l-4 text-sm font-medium ${
+                            isActive(item.href)
+                              ? 'bg-primary-50 border-primary-500 text-primary-700'
+                              : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                          }`}
+                          onClick={() => {
+                            setIsMobileMenuOpen(false);
+                            setIsMobileCommunityOpen(false);
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <item.icon className="h-4 w-4 mr-3" />
+                            {item.name}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Mobile Resources Collapsible */}
               <div>
                 <button
@@ -272,44 +329,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           {item.name}
                         </div>
                       </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* Mobile External Links Collapsible */}
-              <div>
-                <button
-                  onClick={() => setIsMobileLinksOpen(!isMobileLinksOpen)}
-                  className="block w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <LinkIcon className="h-5 w-5 mr-3" />
-                      Links
-                    </div>
-                    <span className="text-xs">{isMobileLinksOpen ? '−' : '+'}</span>
-                  </div>
-                </button>
-                {isMobileLinksOpen && (
-                  <div className="pl-6 space-y-1">
-                    {externalLinks.map((item) => (
-                      <a
-                        key={item.name}
-                        href={item.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        title={item.name}
-                        className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-sm font-medium text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                          setIsMobileLinksOpen(false);
-                        }}
-                      >
-                        <div className="flex items-center">
-                          <item.icon className="h-4 w-4 mr-3" />
-                          {item.name}
-                        </div>
-                      </a>
                     ))}
                   </div>
                 )}
@@ -361,9 +380,32 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full">
         {children}
       </main>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+            {externalLinks.map((item) => {
+              const IconComponent = item.icon as React.ComponentType<{ className?: string }>;
+              return (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  <IconComponent className="h-4 w-4 mr-2" />
+                  {item.name}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
