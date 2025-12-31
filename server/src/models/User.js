@@ -58,6 +58,12 @@ const userSchema = new mongoose.Schema({
     enum: [...getAllYaku(), null],
     default: null
   },
+  clubAffiliation: {
+    type: String,
+    required: [true, 'Club affiliation is required'],
+    enum: ['Charleston', 'Charlotte', 'Washington D.C.'],
+    default: 'Charleston'
+  },
   passwordResetToken: String,
   passwordResetExpires: Date,
   notificationPreferences: {

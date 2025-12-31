@@ -53,7 +53,8 @@ const Profile: React.FC = () => {
     realName: '',
     discordName: '',
     mahjongSoulName: '',
-    favoriteYaku: ''
+    favoriteYaku: '',
+    clubAffiliation: 'Charleston' as 'Charleston' | 'Charlotte' | 'Washington D.C.'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -308,6 +309,7 @@ const Profile: React.FC = () => {
         discordName: user.discordName || '',
         mahjongSoulName: user.mahjongSoulName || '',
         favoriteYaku: user.favoriteYaku || '',
+        clubAffiliation: (user.clubAffiliation || 'Charleston') as 'Charleston' | 'Charlotte' | 'Washington D.C.',
       });
     }
   }, [user, isEditing]);
@@ -335,6 +337,7 @@ const Profile: React.FC = () => {
         discordName: formData.discordName.trim(),
         mahjongSoulName: formData.mahjongSoulName.trim(),
         favoriteYaku: formData.favoriteYaku || null,
+        clubAffiliation: formData.clubAffiliation,
       });
       // Refresh profile user data to reflect the changes
       await refetchProfileUser();
@@ -358,7 +361,8 @@ const Profile: React.FC = () => {
       realName: user?.realName || '',
       discordName: user?.discordName || '',
       mahjongSoulName: user?.mahjongSoulName || '',
-      favoriteYaku: user?.favoriteYaku || ''
+      favoriteYaku: user?.favoriteYaku || '',
+      clubAffiliation: (user?.clubAffiliation || 'Charleston') as 'Charleston' | 'Charlotte' | 'Washington D.C.'
     });
     setError(null);
     setSuccess(false);
@@ -545,6 +549,23 @@ const Profile: React.FC = () => {
                     Select your favorite Yaku from the list
                   </p>
                 </div>
+                <div>
+                  <label htmlFor="clubAffiliation" className="block text-sm font-medium text-gray-700 mb-1">
+                    Club Affiliation
+                  </label>
+                  <select
+                    id="clubAffiliation"
+                    name="clubAffiliation"
+                    value={formData.clubAffiliation}
+                    onChange={handleChange}
+                    className="input-field"
+                    required
+                  >
+                    <option value="Charleston">Charleston</option>
+                    <option value="Charlotte">Charlotte</option>
+                    <option value="Washington D.C.">Washington D.C.</option>
+                  </select>
+                </div>
                 {isOwnProfile && (
                   <div>
                     <span className="text-sm font-medium text-gray-700">Email:</span>
@@ -601,7 +622,7 @@ const Profile: React.FC = () => {
             </div>
             
             {/* Other Information */}
-            {(user?.realName || user?.discordName || user?.mahjongSoulName || user?.favoriteYaku || (isOwnProfile && user?.email)) && (
+            {(user?.realName || user?.discordName || user?.mahjongSoulName || user?.favoriteYaku || user?.clubAffiliation || (isOwnProfile && user?.email)) && (
               <div className="space-y-2 pt-2 border-t border-gray-200">
                 {user?.realName && (
                   <div>
@@ -625,6 +646,12 @@ const Profile: React.FC = () => {
                   <div>
                     <span className="text-sm font-medium text-gray-700">Favorite Yaku:</span>
                     <span className="ml-2 text-gray-900">{user.favoriteYaku}</span>
+                  </div>
+                )}
+                {user?.clubAffiliation && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Club Affiliation:</span>
+                    <span className="ml-2 text-gray-900">{user.clubAffiliation}</span>
                   </div>
                 )}
                 {isOwnProfile && user?.email && (

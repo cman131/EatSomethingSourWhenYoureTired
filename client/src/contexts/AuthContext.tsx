@@ -14,6 +14,7 @@ interface AuthContextType {
     realName?: string;
     discordName?: string;
     mahjongSoulName?: string;
+    clubAffiliation?: 'Charleston' | 'Charlotte' | 'Washington D.C.';
   }) => Promise<void>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
@@ -83,6 +84,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     realName?: string;
     discordName?: string;
     mahjongSoulName?: string;
+    clubAffiliation?: 'Charleston' | 'Charlotte' | 'Washington D.C.';
   }) => {
     try {
       const response = await authApi.register(userData);

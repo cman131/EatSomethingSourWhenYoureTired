@@ -27,6 +27,7 @@ export interface User {
   discordName?: string;
   mahjongSoulName?: string;
   favoriteYaku?: string | null;
+  clubAffiliation?: 'Charleston' | 'Charlotte' | 'Washington D.C.';
   notifications?: Notification[];
   notificationPreferences?: NotificationPreferences;
 }
@@ -241,6 +242,7 @@ export const authApi = {
     realName?: string;
     discordName?: string;
     mahjongSoulName?: string;
+    clubAffiliation?: 'Charleston' | 'Charlotte' | 'Washington D.C.';
   }) => {
     return apiRequest<ApiResponse<{ user: User; token: string }>>('/auth/register', {
       method: 'POST',

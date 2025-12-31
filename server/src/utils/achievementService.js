@@ -359,11 +359,10 @@ function evaluateRequirement(requirement, userStats, leaderboard, userId, allReq
       // For <= 2, check if user has enough games in positions 1 or 2
       if (comparisonType === '<=') {
         // Count games where user finished in position <= requirementsValue
-        let count = 0;
+        userValue = 0;
         userStats.userGameData.forEach(g => {
-          if (g.position <= requirementsValue) count++;
+          if (g.position <= requirementsValue) userValue++;
         });
-        userValue = count;
       } else if (comparisonType === '=') {
         // Count games in specific position (usually 4 for last place)
         userValue = userStats.positionCounts[requirementsValue] || 0;

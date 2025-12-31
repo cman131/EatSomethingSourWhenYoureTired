@@ -290,17 +290,6 @@ const achievements = [
     }],
     icon: '😅'
   },
-  {
-    name: 'Grand Turtle',
-    description: 'Scored the least points',
-    requirements: [{
-      type: 'ScoredPoints',
-      comparisonType: '<=',
-      requirementsValue: 25000,
-      isGrand: true
-    }],
-    icon: '🐢'
-  },
 
   // Position Achievements
   {
