@@ -31,7 +31,7 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
-    const { displayName, avatar, realName, discordName, mahjongSoulName } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku } = req.body;
     const user = await User.findById(req.user._id);
 
     if (displayName !== undefined) {
@@ -65,6 +65,10 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
 
     if (mahjongSoulName !== undefined) {
       user.mahjongSoulName = mahjongSoulName.trim() === '' ? null : mahjongSoulName.trim();
+    }
+
+    if (favoriteYaku !== undefined) {
+      user.favoriteYaku = favoriteYaku === '' || favoriteYaku === null ? null : favoriteYaku;
     }
 
     await user.save();
@@ -146,7 +150,7 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const users = await User.find()
-      .select('displayName avatar realName discordName mahjongSoulName')
+      .select('displayName avatar realName discordName mahjongSoulName favoriteYaku')
       .sort({ displayName: 1 })
       .skip(skip)
       .limit(limit);

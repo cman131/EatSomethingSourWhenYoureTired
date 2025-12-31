@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi, useApi } from '../hooks/useApi';
-import { usersApi, Game, UserStats, User, NotificationPreferences } from '../services/api';
+import { usersApi, Game, UserStats, User, NotificationPreferences, YAKU_LIST } from '../services/api';
 import NotificationPreferencesModal from '../components/NotificationPreferencesModal';
 import { Link } from 'react-router-dom';
 import { PencilIcon, XMarkIcon, CheckIcon, BellIcon } from '@heroicons/react/24/outline';
@@ -37,20 +37,22 @@ const Profile: React.FC = () => {
     [profileUserId, isOwnProfile, currentUser]
   );
 
-  const { data: profileUser, loading: profileUserLoading } = useApi<User>(
+  const { data: profileUser, loading: profileUserLoading, refetch: refetchProfileUser } = useApi<User>(
     getProfileUser,
     [profileUserId, isOwnProfile, currentUser?._id]
   );
 
   // Use profile user for display, fallback to current user
-  const user = profileUser || (isOwnProfile ? currentUser : null);
+  // When viewing own profile, prioritize currentUser to ensure we have the latest data
+  const user = (isOwnProfile && currentUser) ? currentUser : (profileUser || null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ 
     displayName: '', 
     avatar: '',
     realName: '',
     discordName: '',
-    mahjongSoulName: ''
+    mahjongSoulName: '',
+    favoriteYaku: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,24 @@ const Profile: React.FC = () => {
 
   const { data: recentGames, loading: recentGamesLoading } = useApi<Game[]>(
     getRecentGames,
+    [profileUserId]
+  );
+
+  // Fetch all games for calculating most played with players
+  const getAllGames = React.useCallback(
+    async () => {
+      if (!profileUserId) {
+        return Promise.reject(new Error('User not available'));
+      }
+      // Fetch a large number of games to get accurate statistics
+      const response = await usersApi.getUserGames(profileUserId, 1, 1000);
+      return response.data.items;
+    },
+    [profileUserId]
+  );
+
+  const { data: allGames, loading: allGamesLoading } = useApi<Game[]>(
+    getAllGames,
     [profileUserId]
   );
 
@@ -150,6 +170,130 @@ const Profile: React.FC = () => {
     lowestScore: 0,
   };
 
+  // Calculate most played with players
+  const mostPlayedWith = useMemo(() => {
+    if (!allGames || !profileUserId || allGames.length === 0) {
+      return [];
+    }
+
+    // Map to track player counts and their most recent game date
+    const playerCounts = new Map<string, { count: number; mostRecentDate: Date; player: User }>();
+
+    allGames.forEach((game) => {
+      const gameDate = new Date(game.gameDate);
+      // Find other players in this game (exclude the profile user)
+      game.players.forEach((gamePlayer) => {
+        if (gamePlayer.player._id !== profileUserId) {
+          const playerId = gamePlayer.player._id;
+          const existing = playerCounts.get(playerId);
+          
+          if (existing) {
+            existing.count += 1;
+            // Update most recent date if this game is more recent
+            if (gameDate > existing.mostRecentDate) {
+              existing.mostRecentDate = gameDate;
+            }
+          } else {
+            playerCounts.set(playerId, {
+              count: 1,
+              mostRecentDate: gameDate,
+              player: gamePlayer.player,
+            });
+          }
+        }
+      });
+    });
+
+    // Convert to array and sort by count (descending), then by most recent date (descending)
+    const sorted = Array.from(playerCounts.values()).sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count; // Higher count first
+      }
+      return b.mostRecentDate.getTime() - a.mostRecentDate.getTime(); // More recent first
+    });
+
+    // If there are ties at the top, limit to most recent 3
+    if (sorted.length > 0) {
+      const topCount = sorted[0].count;
+      const tiedPlayers = sorted.filter(p => p.count === topCount);
+      
+      if (tiedPlayers.length > 3) {
+        // Return the 3 most recent from the tied players
+        return tiedPlayers.slice(0, 3).map(p => p.player);
+      } else {
+        // Return all tied players (up to 3)
+        return tiedPlayers.map(p => p.player);
+      }
+    }
+
+    return [];
+  }, [allGames, profileUserId]);
+
+  // Calculate head-to-head statistics
+  const headToHeadStats = useMemo(() => {
+    if (!allGames || !currentUser || !profileUserId || isOwnProfile) {
+      return null;
+    }
+
+    // Find games where both players participated
+    const gamesTogether = allGames.filter((game) => {
+      const hasCurrentUser = game.players.some(p => p.player._id === currentUser._id);
+      const hasProfileUser = game.players.some(p => p.player._id === profileUserId);
+      return hasCurrentUser && hasProfileUser;
+    });
+
+    if (gamesTogether.length === 0) {
+      return { gamesTogether: 0 };
+    }
+
+    let currentUserWins = 0;
+    let profileUserWins = 0;
+    let currentUserTotalScore = 0;
+    let profileUserTotalScore = 0;
+    let currentUserRankings: number[] = [];
+    let profileUserRankings: number[] = [];
+
+    gamesTogether.forEach((game) => {
+      // Sort players by score to determine ranking
+      const sortedPlayers = [...game.players].sort((a, b) => b.score - a.score);
+      
+      const currentUserPlayer = game.players.find(p => p.player._id === currentUser._id);
+      const profileUserPlayer = game.players.find(p => p.player._id === profileUserId);
+
+      if (currentUserPlayer && profileUserPlayer) {
+        // Compare scores
+        if (currentUserPlayer.score > profileUserPlayer.score) {
+          currentUserWins += 1;
+        } else if (profileUserPlayer.score > currentUserPlayer.score) {
+          profileUserWins += 1;
+        }
+
+        // Accumulate scores
+        currentUserTotalScore += currentUserPlayer.score;
+        profileUserTotalScore += profileUserPlayer.score;
+
+        // Get rankings
+        const currentUserRank = sortedPlayers.findIndex(p => p.player._id === currentUser._id) + 1;
+        const profileUserRank = sortedPlayers.findIndex(p => p.player._id === profileUserId) + 1;
+        currentUserRankings.push(currentUserRank);
+        profileUserRankings.push(profileUserRank);
+      }
+    });
+
+    const averageScoreDiff = (currentUserTotalScore - profileUserTotalScore) / gamesTogether.length;
+    const currentUserAvgRank = currentUserRankings.reduce((a, b) => a + b, 0) / currentUserRankings.length;
+    const profileUserAvgRank = profileUserRankings.reduce((a, b) => a + b, 0) / profileUserRankings.length;
+
+    return {
+      gamesTogether: gamesTogether.length,
+      currentUserWins,
+      profileUserWins,
+      averageScoreDiff,
+      currentUserAvgRank,
+      profileUserAvgRank,
+    };
+  }, [allGames, currentUser, profileUserId, isOwnProfile]);
+
   // Initialize form data when user changes or edit mode is enabled
   React.useEffect(() => {
     if (user && isEditing) {
@@ -159,12 +303,13 @@ const Profile: React.FC = () => {
         realName: user.realName || '',
         discordName: user.discordName || '',
         mahjongSoulName: user.mahjongSoulName || '',
+        favoriteYaku: user.favoriteYaku || '',
       });
     }
   }, [user, isEditing]);
 
   // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError(null);
@@ -185,7 +330,10 @@ const Profile: React.FC = () => {
         realName: formData.realName.trim(),
         discordName: formData.discordName.trim(),
         mahjongSoulName: formData.mahjongSoulName.trim(),
+        favoriteYaku: formData.favoriteYaku || null,
       });
+      // Refresh profile user data to reflect the changes
+      await refetchProfileUser();
       setSuccess(true);
       setIsEditing(false);
       // Clear success message after 3 seconds
@@ -205,7 +353,8 @@ const Profile: React.FC = () => {
       avatar: user?.avatar || '',
       realName: user?.realName || '',
       discordName: user?.discordName || '',
-      mahjongSoulName: user?.mahjongSoulName || ''
+      mahjongSoulName: user?.mahjongSoulName || '',
+      favoriteYaku: user?.favoriteYaku || ''
     });
     setError(null);
     setSuccess(false);
@@ -370,6 +519,28 @@ const Profile: React.FC = () => {
                     placeholder="Your Mahjong Soul username (optional)"
                   />
                 </div>
+                <div>
+                  <label htmlFor="favoriteYaku" className="block text-sm font-medium text-gray-700 mb-1">
+                    Favorite Yaku
+                  </label>
+                  <select
+                    id="favoriteYaku"
+                    name="favoriteYaku"
+                    value={formData.favoriteYaku}
+                    onChange={handleChange}
+                    className="input-field"
+                  >
+                    <option value="">None (optional)</option>
+                    {YAKU_LIST.map((yaku) => (
+                      <option key={yaku} value={yaku}>
+                        {yaku}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Select your favorite Yaku from the list
+                  </p>
+                </div>
                 {isOwnProfile && (
                   <div>
                     <span className="text-sm font-medium text-gray-700">Email:</span>
@@ -426,7 +597,7 @@ const Profile: React.FC = () => {
             </div>
             
             {/* Other Information */}
-            {(user?.realName || user?.discordName || user?.mahjongSoulName || (isOwnProfile && user?.email)) && (
+            {(user?.realName || user?.discordName || user?.mahjongSoulName || user?.favoriteYaku || (isOwnProfile && user?.email)) && (
               <div className="space-y-2 pt-2 border-t border-gray-200">
                 {user?.realName && (
                   <div>
@@ -446,6 +617,12 @@ const Profile: React.FC = () => {
                     <span className="ml-2 text-gray-900">{user.mahjongSoulName}</span>
                   </div>
                 )}
+                {user?.favoriteYaku && (
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Favorite Yaku:</span>
+                    <span className="ml-2 text-gray-900">{user.favoriteYaku}</span>
+                  </div>
+                )}
                 {isOwnProfile && user?.email && (
                   <div>
                     <span className="text-sm font-medium text-gray-700">Email:</span>
@@ -457,6 +634,68 @@ const Profile: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Head-to-Head Statistics */}
+      {!isOwnProfile && currentUser && (
+        <div className="card">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Head-to-Head: You vs {user?.displayName}
+          </h2>
+          {allGamesLoading ? (
+            <p className="text-gray-500 text-center py-4">Loading head-to-head statistics...</p>
+          ) : headToHeadStats && headToHeadStats.gamesTogether > 0 && 'averageScoreDiff' in headToHeadStats ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600 mb-2">
+                  {headToHeadStats.gamesTogether}
+                </div>
+                <div className="text-sm text-gray-600">Games Together</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600 mb-2">
+                  {headToHeadStats.currentUserWins}
+                </div>
+                <div className="text-sm text-gray-600">Your Wins</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-red-600 mb-2">
+                  {headToHeadStats.profileUserWins}
+                </div>
+                <div className="text-sm text-gray-600">{user?.displayName}'s Wins</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-3xl font-bold mb-2 ${
+                  headToHeadStats.averageScoreDiff! > 0 ? 'text-green-600' : 
+                  headToHeadStats.averageScoreDiff! < 0 ? 'text-red-600' : 
+                  'text-gray-600'
+                }`}>
+                  {headToHeadStats.averageScoreDiff! > 0 ? '+' : ''}
+                  {headToHeadStats.averageScoreDiff!.toFixed(0)}
+                </div>
+                <div className="text-sm text-gray-600">Avg Score Difference</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600 mb-2">
+                  {headToHeadStats.currentUserAvgRank!.toFixed(1)}
+                </div>
+                <div className="text-sm text-gray-600">Your Avg Ranking</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-orange-600 mb-2">
+                  {headToHeadStats.profileUserAvgRank!.toFixed(1)}
+                </div>
+                <div className="text-sm text-gray-600">{user?.displayName}'s Avg Ranking</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">
+                No game history between you and {user?.displayName}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Statistics */}
       <div className="card">
@@ -488,6 +727,37 @@ const Profile: React.FC = () => {
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600 mb-2">{statsData.lowestScore}</div>
               <div className="text-sm text-gray-600">Lowest Score</div>
+            </div>
+            {/* Most Played With */}
+            <div className="text-center md:col-span-3">
+              <div className="text-sm font-medium text-gray-700 mb-2">Most Played With</div>
+              {allGamesLoading ? (
+                <div className="text-sm text-gray-500">Loading...</div>
+              ) : mostPlayedWith.length > 0 ? (
+                <div className="flex flex-wrap justify-center items-center gap-3">
+                  {mostPlayedWith.map((player, index) => (
+                    <Link
+                      key={player._id}
+                      to={`/profile/${player._id}`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    >
+                      {player.avatar && (
+                        <img
+                          src={player.avatar}
+                          alt={player.displayName}
+                          className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span className="text-sm font-medium text-gray-900">{player.displayName}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">No games played yet</div>
+              )}
             </div>
           </div>
         )}

@@ -26,6 +26,7 @@ export interface User {
   realName?: string;
   discordName?: string;
   mahjongSoulName?: string;
+  favoriteYaku?: string | null;
   notifications?: Notification[];
   notificationPreferences?: NotificationPreferences;
 }
@@ -88,6 +89,55 @@ export interface UserStats {
   highestScore: number;
   lowestScore: number;
 }
+
+// Yaku list matching server-side enum
+export const YAKU_LIST = [
+  'Riichi',
+  'All Simples',
+  'Fully Concealed Hand',
+  'Yakuhai Seat Wind',
+  'Yakuhai Prevalent Wind',
+  'Yakuhai Dragons',
+  'Pinfu',
+  'Pure Double Sequence',
+  'Robbing a Kan',
+  'After a Kan',
+  'Under the Sea',
+  'Under the River',
+  'Ippatsu',
+  'Double Riichi',
+  'Mixed Triple Triplets',
+  'Three Quads',
+  'All Triplets',
+  'Three Concealed Triplets',
+  'Little Three Dragons',
+  'All Terminals and Honors',
+  'Seven Pairs',
+  'Half Outside Hand',
+  'Pure Straight',
+  'Mixed Triple Sequence',
+  'Half Flush',
+  'Twice Pure Double Sequence',
+  'Full Outside Hand',
+  'Mangan at Draw',
+  'Full Flush',
+  'Counted Yakuman',
+  'All Terminals',
+  'Thirteen Orphans',
+  'Little Four Winds',
+  'Four Quads',
+  'Nine Gates',
+  'Blessing of Heaven',
+  'Blessing of Earth',
+  'Big Three Dragons',
+  'Four Concealed Triplets',
+  'All Honors',
+  'All Green',
+  'Four Concealed Triplets Single Wait',
+  'Thirteen Orphans 13-Way Wait',
+  'True Nine Gates',
+  'Big Four Winds',
+];
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
