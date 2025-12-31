@@ -79,9 +79,9 @@ const validateUserUpdate = [
     .withMessage('Mahjong Soul name cannot be more than 30 characters'),
   
   body('favoriteYaku')
-    .optional()
-    .isIn(getAllYaku())
-    .withMessage('Favorite Yaku must be a valid Yaku from the enum'),
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn([...getAllYaku(), null])
+    .withMessage('Favorite Yaku must be a valid Yaku from the enum or null'),
   
   handleValidationErrors
 ];

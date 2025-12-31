@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { Yaku, getAllYaku } = require('./Yaku');
+const { getAllYaku } = require('./Yaku');
 
 const userSchema = new mongoose.Schema({
   isAdmin: {
@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema({
   },
   favoriteYaku: {
     type: String,
-    enum: getAllYaku(),
+    enum: [...getAllYaku(), null],
     default: null
   },
   passwordResetToken: String,
