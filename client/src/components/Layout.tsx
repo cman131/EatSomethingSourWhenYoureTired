@@ -12,7 +12,8 @@ import {
   UserGroupIcon,
   CalculatorIcon,
   QuestionMarkCircleIcon,
-  ShoppingBagIcon
+  ShoppingBagIcon,
+  TrophyIcon
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup } from 'react-icons/fa';
 
@@ -38,6 +39,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const communityLinks = isAuthenticated ? [
     { name: 'Games', href: '/games', icon: ChartBarIcon },
     { name: 'Members', href: '/members', icon: UserGroupIcon },
+    { name: 'Achievements', href: '/achievements', icon: TrophyIcon },
   ] : [];
 
   const resourceLinks = [

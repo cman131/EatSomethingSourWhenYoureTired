@@ -4,6 +4,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi, useApi } from '../hooks/useApi';
 import { usersApi, Game, UserStats, User, NotificationPreferences, YAKU_LIST } from '../services/api';
+import AchievementsSection from '../components/AchievementsSection';
 import NotificationPreferencesModal from '../components/NotificationPreferencesModal';
 import { Link } from 'react-router-dom';
 import { PencilIcon, XMarkIcon, CheckIcon, BellIcon } from '@heroicons/react/24/outline';
@@ -699,6 +700,9 @@ const Profile: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Achievements */}
+      {profileUserId && <AchievementsSection userId={profileUserId} />}
 
       {/* Statistics */}
       <div className="card">

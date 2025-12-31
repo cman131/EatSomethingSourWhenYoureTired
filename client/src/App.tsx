@@ -13,6 +13,7 @@ import GamesList from './pages/GamesList';
 import GameDetail from './pages/GameDetail';
 import Resources from './pages/Resources';
 import MembersList from './pages/MembersList';
+import AchievementsList from './pages/AchievementsList';
 import ScoreCalculator from './pages/ScoreCalculator';
 import DiscardQuiz from './pages/DiscardQuiz';
 
@@ -33,6 +34,7 @@ function App() {
             <Route path="/games" element={<GamesList />} />
             <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/members" element={<MembersList />} />
+            <Route path="/achievements" element={<AchievementsList />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/calculator" element={<ScoreCalculator />} />
             <Route path="/discard-quiz/:discardQuizId" element={<DiscardQuiz />} />

@@ -110,10 +110,10 @@ const achievements = [
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
-      requirementsValue: 30,
+      requirementsValue: 8,
       isGrand: true
     }],
-    icon: '👑'
+    icon: '🎮'
   },
 
   // Victory Achievements
@@ -173,7 +173,7 @@ const achievements = [
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
-      requirementsValue: 20,
+      requirementsValue: 6,
       isGrand: true
     }],
     icon: '🏆'
@@ -219,7 +219,7 @@ const achievements = [
       requirementsValue: 3,
       isGrand: true
     }],
-    icon: '🏆'
+    icon: '📈'
   },
 
   // High Scores
@@ -272,7 +272,7 @@ const achievements = [
       requirementsValue: 30000,
       isGrand: true
     }],
-    icon: '🏆'
+    icon: '💯'
   },
 
   // Low Scores (for fun)
@@ -351,7 +351,7 @@ const achievements = [
     requirements: [{
       type: 'ConsecutivePlayedGames',
       comparisonType: '>=',
-      requirementsValue: 20,
+      requirementsValue: 3,
       isGrand: true
     }, {
       type: 'Position',
@@ -366,7 +366,7 @@ const achievements = [
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
-      requirementsValue: 20
+      requirementsValue: 8
     }, {
       type: 'Position',
       comparisonType: '=',
@@ -443,7 +443,7 @@ const achievements = [
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
-      requirementsValue: 30,
+      requirementsValue: 8,
       isGrand: true
     }],
     icon: '🤓'
@@ -570,7 +570,7 @@ const achievements = [
     requirements: [{
       type: 'ConsecutivePlayedDays',
       comparisonType: '>=',
-      requirementsValue: 7,
+      requirementsValue: 3,
       isGrand: true
     }],
     icon: '🗓️'
@@ -636,7 +636,7 @@ const achievements = [
     requirements: [{
       type: 'GamesInADay',
       comparisonType: '>=',
-      requirementsValue: 5,
+      requirementsValue: 4,
       isGrand: true
     }],
     icon: '🏃‍♂️'
