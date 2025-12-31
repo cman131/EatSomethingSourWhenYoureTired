@@ -26,6 +26,7 @@ export interface User {
   realName?: string;
   discordName?: string;
   mahjongSoulName?: string;
+  favoriteYaku?: string | null;
   notifications?: Notification[];
   notificationPreferences?: NotificationPreferences;
 }
@@ -81,13 +82,83 @@ export interface PaginationData {
 }
 
 export interface UserStats {
+  gamesWon: number;
   gamesVerified: number;
   gamesSubmitted: number;
   gamesPlayed: number;
   averageScore: number;
   highestScore: number;
   lowestScore: number;
+  quizzesRespondedTo: number;
+  commentsMade: number;
 }
+
+export interface DiscardQuiz {
+  id: string;
+  hand: Tile[];
+  doraIndicator: Tile;
+  seat: 'E' | 'S' | 'W' | 'N';
+  roundWind: 'E' | 'S';
+  responses: Record<string, string[]>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Tile {
+  _id: string;
+  id: string;
+  name: string;
+  suit: 'Man' | 'Sou' | 'Pin' | 'Wind' | 'Dragon';
+}
+
+// Yaku list matching server-side enum
+export const YAKU_LIST = [
+  'Riichi',
+  'All Simples',
+  'Fully Concealed Hand',
+  'Yakuhai Seat Wind',
+  'Yakuhai Prevalent Wind',
+  'Yakuhai Dragons',
+  'Pinfu',
+  'Pure Double Sequence',
+  'Robbing a Kan',
+  'After a Kan',
+  'Under the Sea',
+  'Under the River',
+  'Ippatsu',
+  'Double Riichi',
+  'Mixed Triple Triplets',
+  'Three Quads',
+  'All Triplets',
+  'Three Concealed Triplets',
+  'Little Three Dragons',
+  'All Terminals and Honors',
+  'Seven Pairs',
+  'Half Outside Hand',
+  'Pure Straight',
+  'Mixed Triple Sequence',
+  'Half Flush',
+  'Twice Pure Double Sequence',
+  'Full Outside Hand',
+  'Mangan at Draw',
+  'Full Flush',
+  'Counted Yakuman',
+  'All Terminals',
+  'Thirteen Orphans',
+  'Little Four Winds',
+  'Four Quads',
+  'Nine Gates',
+  'Blessing of Heaven',
+  'Blessing of Earth',
+  'Big Three Dragons',
+  'Four Concealed Triplets',
+  'All Honors',
+  'All Green',
+  'Four Concealed Triplets Single Wait',
+  'Thirteen Orphans 13-Way Wait',
+  'True Nine Gates',
+  'Big Four Winds',
+];
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
@@ -289,6 +360,31 @@ export const gamesApi = {
     return apiRequest<ApiResponse<{ game: Game }>>(`/games/${gameId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ comment }),
+    });
+  },
+};
+
+// Tiles API
+export const tilesApi = {
+  getTiles: async () => {
+    return apiRequest<ApiResponse<{ tiles: Tile[] }>>('/tiles');
+  },
+};
+
+// Discard Quizzes API
+export const discardQuizzesApi = {
+  getQuiz: async (quizId: string) => {
+    return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>(`/discard-quizzes/${quizId}`);
+  },
+
+  generateRandomQuiz: async () => {
+    return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>('/discard-quizzes/generate/random');
+  },
+
+  submitResponse: async (quizId: string, tileId: string) => {
+    return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>(`/discard-quizzes/${quizId}/response`, {
+      method: 'PUT',
+      body: JSON.stringify({ tileId }),
     });
   },
 };

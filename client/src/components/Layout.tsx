@@ -12,7 +12,8 @@ import {
   CalendarIcon,
   BookOpenIcon,
   UserGroupIcon,
-  CalculatorIcon
+  CalculatorIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface LayoutProps {
@@ -23,18 +24,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLinksMenuOpen, setIsLinksMenuOpen] = useState(false);
   const [isMobileLinksOpen, setIsMobileLinksOpen] = useState(false);
+  const [isResourcesMenuOpen, setIsResourcesMenuOpen] = useState(false);
+  const [isMobileResourcesOpen, setIsMobileResourcesOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
 
   const navigation = [
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
+    { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
     ...(isAuthenticated ? [
       { name: 'Games', href: '/games', icon: ChartBarIcon },
-      { name: 'Members', href: '/members', icon: UserGroupIcon }
     ] : []),
-    { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
-    { name: 'Resources', href: '/resources', icon: BookOpenIcon },
+  ];
+
+  const resourceLinks = [
+    ...(isAuthenticated ? [
+      { name: 'Members', href: '/members', icon: UserGroupIcon },
+      { name: 'Discard quiz', href: '/discard-quiz', icon: QuestionMarkCircleIcon },
+    ] : []),
+    { name: 'Resource links', href: '/resources', icon: BookOpenIcon },
   ];
 
   const externalLinks = [
@@ -81,6 +90,39 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {item.name}
                   </Link>
                 ))}
+                {/* Resources Dropdown */}
+                <div
+                  className="relative inline-flex"
+                  onMouseEnter={() => setIsResourcesMenuOpen(true)}
+                  onMouseLeave={() => setIsResourcesMenuOpen(false)}
+                >
+                  <button
+                    className="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium border-transparent text-gray-500 hover:text-gray-700"
+                  >
+                    <BookOpenIcon className="h-4 w-4 mr-2" />
+                    Resources
+                  </button>
+                  {isResourcesMenuOpen && (
+                    <div className="absolute top-full left-0 mt-0 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                      <div className="py-1">
+                        {resourceLinks.map((item) => (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            className={`flex items-center px-4 py-2 text-sm ${
+                              isActive(item.href)
+                                ? 'bg-primary-50 text-primary-700'
+                                : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            <item.icon className="h-4 w-4 mr-2" />
+                            {item.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {/* External Links Dropdown */}
                 <div
                   className="relative inline-flex"
@@ -191,6 +233,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                 </Link>
               ))}
+              {/* Mobile Resources Collapsible */}
+              <div>
+                <button
+                  onClick={() => setIsMobileResourcesOpen(!isMobileResourcesOpen)}
+                  className={`block w-full text-left pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
+                    resourceLinks.some(item => isActive(item.href))
+                      ? 'bg-primary-50 border-primary-500 text-primary-700'
+                      : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <BookOpenIcon className="h-5 w-5 mr-3" />
+                      Resources
+                    </div>
+                    <span className="text-xs">{isMobileResourcesOpen ? '−' : '+'}</span>
+                  </div>
+                </button>
+                {isMobileResourcesOpen && (
+                  <div className="pl-6 space-y-1">
+                    {resourceLinks.map((item) => (
+                      <Link
+                        key={item.name}
+                        to={item.href}
+                        className={`block pl-3 pr-4 py-2 border-l-4 text-sm font-medium ${
+                          isActive(item.href)
+                            ? 'bg-primary-50 border-primary-500 text-primary-700'
+                            : 'border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700'
+                        }`}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          setIsMobileResourcesOpen(false);
+                        }}
+                      >
+                        <div className="flex items-center">
+                          <item.icon className="h-4 w-4 mr-3" />
+                          {item.name}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
               {/* Mobile External Links Collapsible */}
               <div>
                 <button
@@ -231,9 +316,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
               {isAuthenticated ? (
                 <>
-                  <div className="pl-3 pr-4 py-2">
-                    <NotificationDropdown />
-                  </div>
+                  <NotificationDropdown mobile />
                   <Link
                     to="/profile"
                     className="block pl-3 pr-4 py-2 border-l-4 border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"

@@ -9,6 +9,8 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const gameRoutes = require('./routes/games');
+const tileRoutes = require('./routes/tiles');
+const discardQuizRoutes = require('./routes/discardQuizzes');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -57,6 +59,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/games', authenticateToken, gameRoutes);
+app.use('/api/tiles', authenticateToken, tileRoutes);
+app.use('/api/discard-quizzes', authenticateToken, discardQuizRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

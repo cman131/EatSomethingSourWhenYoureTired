@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const { getAllYaku } = require('../models/Yaku');
 
 // Handle validation errors
 const handleValidationErrors = (req, res, next) => {
@@ -76,6 +77,11 @@ const validateUserUpdate = [
     .trim()
     .isLength({ min: 0, max: 30 })
     .withMessage('Mahjong Soul name cannot be more than 30 characters'),
+  
+  body('favoriteYaku')
+    .optional()
+    .isIn(getAllYaku())
+    .withMessage('Favorite Yaku must be a valid Yaku from the enum'),
   
   handleValidationErrors
 ];

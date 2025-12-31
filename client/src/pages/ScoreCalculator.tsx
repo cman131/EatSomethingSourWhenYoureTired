@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { CalculatorIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import FuCalculatorModal from '../components/FuCalculatorModal';
+import NumericInput from '../components/NumericInput';
 
 interface ScoreResult {
   basePoints: number;
@@ -15,15 +16,15 @@ interface ScoreResult {
 }
 
 const ScoreCalculator: React.FC = () => {
-  const [han, setHan] = useState<string>('1');
-  const [fu, setFu] = useState<string>('30');
+  const [han, setHan] = useState<number | null>(1);
+  const [fu, setFu] = useState<number | null>(30);
   const [isTsumo, setIsTsumo] = useState<boolean>(false);
   const [isDealer, setIsDealer] = useState<boolean>(false);
   const [isFuModalOpen, setIsFuModalOpen] = useState<boolean>(false);
 
   const calculateScore = useMemo((): ScoreResult | null => {
-    const hanNum = han === '' ? 1 : parseInt(han, 10);
-    const fuNum = fu === '' ? 20 : parseInt(fu, 10);
+    const hanNum = han ?? 1;
+    const fuNum = fu ?? 30;
     
     // Check for invalid values
     if (hanNum < 1 || hanNum > 13 || fuNum < 20 || fuNum > 110) return null;
@@ -138,7 +139,7 @@ const ScoreCalculator: React.FC = () => {
   }, [han, fu, isTsumo, isDealer]);
 
   // Check for missing values
-  const hasMissingValues = han === '' || (han !== '' && parseInt(han, 10) < 5 && fu === '');
+  const hasMissingValues = han === null || (han !== null && han < 5 && fu === null);
 
   const getHandName = (): string => {
     if (!calculateScore) return '';
@@ -147,8 +148,8 @@ const ScoreCalculator: React.FC = () => {
     if (calculateScore.isBaiman) return 'Baiman';
     if (calculateScore.isHaneman) return 'Haneman';
     if (calculateScore.isMangan) return 'Mangan';
-    const hanNum = han === '' ? 1 : parseInt(han, 10);
-    const fuNum = fu === '' ? 20 : parseInt(fu, 10);
+    const hanNum = han ?? 1;
+    const fuNum = fu ?? 30;
     return `${hanNum} Han ${fuNum} Fu`;
   };
 
@@ -186,18 +187,14 @@ const ScoreCalculator: React.FC = () => {
               <label htmlFor="han" className="block text-sm font-medium text-gray-700 mb-2">
                 Han
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
+              <NumericInput
                 id="han"
                 value={han}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '' || /^\d+$/.test(value)) {
-                    setHan(value);
-                  }
-                }}
-                className="input-field"
+                onChange={setHan}
+                step={1}
+                min={1}
+                max={13}
+                className="w-full"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Number of han in your hand (1-13)
@@ -205,27 +202,23 @@ const ScoreCalculator: React.FC = () => {
             </div>
 
             {/* Fu Input */}
-            {han !== '' && parseInt(han, 10) < 5 && (
+            {han !== null && han < 5 && (
                 <div>
                     <label htmlFor="fu" className="block text-sm font-medium text-gray-700 mb-2">
                         Fu
                     </label>
-                    <input
-                        type="text"
-                        inputMode="numeric"
+                    <NumericInput
                         id="fu"
                         value={fu}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === '' || /^\d+$/.test(value)) {
-                            setFu(value);
-                          }
-                        }}
-                        className="input-field"
-                        disabled={han !== '' && parseInt(han, 10) >= 5}
+                        onChange={setFu}
+                        step={10}
+                        min={20}
+                        max={110}
+                        className="w-full"
+                        disabled={han !== null && han >= 5}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                        {han !== '' && parseInt(han, 10) >= 5 
+                        {han !== null && han >= 5 
                         ? 'Fu is not used for mangan and above' 
                         : 'Number of fu in your hand (20-110, typically 30, 40, 50, etc.)'}
                     </p>
@@ -306,8 +299,8 @@ const ScoreCalculator: React.FC = () => {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="text-sm font-medium text-yellow-800 mb-1">Missing Values</div>
               <div className="text-sm text-yellow-700">
-                {han === '' && <div>• Please enter a Han value (1-13)</div>}
-                {han !== '' && parseInt(han, 10) < 5 && fu === '' && (
+                {han === null && <div>• Please enter a Han value (1-13)</div>}
+                {han !== null && han < 5 && fu === null && (
                   <div>• Please enter a Fu value (20-110)</div>
                 )}
               </div>
@@ -323,14 +316,14 @@ const ScoreCalculator: React.FC = () => {
               </div>
 
               {/* Base Points (only for non-fixed hands) */}
-              {han !== '' && parseInt(han, 10) < 5 && (
+              {han !== null && han < 5 && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <div className="text-sm text-gray-600 mb-1">Base Points</div>
                   <div className="text-xl font-semibold text-gray-900">
                     {calculateScore.basePoints.toLocaleString()}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Formula: {fu} × 2<sup>{parseInt(han, 10) + 2}</sup> = {calculateScore.basePoints.toLocaleString()}
+                    Formula: {fu ?? 30} × 2<sup>{(han ?? 1) + 2}</sup> = {calculateScore.basePoints.toLocaleString()}
                   </div>
                 </div>
               )}
@@ -413,10 +406,10 @@ const ScoreCalculator: React.FC = () => {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="text-sm font-medium text-red-800 mb-1">Invalid Values</div>
               <div className="text-sm text-red-700">
-                {han !== '' && (parseInt(han, 10) < 1 || parseInt(han, 10) > 13) && (
+                {han !== null && (han < 1 || han > 13) && (
                   <div>• Han must be between 1 and 13</div>
                 )}
-                {fu !== '' && (parseInt(fu, 10) < 20 || parseInt(fu, 10) > 110) && (
+                {fu !== null && (fu < 20 || fu > 110) && (
                   <div>• Fu must be between 20 and 110</div>
                 )}
               </div>
@@ -429,9 +422,9 @@ const ScoreCalculator: React.FC = () => {
       <FuCalculatorModal
         isOpen={isFuModalOpen}
         onClose={() => setIsFuModalOpen(false)}
-        onSave={(calculatedFu) => setFu(calculatedFu.toString())}
+        onSave={(calculatedFu) => setFu(calculatedFu)}
         currentTsumo={isTsumo}
-        hanCount={han === '' ? 1 : parseInt(han, 10)}
+        hanCount={han ?? 1}
       />
     </div>
   );
