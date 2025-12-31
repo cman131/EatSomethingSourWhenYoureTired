@@ -82,12 +82,33 @@ export interface PaginationData {
 }
 
 export interface UserStats {
+  gamesWon: number;
   gamesVerified: number;
   gamesSubmitted: number;
   gamesPlayed: number;
   averageScore: number;
   highestScore: number;
   lowestScore: number;
+  quizzesRespondedTo: number;
+  commentsMade: number;
+}
+
+export interface DiscardQuiz {
+  id: string;
+  hand: Tile[];
+  doraIndicator: Tile;
+  seat: 'E' | 'S' | 'W' | 'N';
+  roundWind: 'E' | 'S';
+  responses: Record<string, string[]>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Tile {
+  _id: string;
+  id: string;
+  name: string;
+  suit: 'Man' | 'Sou' | 'Pin' | 'Wind' | 'Dragon';
 }
 
 // Yaku list matching server-side enum
@@ -339,6 +360,31 @@ export const gamesApi = {
     return apiRequest<ApiResponse<{ game: Game }>>(`/games/${gameId}/comments`, {
       method: 'POST',
       body: JSON.stringify({ comment }),
+    });
+  },
+};
+
+// Tiles API
+export const tilesApi = {
+  getTiles: async () => {
+    return apiRequest<ApiResponse<{ tiles: Tile[] }>>('/tiles');
+  },
+};
+
+// Discard Quizzes API
+export const discardQuizzesApi = {
+  getQuiz: async (quizId: string) => {
+    return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>(`/discard-quizzes/${quizId}`);
+  },
+
+  generateRandomQuiz: async () => {
+    return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>('/discard-quizzes/generate/random');
+  },
+
+  submitResponse: async (quizId: string, tileId: string) => {
+    return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>(`/discard-quizzes/${quizId}/response`, {
+      method: 'PUT',
+      body: JSON.stringify({ tileId }),
     });
   },
 };

@@ -14,6 +14,7 @@ import GameDetail from './pages/GameDetail';
 import Resources from './pages/Resources';
 import MembersList from './pages/MembersList';
 import ScoreCalculator from './pages/ScoreCalculator';
+import DiscardQuiz from './pages/DiscardQuiz';
 
 function App() {
   return (
@@ -34,6 +35,8 @@ function App() {
             <Route path="/members" element={<MembersList />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/calculator" element={<ScoreCalculator />} />
+            <Route path="/discard-quiz/:discardQuizId" element={<DiscardQuiz />} />
+            <Route path="/discard-quiz" element={<DiscardQuiz />} />
           </Routes>
         </Layout>
       </Router>

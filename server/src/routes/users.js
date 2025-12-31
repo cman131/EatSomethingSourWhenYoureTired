@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
 const Game = require('../models/Game');
+const DiscardQuiz = require('../models/DiscardQuiz');
 const { validateUserUpdate } = require('../middleware/validation');
 
 const router = express.Router();
@@ -270,6 +271,20 @@ router.get('/:id/stats', async (req, res) => {
     const gamesSubmitted = allGames.filter(g => g.submittedBy.toString() === userId).length;
     const gamesPlayed = allGames.length;
     
+    // Count games won by user (user has highest score)
+    let gamesWon = 0;
+    allGames.forEach(game => {
+      const userPlayer = game.players.find(p => p.player.toString() === userId);
+      if (userPlayer) {
+        // Sort players by score (descending) to find winner
+        const sortedPlayers = [...game.players].sort((a, b) => b.score - a.score);
+        // Check if user is first (has highest score)
+        if (sortedPlayers[0].player.toString() === userId) {
+          gamesWon++;
+        }
+      }
+    });
+    
     // Count games verified by this user
     const gamesVerified = await Game.countDocuments({
       verifiedBy: userId
@@ -289,16 +304,49 @@ router.get('/:id/stats', async (req, res) => {
     const highestScore = allScores.length > 0 ? Math.max(...allScores) : 0;
     const lowestScore = allScores.length > 0 ? Math.min(...allScores) : 0;
 
+    // Count quizzes responded to
+    // Get all quizzes and check if user has responded to any of them
+    const allQuizzes = await DiscardQuiz.find({});
+    let quizzesRespondedTo = 0;
+    const userIdString = userId.toString();
+    
+    for (const quiz of allQuizzes) {
+      if (quiz.responses && quiz.responses.size > 0) {
+        for (const [, userIds] of quiz.responses.entries()) {
+          // userIds is an array of ObjectIds or strings
+          const hasResponded = userIds.some(id => {
+            const idString = id.toString ? id.toString() : id;
+            return idString === userIdString;
+          });
+          if (hasResponded) {
+            quizzesRespondedTo++;
+            break; // User responded to this quiz, no need to check other tiles
+          }
+        }
+      }
+    }
+
+    // Count comments made by user
+    const commentsCount = await Game.aggregate([
+      { $unwind: '$comments' },
+      { $match: { 'comments.commenter': userId } },
+      { $count: 'total' }
+    ]);
+    const commentsMade = commentsCount.length > 0 ? commentsCount[0].total : 0;
+
     res.json({
       success: true,
       data: {
         stats: {
+          gamesWon,
           gamesVerified,
           gamesSubmitted,
           gamesPlayed,
           averageScore,
           highestScore,
-          lowestScore
+          lowestScore,
+          quizzesRespondedTo,
+          commentsMade
         }
       }
     });

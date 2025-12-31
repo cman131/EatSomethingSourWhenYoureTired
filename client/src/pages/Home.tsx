@@ -7,7 +7,10 @@ import {
   ChartBarIcon,
   CalendarIcon,
   ArrowTopRightOnSquareIcon,
-  CalculatorIcon
+  CalculatorIcon,
+  UserGroupIcon,
+  QuestionMarkCircleIcon,
+  ShoppingBagIcon
 } from '@heroicons/react/24/outline';
 
 const Home: React.FC = () => {
@@ -52,7 +55,8 @@ const Home: React.FC = () => {
       icon: CalendarIcon,
       href: 'https://www.meetup.com/charleston-riichi-mahjong/events/',
       color: 'bg-blue-500',
-      requiresAuth: false
+      requiresAuth: false,
+      external: true
     },
     {
       name: 'Score a Hand',
@@ -60,7 +64,8 @@ const Home: React.FC = () => {
       icon: CalculatorIcon,
       href: '/calculator',
       color: 'bg-red-500',
-      requiresAuth: false
+      requiresAuth: false,
+      external: false
     },
     {
       name: 'View Games',
@@ -68,7 +73,35 @@ const Home: React.FC = () => {
       icon: ChartBarIcon,
       href: '/games',
       color: 'bg-green-500',
-      requiresAuth: true
+      requiresAuth: true,
+      external: false
+    },
+    {
+      name: 'View Members',
+      description: 'Browse all club members and view their profiles.',
+      icon: UserGroupIcon,
+      href: '/members',
+      color: 'bg-purple-500',
+      requiresAuth: true,
+      external: false
+    },
+    {
+      name: 'Do a Quiz',
+      description: 'Test your mahjong knowledge with discard quizzes.',
+      icon: QuestionMarkCircleIcon,
+      href: '/discard-quiz',
+      color: 'bg-yellow-500',
+      requiresAuth: true,
+      external: false
+    },
+    {
+      name: 'Shop Merch',
+      description: 'Browse and purchase Charleston Riichi Mahjong merchandise.',
+      icon: ShoppingBagIcon,
+      href: 'https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club',
+      color: 'bg-indigo-500',
+      requiresAuth: false,
+      external: true
     },
   ];
 
@@ -121,23 +154,41 @@ const Home: React.FC = () => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Get Started</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredFeatures.map((feature) => (
-            <Link
-              key={feature.name}
-              to={feature.href}
-              className="card hover:shadow-lg transition-shadow duration-200 group"
-            >
-              <div className={`${feature.color} rounded-lg p-3 w-fit mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                <feature.icon className="h-6 w-6 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {feature.name}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {feature.description}
-              </p>
-            </Link>
-          ))}
+          {filteredFeatures.map((feature) => {
+            const cardContent = (
+              <>
+                <div className={`${feature.color} rounded-lg p-3 w-fit mb-4 group-hover:scale-110 transition-transform duration-200`}>
+                  <feature.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {feature.name}
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  {feature.description}
+                </p>
+              </>
+            );
+
+            return feature.external ? (
+              <a
+                key={feature.name}
+                href={feature.href}
+                target="_blank"
+                rel="noreferrer"
+                className="card hover:shadow-lg transition-shadow duration-200 group"
+              >
+                {cardContent}
+              </a>
+            ) : (
+              <Link
+                key={feature.name}
+                to={feature.href}
+                className="card hover:shadow-lg transition-shadow duration-200 group"
+              >
+                {cardContent}
+              </Link>
+            );
+          })}
         </div>
       </div>
 

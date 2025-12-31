@@ -162,12 +162,15 @@ const Profile: React.FC = () => {
   );
 
   const statsData = stats || {
+    gamesWon: 0,
     gamesVerified: 0,
     gamesSubmitted: 0,
     gamesPlayed: 0,
     averageScore: 0,
     highestScore: 0,
     lowestScore: 0,
+    quizzesRespondedTo: 0,
+    commentsMade: 0,
   };
 
   // Calculate most played with players
@@ -705,16 +708,16 @@ const Profile: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
+              <div className="text-3xl font-bold text-emerald-600 mb-2">{statsData.gamesWon}</div>
+              <div className="text-sm text-gray-600">Games Won</div>
+            </div>
+            <div className="text-center">
               <div className="text-3xl font-bold text-blue-600 mb-2">{statsData.gamesPlayed}</div>
               <div className="text-sm text-gray-600">Games Played</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">{statsData.gamesSubmitted}</div>
-              <div className="text-sm text-gray-600">Games Submitted</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary-600 mb-2">{statsData.gamesVerified}</div>
-              <div className="text-sm text-gray-600">Games Verified</div>
+              <div className="text-3xl font-bold text-indigo-600 mb-2">{statsData.quizzesRespondedTo}</div>
+              <div className="text-sm text-gray-600">Quizzes Completed</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-600 mb-2">{statsData.averageScore}</div>
@@ -727,6 +730,18 @@ const Profile: React.FC = () => {
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600 mb-2">{statsData.lowestScore}</div>
               <div className="text-sm text-gray-600">Lowest Score</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-green-600 mb-2">{statsData.gamesSubmitted}</div>
+              <div className="text-sm text-gray-600">Games Submitted</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-primary-600 mb-2">{statsData.gamesVerified}</div>
+              <div className="text-sm text-gray-600">Games Verified</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-teal-600 mb-2">{statsData.commentsMade}</div>
+              <div className="text-sm text-gray-600">Comments Made</div>
             </div>
             {/* Most Played With */}
             <div className="text-center md:col-span-3">
