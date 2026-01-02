@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-import { ArrowLeftIcon, UserGroupIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 
@@ -326,6 +326,24 @@ const TournamentDetail: React.FC = () => {
         <div className="card">
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
           <p className="text-gray-700 whitespace-pre-wrap">{tournament.description}</p>
+        </div>
+      )}
+
+      {tournament.location && (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <MapPinIcon className="h-5 w-5" />
+            Location
+          </h2>
+          <div className="text-gray-700 space-y-1">
+            <div>{tournament.location.streetAddress}</div>
+            {tournament.location.addressLine2 && (
+              <div>{tournament.location.addressLine2}</div>
+            )}
+            <div>
+              {tournament.location.city}, {tournament.location.state} {tournament.location.zipCode}
+            </div>
+          </div>
         </div>
       )}
 

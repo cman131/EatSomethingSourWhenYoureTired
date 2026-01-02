@@ -16,6 +16,38 @@ const tournamentSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Tournament date is required']
   },
+  location: {
+    streetAddress: {
+      type: String,
+      required: [true, 'Street address is required'],
+      trim: true,
+      maxlength: [200, 'Street address cannot be more than 200 characters']
+    },
+    addressLine2: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Address line 2 cannot be more than 100 characters']
+    },
+    city: {
+      type: String,
+      required: [true, 'City is required'],
+      trim: true,
+      maxlength: [100, 'City cannot be more than 100 characters']
+    },
+    state: {
+      type: String,
+      required: [true, 'State is required'],
+      trim: true,
+      maxlength: [2, 'State must be a 2-letter abbreviation'],
+      uppercase: true
+    },
+    zipCode: {
+      type: String,
+      required: [true, 'Zip code is required'],
+      trim: true,
+      match: [/^\d{5}(-\d{4})?$/, 'Zip code must be in format 12345 or 12345-6789']
+    }
+  },
   isEastOnly: {
     type: Boolean,
     default: false

@@ -149,11 +149,20 @@ export interface TournamentPlayer {
   dropped: boolean;
 }
 
+export interface TournamentAddress {
+  streetAddress: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
 export interface Tournament {
   _id: string;
   name: string;
   description?: string;
   date: string;
+  location: TournamentAddress;
   isEastOnly: boolean;
   status: 'NotStarted' | 'InProgress' | 'Completed' | 'Cancelled';
   players: TournamentPlayer[];
@@ -491,6 +500,7 @@ export const tournamentsApi = {
     name: string;
     description?: string;
     date: Date;
+    location: TournamentAddress;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments/admin', {
       method: 'POST',

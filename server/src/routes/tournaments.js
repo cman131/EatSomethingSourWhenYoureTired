@@ -210,7 +210,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private (Admin)
 router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, description, date } = req.body;
+    const { name, description, date, location } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -219,10 +219,33 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
       });
     }
 
+    // Validate location object
+    if (!location || !location.streetAddress || !location.city || !location.state || !location.zipCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location must include street address, city, state, and zip code'
+      });
+    }
+
+    // Validate state is 2 characters
+    if (location.state && location.state.length !== 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'State must be a 2-letter abbreviation'
+      });
+    }
+
     const tournament = new Tournament({
       name,
       description: description || '',
       date,
+      location: {
+        streetAddress: location.streetAddress.trim(),
+        addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
+        city: location.city.trim(),
+        state: location.state.trim().toUpperCase(),
+        zipCode: location.zipCode.trim()
+      },
       players: [],
       rounds: []
     });
