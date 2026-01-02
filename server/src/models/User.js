@@ -58,6 +58,11 @@ const userSchema = new mongoose.Schema({
     enum: [...getAllYaku(), null],
     default: null
   },
+  favoriteTile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tile',
+    default: null
+  },
   clubAffiliation: {
     type: String,
     required: [true, 'Club affiliation is required'],
@@ -76,6 +81,14 @@ const userSchema = new mongoose.Schema({
       default: true
     },
     emailNotificationsForNewGames: {
+      type: Boolean,
+      default: true
+    },
+    emailNotificationsForNewTournaments: {
+      type: Boolean,
+      default: true
+    },
+    emailNotificationsForRoundPairings: {
       type: Boolean,
       default: true
     }
@@ -145,11 +158,19 @@ userSchema.pre('save', function(next) {
   if (this.notificationPreferences.emailNotificationsForNewGames === undefined) {
     this.notificationPreferences.emailNotificationsForNewGames = true;
   }
+  if (this.notificationPreferences.emailNotificationsForNewTournaments === undefined) {
+    this.notificationPreferences.emailNotificationsForNewTournaments = true;
+  }
+  if (this.notificationPreferences.emailNotificationsForRoundPairings === undefined) {
+    this.notificationPreferences.emailNotificationsForRoundPairings = true;
+  }
   
   // If top level is off, all others must be off
   if (this.notificationPreferences.emailNotificationsEnabled === false) {
     this.notificationPreferences.emailNotificationsForComments = false;
     this.notificationPreferences.emailNotificationsForNewGames = false;
+    this.notificationPreferences.emailNotificationsForNewTournaments = false;
+    this.notificationPreferences.emailNotificationsForRoundPairings = false;
   }
   next();
 });

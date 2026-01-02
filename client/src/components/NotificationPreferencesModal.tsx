@@ -19,6 +19,8 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
     emailNotificationsEnabled: true,
     emailNotificationsForComments: true,
     emailNotificationsForNewGames: true,
+    emailNotificationsForNewTournaments: true,
+    emailNotificationsForRoundPairings: true,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +32,8 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
         emailNotificationsEnabled: currentPreferences?.emailNotificationsEnabled ?? true,
         emailNotificationsForComments: currentPreferences?.emailNotificationsForComments ?? true,
         emailNotificationsForNewGames: currentPreferences?.emailNotificationsForNewGames ?? true,
+        emailNotificationsForNewTournaments: currentPreferences?.emailNotificationsForNewTournaments ?? true,
+        emailNotificationsForRoundPairings: currentPreferences?.emailNotificationsForRoundPairings ?? true,
       });
       setError(null);
     }
@@ -43,6 +47,8 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
       if (key === 'emailNotificationsEnabled' && !value) {
         updated.emailNotificationsForComments = false;
         updated.emailNotificationsForNewGames = false;
+        updated.emailNotificationsForNewTournaments = false;
+        updated.emailNotificationsForRoundPairings = false;
       }
       
       return updated;
@@ -151,7 +157,7 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
               </div>
 
               {/* Email Notifications For New Games */}
-              <div className="flex items-start justify-between py-3">
+              <div className="flex items-start justify-between py-3 border-b border-gray-200">
                 <div className="flex-1">
                   <label className="text-sm font-medium text-gray-900">
                     New Games
@@ -166,6 +172,54 @@ const NotificationPreferencesModal: React.FC<NotificationPreferencesModalProps> 
                       type="checkbox"
                       checked={preferences.emailNotificationsForNewGames ?? true}
                       onChange={(e) => handleChange('emailNotificationsForNewGames', e.target.checked)}
+                      disabled={!preferences.emailNotificationsEnabled}
+                      className="sr-only peer"
+                    />
+                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600 ${!preferences.emailNotificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Email Notifications For New Tournaments */}
+              <div className="flex items-start justify-between py-3 border-b border-gray-200">
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-gray-900">
+                    New Tournaments
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Get notified when new tournaments are created
+                  </p>
+                </div>
+                <div className="ml-4">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preferences.emailNotificationsForNewTournaments ?? true}
+                      onChange={(e) => handleChange('emailNotificationsForNewTournaments', e.target.checked)}
+                      disabled={!preferences.emailNotificationsEnabled}
+                      className="sr-only peer"
+                    />
+                    <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600 ${!preferences.emailNotificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Email Notifications For Round Pairings */}
+              <div className="flex items-start justify-between py-3">
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-gray-900">
+                    Tournament Round Pairings
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Get notified when round pairings are generated for tournaments you're in
+                  </p>
+                </div>
+                <div className="ml-4">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={preferences.emailNotificationsForRoundPairings ?? true}
+                      onChange={(e) => handleChange('emailNotificationsForRoundPairings', e.target.checked)}
                       disabled={!preferences.emailNotificationsEnabled}
                       className="sr-only peer"
                     />

@@ -124,6 +124,85 @@ router.get('/generate/random', async (req, res) => {
     
     const userId = req.user._id;
     const userIdString = userId.toString();
+    
+    // 50% chance to attempt loading an existing quiz or generate a new one
+    const shouldLoadExisting = Math.random() < 0.7;
+    
+    if (shouldLoadExisting) {
+      // Try to find an existing quiz that the user hasn't responded to using aggregation
+      // This filters in MongoDB instead of fetching all quizzes and filtering in JavaScript
+      const unrespondedQuizzes = await DiscardQuiz.aggregate([
+        {
+          $match: {
+            $and: [
+              // Ensure required fields exist
+              { seat: { $exists: true, $ne: null } },
+              { roundWind: { $exists: true, $ne: null } },
+              {
+                $expr: {
+                  $or: [
+                    // Responses field doesn't exist or is null
+                    { $eq: [{ $type: "$responses" }, "missing"] },
+                    { $eq: ["$responses", null] },
+                    // Responses is empty object
+                    { $eq: [{ $size: { $objectToArray: { $ifNull: ["$responses", {}] } } }, 0] },
+                    // User ID is not in any of the response arrays
+                    {
+                      $not: {
+                        $anyElementTrue: {
+                          $map: {
+                            input: { $objectToArray: { $ifNull: ["$responses", {}] } },
+                            as: "response",
+                            in: { $in: [userId, { $ifNull: ["$$response.v", []] }] }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        { $sample: { size: 1 } }
+      ]);
+      
+      // If we found unresponded quizzes, return the random one
+      if (unrespondedQuizzes.length > 0) {
+        const randomQuiz = unrespondedQuizzes[0];
+        
+        // Populate tile information for hand and dora indicator
+        const handTiles = await populateTiles(randomQuiz.hand);
+        const doraTile = (await populateTiles([randomQuiz.doraIndicator]))[0];
+        
+        const responsesObj = {};
+        if (randomQuiz.responses) {
+          // Aggregation returns plain objects, not Maps, so use Object.entries()
+          for (const [tile, userIds] of Object.entries(randomQuiz.responses)) {
+            responsesObj[tile] = userIds;
+          }
+        }
+        
+        return res.json({
+          success: true,
+          data: {
+            quiz: {
+              id: randomQuiz.id,
+              hand: handTiles,
+              doraIndicator: doraTile,
+              seat: randomQuiz.seat,
+              roundWind: randomQuiz.roundWind,
+              responses: responsesObj,
+              createdAt: randomQuiz.createdAt,
+              updatedAt: randomQuiz.updatedAt
+            }
+          }
+        });
+      }
+      // If no unresponded quiz found, fall through to generate a new one
+    }
+    
+    // Generate a new quiz (either by decision or because no existing quiz was found)
     let attempts = 0;
     const maxAttempts = 50; // Prevent infinite loops
     
@@ -266,6 +345,14 @@ router.put('/:id/response', async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Discard quiz not found'
+      });
+    }
+
+    // Ensure required fields exist (safety check for old/invalid quizzes)
+    if (!quiz.seat || !quiz.roundWind) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quiz is missing required fields. Please try a different quiz.'
       });
     }
 

@@ -11,7 +11,7 @@ const router = express.Router();
 // @access  Private
 router.get('/profile', async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).populate('favoriteTile');
     res.json({
       success: true,
       data: {
@@ -32,7 +32,7 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
-    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, clubAffiliation } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation } = req.body;
     const user = await User.findById(req.user._id);
 
     if (displayName !== undefined) {
@@ -72,11 +72,16 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
       user.favoriteYaku = favoriteYaku === '' || favoriteYaku === null ? null : favoriteYaku;
     }
 
+    if (favoriteTile !== undefined) {
+      user.favoriteTile = favoriteTile === '' || favoriteTile === null ? null : favoriteTile;
+    }
+
     if (clubAffiliation !== undefined) {
       user.clubAffiliation = clubAffiliation;
     }
 
     await user.save();
+    await user.populate('favoriteTile');
 
     res.json({
       success: true,
@@ -592,7 +597,7 @@ router.delete('/notifications', async (req, res) => {
 // @access  Private
 router.get('/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).populate('favoriteTile');
     if (!user) {
       return res.status(404).json({
         success: false,

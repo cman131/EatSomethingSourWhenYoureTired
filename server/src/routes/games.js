@@ -2,7 +2,8 @@ const express = require('express');
 const Game = require('../models/Game');
 const User = require('../models/User');
 const { validateGameCreation, validateMongoId } = require('../middleware/validation');
-const { sendNewGameNotificationEmail, sendNewCommentNotificationEmail } = require('../utils/emailService');
+const { sendNewCommentNotificationEmail } = require('../utils/emailService');
+const { createGame } = require('../utils/gameService');
 
 const router = express.Router();
 
@@ -53,89 +54,11 @@ router.post('/', validateGameCreation, async (req, res) => {
   try {
     const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime } = req.body;
 
-    // Verify all player IDs exist
-    const playerIds = players.map(p => p.player);
-    const users = await User.find({ _id: { $in: playerIds } });
-    
-    if (users.length !== 4) {
-      return res.status(400).json({
-        success: false,
-        message: 'One or more players not found'
-      });
-    }
-
-    // Create game
-    const game = new Game({
-      submittedBy: req.user._id,
-      players,
-      gameDate: gameDate || new Date(),
-      notes,
-      pointsLeftOnTable: pointsLeftOnTable || 0,
-      isEastOnly: isEastOnly || false,
-      isInPerson: isInPerson !== undefined ? isInPerson : true,
-      ranOutOfTime: ranOutOfTime || false
-    });
-
-    await game.save();
-
-    // Populate before sending response
-    await game.populate('submittedBy', 'displayName email');
-    await game.populate('players.player', 'displayName email');
-
-    // Send notifications to players who aren't the submitter
-    const submitterId = req.user._id.toString();
-    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
-    const gameUrl = `${frontendUrl}/games/${game._id}`;
-    const submittedByDisplayName = game.submittedBy.displayName;
-
-    // Get all players who aren't the submitter
-    const otherPlayers = game.players.filter(p => p.player._id.toString() !== submitterId);
-    
-    // Process notifications for each player (don't await - run in background)
-    Promise.all(
-      otherPlayers.map(async (playerData) => {
-        try {
-          const player = await User.findById(playerData.player._id);
-          if (!player) return;
-
-          // Check notification preferences
-          const prefs = player.notificationPreferences || {};
-          const emailEnabled = prefs.emailNotificationsEnabled !== false; // default to true
-          const newGameNotificationsEnabled = prefs.emailNotificationsForNewGames !== false; // default to true
-
-          // Send email if enabled
-          if (emailEnabled && newGameNotificationsEnabled) {
-            try {
-              await sendNewGameNotificationEmail(
-                player.email,
-                player.displayName,
-                game._id.toString(),
-                submittedByDisplayName
-              );
-            } catch (emailError) {
-              console.error(`Failed to send email to ${player.email}:`, emailError);
-              // Continue processing even if email fails
-            }
-          }
-
-          // Add notification to user's queue
-          player.notifications.push({
-            name: 'New Game Submitted',
-            description: `A new game you participated in has been submitted by ${submittedByDisplayName}.`,
-            type: 'Game',
-            url: gameUrl
-          });
-
-          await player.save();
-        } catch (playerError) {
-          console.error(`Failed to process notification for player ${playerData.player._id}:`, playerError);
-          // Continue processing other players even if one fails
-        }
-      })
-    ).catch(error => {
-      console.error('Error processing game notifications:', error);
-      // Don't fail the request if notifications fail
-    });
+    // Create game using the service (includes validation and notifications)
+    const game = await createGame(
+      { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime },
+      req.user._id
+    );
 
     res.status(201).json({
       success: true,

@@ -1,0 +1,38 @@
+Admin Controls
+- Create tournament
+- Start tournament
+- Delete tournament
+- End round
+- Reset round pairings
+
+Non-admin controls
+- Signup
+- drop from tournament
+- Report tournament game
+- Get my current round pairing
+
+Tournament info Page
+ - button to signup
+ - button to leave tournament
+ - link to tournament standings page
+ - link to tournament current round page
+ - link to tournament games list page
+Tournament standings Page
+Tournament current round page
+Tournament games list page
+
+Tournament
+- Date
+- Description
+- Name
+- Players
+  - Player id
+  - player uma
+- Rounds
+  - Round number
+  - Pairings
+    - Player 1 id
+    - Player 2 id
+    - Player 3 id
+    - Player 4 id
+    - Game id (optional)

@@ -83,6 +83,11 @@ const validateUserUpdate = [
     .isIn([...getAllYaku(), null])
     .withMessage('Favorite Yaku must be a valid Yaku from the enum or null'),
   
+  body('favoriteTile')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId()
+    .withMessage('Favorite Tile must be a valid MongoDB ObjectId or null'),
+  
   body('clubAffiliation')
     .optional()
     .isIn(['Charleston', 'Charlotte', 'Washington D.C.'])

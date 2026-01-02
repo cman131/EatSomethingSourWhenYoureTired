@@ -1,6 +1,6 @@
 import React from 'react';
-import { useApi } from '../hooks/useApi';
-import { achievementsApi, UserAchievement } from '../services/api';
+import { useApi } from '../../hooks/useApi';
+import { achievementsApi, UserAchievement } from '../../services/api';
 
 interface AchievementsSectionProps {
   userId: string;
