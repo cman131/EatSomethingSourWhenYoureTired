@@ -31,8 +31,8 @@ app.use(cors({
 const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
 if (!isDevelopment) {
   const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 5 * 60 * 1000, // 5 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 250, // limit each IP to 250 requests per windowMs
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 2 * 60 * 1000, // 2 minutes
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limit each IP to 1000 requests per windowMs
     message: 'Too many requests from this IP, please try again later.',
     skip: (req) => {
       // Skip rate limiting for auth routes (they have their own stricter limiter)
