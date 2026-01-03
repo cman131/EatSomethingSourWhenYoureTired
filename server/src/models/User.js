@@ -58,11 +58,20 @@ const userSchema = new mongoose.Schema({
     enum: [...getAllYaku(), null],
     default: null
   },
+  favoriteTile: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tile',
+    default: null
+  },
   clubAffiliation: {
     type: String,
     required: [true, 'Club affiliation is required'],
     enum: ['Charleston', 'Charlotte', 'Washington D.C.'],
     default: 'Charleston'
+  },
+  privateMode: {
+    type: Boolean,
+    default: false
   },
   passwordResetToken: String,
   passwordResetExpires: Date,
@@ -76,6 +85,14 @@ const userSchema = new mongoose.Schema({
       default: true
     },
     emailNotificationsForNewGames: {
+      type: Boolean,
+      default: true
+    },
+    emailNotificationsForNewTournaments: {
+      type: Boolean,
+      default: true
+    },
+    emailNotificationsForRoundPairings: {
       type: Boolean,
       default: true
     }
@@ -145,11 +162,19 @@ userSchema.pre('save', function(next) {
   if (this.notificationPreferences.emailNotificationsForNewGames === undefined) {
     this.notificationPreferences.emailNotificationsForNewGames = true;
   }
+  if (this.notificationPreferences.emailNotificationsForNewTournaments === undefined) {
+    this.notificationPreferences.emailNotificationsForNewTournaments = true;
+  }
+  if (this.notificationPreferences.emailNotificationsForRoundPairings === undefined) {
+    this.notificationPreferences.emailNotificationsForRoundPairings = true;
+  }
   
   // If top level is off, all others must be off
   if (this.notificationPreferences.emailNotificationsEnabled === false) {
     this.notificationPreferences.emailNotificationsForComments = false;
     this.notificationPreferences.emailNotificationsForNewGames = false;
+    this.notificationPreferences.emailNotificationsForNewTournaments = false;
+    this.notificationPreferences.emailNotificationsForRoundPairings = false;
   }
   next();
 });
@@ -166,6 +191,19 @@ userSchema.methods.toJSON = function() {
   delete userObject.emailVerificationToken;
   delete userObject.passwordResetToken;
   delete userObject.passwordResetExpires;
+  
+  // If private mode is enabled, hide name and username fields
+  if (userObject.privateMode === true) {
+    userObject.displayName = 'Hidden';
+    userObject.realName = undefined;
+    userObject.discordName = undefined;
+    userObject.mahjongSoulName = undefined;
+    userObject.avatar = undefined;
+    userObject.favoriteYaku = undefined;
+    userObject.favoriteTile = undefined;
+    userObject.clubAffiliation = undefined;
+  }
+  
   return userObject;
 };
 

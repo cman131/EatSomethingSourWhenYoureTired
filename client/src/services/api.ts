@@ -16,6 +16,8 @@ export interface NotificationPreferences {
   emailNotificationsEnabled?: boolean;
   emailNotificationsForComments?: boolean;
   emailNotificationsForNewGames?: boolean;
+  emailNotificationsForNewTournaments?: boolean;
+  emailNotificationsForRoundPairings?: boolean;
 }
 
 export interface User {
@@ -27,9 +29,12 @@ export interface User {
   discordName?: string;
   mahjongSoulName?: string;
   favoriteYaku?: string | null;
+  favoriteTile?: Tile | null;
   clubAffiliation?: 'Charleston' | 'Charlotte' | 'Washington D.C.';
   notifications?: Notification[];
   notificationPreferences?: NotificationPreferences;
+  isAdmin?: boolean;
+  privateMode?: boolean;
 }
 
 export interface GamePlayer {
@@ -137,6 +142,34 @@ export interface Tile {
   id: string;
   name: string;
   suit: 'Man' | 'Sou' | 'Pin' | 'Wind' | 'Dragon';
+}
+
+export interface TournamentPlayer {
+  player: User;
+  uma: number;
+  dropped: boolean;
+}
+
+export interface TournamentAddress {
+  streetAddress: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  zipCode: string;
+}
+
+export interface Tournament {
+  _id: string;
+  name: string;
+  description?: string;
+  date: string;
+  location: TournamentAddress;
+  isEastOnly: boolean;
+  status: 'NotStarted' | 'InProgress' | 'Completed' | 'Cancelled';
+  players: TournamentPlayer[];
+  rounds?: any[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Yaku list matching server-side enum
@@ -451,6 +484,73 @@ export const achievementsApi = {
       count: number;
       message?: string;
     }>>(`/achievements/grand/${achievementIdentifier}`);
+  },
+};
+
+// Tournaments API
+export const tournamentsApi = {
+  getTournaments: async (page = 1, limit = 20) => {
+    return apiRequest<PaginatedResponse<Tournament>>(`/tournaments?page=${page}&limit=${limit}`);
+  },
+
+  getTournament: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`);
+  },
+
+  createTournament: async (tournamentData: {
+    name: string;
+    description?: string;
+    date: Date;
+    location: TournamentAddress;
+  }) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments/admin', {
+      method: 'POST',
+      body: JSON.stringify(tournamentData),
+    });
+  },
+
+  signup: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/signup`, {
+      method: 'POST',
+    });
+  },
+
+  drop: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/drop`, {
+      method: 'PUT',
+    });
+  },
+
+  startTournament: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/start`, {
+      method: 'PUT',
+    });
+  },
+
+  endRound: async (tournamentId: string, roundNumber: number) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/rounds/${roundNumber}/end`, {
+      method: 'PUT',
+    });
+  },
+
+  submitTournamentGame: async (
+    tournamentId: string,
+    gameData: {
+      players: Array<{ player: string; score: number; position: number }>;
+      notes?: string;
+      pointsLeftOnTable?: number;
+      ranOutOfTime?: boolean;
+      roundNumber: number;
+      pairingIndex?: number;
+    }
+  ) => {
+    return apiRequest<ApiResponse<{ game: Game; tournament: Tournament }>>(
+      `/tournaments/${tournamentId}/games`,
+      {
+        method: 'POST',
+        body: JSON.stringify(gameData),
+      }
+    );
   },
 };
 

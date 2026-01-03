@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi } from '../hooks/useApi';
 import { gamesApi, Game } from '../services/api';
+import UserDisplay from '../components/user/UserDisplay';
 import { 
   ChartBarIcon,
   CalendarIcon,
@@ -235,21 +236,33 @@ const Home: React.FC = () => {
                     </div>
                     <p className="text-sm text-gray-600 mb-3">
                       Submitted by{' '}
-                      <Link
-                        to={`/profile/${game.submittedBy._id}`}
-                        className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
-                      >
-                        {game.submittedBy.displayName}
-                      </Link>
+                      {game.submittedBy.privateMode ? (
+                        <span className="font-medium text-gray-900">
+                          {game.submittedBy.displayName}
+                        </span>
+                      ) : (
+                        <Link
+                          to={`/profile/${game.submittedBy._id}`}
+                          className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                        >
+                          {game.submittedBy.displayName}
+                        </Link>
+                      )}
                       {game.verifiedBy && (
                         <>
                           {' '}• Verified by{' '}
-                          <Link
-                            to={`/profile/${game.verifiedBy._id}`}
-                            className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
-                          >
-                            {game.verifiedBy.displayName}
-                          </Link>
+                          {game.verifiedBy.privateMode ? (
+                            <span className="font-medium text-gray-900">
+                              {game.verifiedBy.displayName}
+                            </span>
+                          ) : (
+                            <Link
+                              to={`/profile/${game.verifiedBy._id}`}
+                              className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                            >
+                              {game.verifiedBy.displayName}
+                            </Link>
+                          )}
                         </>
                       )}
                     </p>
@@ -264,25 +277,11 @@ const Home: React.FC = () => {
                             <div className="text-xs text-gray-500 mb-1">
                               {PlayerSeats[player.position - 1]}
                             </div>
-                            <div className="flex items-center gap-2 mb-1">
-                              {player.player.avatar && (
-                                <img
-                                  src={player.player.avatar}
-                                      alt={player.player.displayName}
-                                  className="w-8 h-8 rounded-full object-cover"
-                                  onError={(e) => {
-                                    // Hide image if it fails to load
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              )}
-                              <Link
-                                to={`/profile/${player.player._id}`}
-                                className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
-                              >
-                                    {player.player.displayName}
-                              </Link>
-                            </div>
+                            <UserDisplay
+                              user={player.player}
+                              size="sm"
+                              className="mb-1"
+                            />
                             <div className="text-sm text-gray-700 mt-1">
                               Score: <span className="font-semibold">{player.score}</span>
                             </div>

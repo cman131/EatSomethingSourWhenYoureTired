@@ -149,7 +149,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
   }
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(transporter, mailOptions);
     console.log('Password reset email sent:', info.messageId);
     return { success: true, messageId: info.messageId, method: 'smtp' };
   } catch (error) {
@@ -250,7 +250,7 @@ const sendPasswordResetConfirmationEmail = async (email, displayName) => {
   }
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(transporter, mailOptions);
     console.log('Password reset confirmation email sent:', info.messageId);
     return { success: true, messageId: info.messageId, method: 'smtp' };
   } catch (error) {
@@ -354,7 +354,7 @@ const sendNewGameNotificationEmail = async (email, displayName, gameId, submitte
   }
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(transporter, mailOptions);
     console.log('New game notification email sent:', info.messageId);
     return { success: true, messageId: info.messageId, method: 'smtp' };
   } catch (error) {
@@ -454,8 +454,257 @@ const sendNewCommentNotificationEmail = async (email, displayName, gameId, comme
   }
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendEmail(transporter, mailOptions);
     console.log('New comment notification email sent:', info.messageId);
+    return { success: true, messageId: info.messageId, method: 'smtp' };
+  } catch (error) {
+    console.error('Error sending new comment notification email:', error);
+    // Fallback to console logging on error
+    console.log('='.repeat(80));
+    console.log('Email sending failed. Fallback - Email details:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Game URL:', gameUrl);
+    console.log('Commenter:', commenterDisplayName);
+    console.log('='.repeat(80));
+    throw error;
+  }
+};
+
+// Send round pairing notification email
+const sendRoundPairingNotificationEmail = async (email, displayName, tournamentId, tournamentName, roundNumber) => {
+  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const tournamentUrl = `${frontendUrl}/tournaments/${tournamentId}`;
+  const signature = getEmailSignature(frontendUrl);
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mahjongclub.com',
+    to: email,
+    subject: `Round ${roundNumber} Pairings Available - ${tournamentName} - Charleston Riichi Mahjong Club`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Round Pairing Notification</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h1 style="color: #2563eb; margin-top: 0;">Charleston Riichi Mahjong Club</h1>
+          </div>
+          
+          <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e5e7eb;">
+            <h2 style="color: #111827; margin-top: 0;">Round ${roundNumber} Pairings Available</h2>
+            
+            <p>Hello${displayName ? ` ${displayName}` : ''},</p>
+            
+            <p>The pairings for <strong>Round ${roundNumber}</strong> of <strong>${tournamentName}</strong> have been generated!</p>
+            
+            <div style="background-color: #dbeafe; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0; color: #1e40af; font-weight: bold;">Action Required</p>
+              <p style="margin: 10px 0 0 0; color: #1e3a8a; font-size: 14px;">
+                Please check your pairing and report your game results when ready.
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${tournamentUrl}" 
+                 style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                View Tournament & Pairings
+              </a>
+            </div>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${tournamentUrl}</p>
+            
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+              <strong>Note:</strong> Make sure to report your game results before the round ends.
+            </p>
+          </div>
+          
+          ${signature.html}
+        </body>
+      </html>
+    `,
+    text: `
+      Round ${roundNumber} Pairings Available - ${tournamentName} - Charleston Riichi Mahjong Club
+      
+      Hello${displayName ? ` ${displayName}` : ''},
+      
+      The pairings for Round ${roundNumber} of ${tournamentName} have been generated!
+      
+      Action Required:
+      Please check your pairing and report your game results when ready.
+      
+      View tournament and pairings: ${tournamentUrl}
+      
+      Note: Make sure to report your game results before the round ends.
+      
+      ${signature.text}
+    `
+  };
+
+  const transporter = createTransporter();
+  
+  if (!transporter) {
+    // Fallback to console logging if SMTP is not configured
+    console.log('='.repeat(80));
+    console.log('SMTP not configured. Email would have been sent:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Tournament URL:', tournamentUrl);
+    console.log('='.repeat(80));
+    return { success: true, method: 'console' };
+  }
+
+  try {
+    const info = await sendEmail(transporter, mailOptions);
+    console.log('Round pairing notification email sent:', info.messageId);
+    return { success: true, messageId: info.messageId, method: 'smtp' };
+  } catch (error) {
+    console.error('Error sending round pairing notification email:', error);
+    // Fallback to console logging on error
+    console.log('='.repeat(80));
+    console.log('Email sending failed. Fallback - Email details:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Tournament URL:', tournamentUrl);
+    console.log('='.repeat(80));
+    throw error;
+  }
+};
+
+// Send new tournament notification email
+const sendNewTournamentNotificationEmail = async (email, displayName, tournamentId, tournamentName, tournamentDate) => {
+  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const tournamentUrl = `${frontendUrl}/tournaments/${tournamentId}`;
+  const signature = getEmailSignature(frontendUrl);
+  
+  const formattedDate = new Date(tournamentDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mahjongclub.com',
+    to: email,
+    subject: `New Tournament: ${tournamentName} - Charleston Riichi Mahjong Club`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Tournament Notification</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h1 style="color: #2563eb; margin-top: 0;">Charleston Riichi Mahjong Club</h1>
+          </div>
+          
+          <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e5e7eb;">
+            <h2 style="color: #111827; margin-top: 0;">New Tournament Created</h2>
+            
+            <p>Hello${displayName ? ` ${displayName}` : ''},</p>
+            
+            <p>A new tournament has been created: <strong>${tournamentName}</strong></p>
+            
+            <div style="background-color: #f9fafb; padding: 15px; margin: 20px 0; border-radius: 4px; border-left: 4px solid #2563eb;">
+              <p style="margin: 0; color: #111827; font-weight: bold;">Tournament Details</p>
+              <p style="margin: 10px 0 0 0; color: #4b5563; font-size: 14px;">
+                <strong>Date:</strong> ${formattedDate}
+              </p>
+            </div>
+            
+            <div style="background-color: #dbeafe; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0; color: #1e40af; font-weight: bold;">Sign Up Now</p>
+              <p style="margin: 10px 0 0 0; color: #1e3a8a; font-size: 14px;">
+                Don't miss out! Sign up for this tournament to participate.
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${tournamentUrl}" 
+                 style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                View Tournament & Sign Up
+              </a>
+            </div>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${tournamentUrl}</p>
+          </div>
+          
+          ${signature.html}
+        </body>
+      </html>
+    `,
+    text: `
+      New Tournament: ${tournamentName} - Charleston Riichi Mahjong Club
+      
+      Hello${displayName ? ` ${displayName}` : ''},
+      
+      A new tournament has been created: ${tournamentName}
+      
+      Tournament Details:
+      Date: ${formattedDate}
+      
+      Sign Up Now:
+      Don't miss out! Sign up for this tournament to participate.
+      
+      View tournament and sign up: ${tournamentUrl}
+      
+      ${signature.text}
+    `
+  };
+
+  const transporter = createTransporter();
+  
+  if (!transporter) {
+    // Fallback to console logging if SMTP is not configured
+    console.log('='.repeat(80));
+    console.log('SMTP not configured. Email would have been sent:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Tournament URL:', tournamentUrl);
+    console.log('='.repeat(80));
+    return { success: true, method: 'console' };
+  }
+
+  try {
+    const info = await sendEmail(transporter, mailOptions);
+    console.log('New tournament notification email sent:', mailOptions.to?.toString());
+    return { success: true, messageId: info.messageId, method: 'smtp' };
+  } catch (error) {
+    console.error('Error sending new tournament notification email:', error);
+    // Fallback to console logging on error
+    console.log('='.repeat(80));
+    console.log('Email sending failed. Fallback - Email details:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Tournament URL:', tournamentUrl);
+    console.log('='.repeat(80));
+    throw error;
+  }
+};
+
+const sendEmail = async (transporter, mailOptions) => {
+  try {
+    // List of disallowed email domains (test/fake emails)
+    const disallowedDomains = ['@mahjong.com', '@emial.giv', '@example.com'];
+    
+    // Check if the email address contains any disallowed domain
+    const emailAddress = mailOptions.to.toString();
+    const isDisallowed = disallowedDomains.some(domain => emailAddress.includes(domain));
+    
+    if (isDisallowed) {
+      console.log(`Email would have been sent to ${emailAddress} - skipping (disallowed domain)`);
+      return { success: true, method: 'smtp' };
+    }
+    const info = await transporter.sendMail(mailOptions);
     return { success: true, messageId: info.messageId, method: 'smtp' };
   } catch (error) {
     console.error('Error sending new comment notification email:', error);
@@ -477,6 +726,7 @@ module.exports = {
   sendPasswordResetEmail,
   sendPasswordResetConfirmationEmail,
   sendNewGameNotificationEmail,
-  sendNewCommentNotificationEmail
+  sendNewCommentNotificationEmail,
+  sendRoundPairingNotificationEmail,
+  sendNewTournamentNotificationEmail
 };
-

@@ -4,6 +4,7 @@ import FuCalculatorModal from '../components/FuCalculatorModal';
 import NumericInput from '../components/NumericInput';
 
 interface ScoreResult {
+  originalBasePoints: number;
   basePoints: number;
   tsumoDealer: number;
   tsumoNonDealer: number;
@@ -71,6 +72,7 @@ const ScoreCalculator: React.FC = () => {
         // Note: tsumoDealer is amount from dealer (for non-dealer tsumo), tsumoNonDealer is amount from each non-dealer
         return {
           basePoints: 0,
+          originalBasePoints: 0,
           tsumoDealer: isDealer ? 0 : 16000, // 0 for dealer tsumo (not used), 16000 from dealer for non-dealer tsumo
           tsumoNonDealer: isDealer ? 16000 : 8000, // 16000 from each non-dealer (dealer tsumo) or 8000 from each non-dealer (non-dealer tsumo)
           ron: isDealer ? 48000 : 32000, // Dealer ron: 48000, Non-dealer ron: 32000
@@ -87,6 +89,7 @@ const ScoreCalculator: React.FC = () => {
       
       return {
         basePoints: 0,
+        originalBasePoints: 0,
         tsumoDealer: tsumoValue.nonDealerFromDealer,
         tsumoNonDealer: isDealer ? tsumoValue.dealerFromNonDealer : tsumoValue.nonDealerFromNonDealer,
         ron: isDealer ? ronValue.dealer : ronValue.nonDealer,
@@ -100,6 +103,10 @@ const ScoreCalculator: React.FC = () => {
 
     // Calculate base points: fu × 2^(han+2)
     let basePoints = fuValue * Math.pow(2, hanValue + 2);
+    let originalBasePoints = basePoints;
+
+    // Limit base points to 2000 when < 5 han
+    basePoints = hanValue < 5 ? Math.min(basePoints, 2000) : basePoints;
 
     // Calculate scores
     let tsumoDealer = 0;
@@ -127,6 +134,7 @@ const ScoreCalculator: React.FC = () => {
 
     return {
       basePoints,
+      originalBasePoints,
       tsumoDealer,
       tsumoNonDealer,
       ron,
@@ -323,7 +331,8 @@ const ScoreCalculator: React.FC = () => {
                     {calculateScore.basePoints.toLocaleString()}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Formula: {fu ?? 30} × 2<sup>{(han ?? 1) + 2}</sup> = {calculateScore.basePoints.toLocaleString()}
+                    Formula: {fu ?? 30} × 2<sup>{(han ?? 1) + 2}</sup> = {calculateScore.originalBasePoints.toLocaleString()}
+                    {calculateScore.originalBasePoints > 2000 && (<p className="text-xs text-gray-500 mt-1">Limited to 2000 when {'< 5'} han</p>)}
                   </div>
                 </div>
               )}

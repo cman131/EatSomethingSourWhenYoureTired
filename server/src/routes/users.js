@@ -11,7 +11,7 @@ const router = express.Router();
 // @access  Private
 router.get('/profile', async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).populate('favoriteTile');
     res.json({
       success: true,
       data: {
@@ -32,7 +32,7 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
-    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, clubAffiliation } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode } = req.body;
     const user = await User.findById(req.user._id);
 
     if (displayName !== undefined) {
@@ -72,11 +72,20 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
       user.favoriteYaku = favoriteYaku === '' || favoriteYaku === null ? null : favoriteYaku;
     }
 
+    if (favoriteTile !== undefined) {
+      user.favoriteTile = favoriteTile === '' || favoriteTile === null ? null : favoriteTile;
+    }
+
     if (clubAffiliation !== undefined) {
       user.clubAffiliation = clubAffiliation;
     }
 
+    if (privateMode !== undefined) {
+      user.privateMode = privateMode;
+    }
+
     await user.save();
+    await user.populate('favoriteTile');
 
     res.json({
       success: true,
@@ -375,9 +384,9 @@ router.get('/:id/games', async (req, res) => {
     const games = await Game.find({
       'players.player': req.params.id
     })
-      .populate('submittedBy', 'displayName email avatar')
-      .populate('players.player', 'displayName email avatar')
-      .populate('verifiedBy', 'displayName')
+      .populate('submittedBy', 'displayName avatar privateMode')
+      .populate('players.player', 'displayName avatar privateMode')
+      .populate('verifiedBy', 'displayName avatar privateMode')
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);
@@ -592,7 +601,7 @@ router.delete('/notifications', async (req, res) => {
 // @access  Private
 router.get('/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).populate('favoriteTile');
     if (!user) {
       return res.status(404).json({
         success: false,

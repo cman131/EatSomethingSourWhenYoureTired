@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { gamesApi, usersApi, User } from '../services/api';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/airbnb.css';
+import UserDisplay from '../components/user/UserDisplay';
 
 const GameSubmission: React.FC = () => {
   useRequireAuth();
@@ -253,25 +254,13 @@ const GameSubmission: React.FC = () => {
                                 }`}
                               >
                                 <div className="flex items-center gap-3">
-                                  {user.avatar && (
-                                    <div className="flex-shrink-0">
-                                      <img
-                                        src={user.avatar}
-                                        alt={`${user.displayName}'s avatar`}
-                                        className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                                        onError={(e) => {
-                                          // Hide image if it fails to load
-                                          e.currentTarget.style.display = 'none';
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                  <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{user.displayName}</div>
-                                    {user.realName && (
-                                      <div className="text-xs text-gray-500">{user.realName}</div>
-                                    )}
-                                  </div>
+                                  <UserDisplay
+                                    user={user}
+                                    size="sm"
+                                    showLink={false}
+                                    showRealName={true}
+                                    className="flex-1"
+                                  />
                                   {isSelected && (
                                     <span className="text-xs text-primary-600 font-medium">Selected</span>
                                   )}

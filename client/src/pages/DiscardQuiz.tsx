@@ -1,48 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { discardQuizzesApi, DiscardQuiz, usersApi, User } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import UserDisplay from '../components/user/UserDisplay';
 import { LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
-
-// Helper function to get tile image path from tile ID
-const getTileImagePath = (tileId: string): string => {
-  // Man tiles
-  if (tileId.startsWith('M')) {
-    if (tileId === 'M5R') return '/mahjong-tiles/Man5-Dora.svg';
-    const num = tileId.substring(1);
-    return `/mahjong-tiles/Man${num}.svg`;
-  }
-  
-  // Pin tiles
-  if (tileId.startsWith('P')) {
-    if (tileId === 'P5R') return '/mahjong-tiles/Pin5-Dora.svg';
-    const num = tileId.substring(1);
-    return `/mahjong-tiles/Pin${num}.svg`;
-  }
-  
-  // Sou tiles
-  if (tileId.startsWith('S') && tileId !== 'S') {
-    if (tileId === 'S5R') return '/mahjong-tiles/Sou5-Dora.svg';
-    const num = tileId.substring(1);
-    return `/mahjong-tiles/Sou${num}.svg`;
-  }
-  
-  // Winds
-  if (tileId === 'E') return '/mahjong-tiles/Ton.svg'; // East
-  if (tileId === 'S') return '/mahjong-tiles/Nan.svg'; // South
-  if (tileId === 'W') return '/mahjong-tiles/Shaa.svg'; // West
-  if (tileId === 'N') return '/mahjong-tiles/Pei.svg'; // North
-  
-  // Dragons
-  if (tileId === 'r') return '/mahjong-tiles/Chun.svg'; // Red Dragon
-  if (tileId === 'w') return '/mahjong-tiles/Haku.svg'; // White Dragon
-  if (tileId === 'g') return '/mahjong-tiles/Hatsu.svg'; // Green Dragon
-  
-  // Fallback
-  console.error('Fallback:', tileId);
-  return '/mahjong-tiles/Front.svg';
-};
+import { getTileImagePath } from '../utils/tileUtils';
 
 const DiscardQuizPage: React.FC = () => {
   const { isLoading: authLoading } = useRequireAuth();
@@ -570,33 +533,21 @@ const DiscardQuizPage: React.FC = () => {
                   ) : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {modalUsers.map((user) => (
-                        <Link
+                        <div
                           key={user._id}
-                          to={`/profile/${user._id}`}
                           onClick={closeModal}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                          className={`flex items-center gap-3 p-3 rounded-lg ${
+                            !user.privateMode ? 'hover:bg-gray-50 transition-colors cursor-pointer' : ''
+                          }`}
                         >
-                          {user.avatar && (
-                            <img
-                              src={user.avatar}
-                              alt={user.displayName}
-                              className="w-10 h-10 rounded-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {user.displayName}
-                            </div>
-                            {user.realName && (
-                              <div className="text-sm text-gray-500">
-                                {user.realName}
-                              </div>
-                            )}
-                          </div>
-                        </Link>
+                          <UserDisplay
+                            user={user}
+                            size="md"
+                            showLink={true}
+                            showRealName={true}
+                            className="flex-1"
+                          />
+                        </div>
                       ))}
                     </div>
                   )}

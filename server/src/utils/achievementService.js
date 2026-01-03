@@ -10,8 +10,9 @@ const User = require('../models/User');
 async function calculateUserStats(userId) {
   const userIdString = userId.toString();
   
-  // Get all games where user is involved (submitted or played)
+  // Get all verified games where user is involved (submitted or played)
   const allGames = await Game.find({
+    verified: true,
     $or: [
       { submittedBy: userId },
       { 'players.player': userId }
@@ -134,6 +135,7 @@ async function calculateUserStats(userId) {
 
   // Games verified
   const gamesVerified = await Game.countDocuments({
+    verified: true,
     verifiedBy: userId
   });
 

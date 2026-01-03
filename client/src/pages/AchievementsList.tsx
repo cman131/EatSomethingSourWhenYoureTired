@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { usePaginatedApi } from '../hooks/useApi';
 import { achievementsApi, Achievement, User } from '../services/api';
+import UserDisplay from '../components/user/UserDisplay';
 
 const AchievementsList: React.FC = () => {
   useRequireAuth();
@@ -207,34 +207,22 @@ const GrandAchievementCard: React.FC<{ achievement: Achievement }> = ({ achievem
               <div className="text-xs font-semibold text-gray-600 mb-2">Current Holder{holders.length > 1 ? 's' : ''}:</div>
               <div className="flex flex-wrap gap-3">
                 {holders.map((holder) => (
-                  <Link
+                  <div
                     key={holder.user._id}
-                    to={`/profile/${holder.user._id}`}
-                    className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-yellow-200 hover:border-yellow-400 hover:shadow-md transition-all"
+                    className={`flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-yellow-200 ${
+                      !holder.user.privateMode ? 'hover:border-yellow-400 hover:shadow-md transition-all' : ''
+                    }`}
                   >
-                    {holder.user.avatar ? (
-                      <img
-                        src={holder.user.avatar}
-                        alt={holder.user.displayName}
-                        className="w-8 h-8 rounded-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">No avatar</span>
-                      </div>
-                    )}
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {holder.user.displayName}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Value: {holder.value.toLocaleString()}
-                      </div>
+                    <UserDisplay
+                      user={holder.user}
+                      size="sm"
+                      showLink={true}
+                      nameClassName="text-sm font-medium"
+                    />
+                    <div className="text-xs text-gray-500">
+                      Value: {holder.value.toLocaleString()}
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </div>
