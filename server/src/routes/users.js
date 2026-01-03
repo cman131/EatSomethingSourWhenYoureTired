@@ -32,6 +32,7 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
+
     const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode } = req.body;
     const user = await User.findById(req.user._id);
 
@@ -163,8 +164,8 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const users = await User.find()
-      .select('displayName avatar realName discordName mahjongSoulName favoriteYaku')
+    const users = await User.find({ privateMode: false })
+      .select('displayName avatar privateMode realName discordName mahjongSoulName favoriteYaku')
       .sort({ displayName: 1 })
       .skip(skip)
       .limit(limit);
@@ -209,6 +210,7 @@ router.get('/search', async (req, res) => {
       });
     }
 
+    // Only exception to private mode is when searching for users on a form
     const users = await User.find({
       $or: [
         { displayName: { $regex: q.trim(), $options: 'i' } },
