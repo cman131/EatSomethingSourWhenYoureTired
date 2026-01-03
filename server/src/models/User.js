@@ -69,6 +69,10 @@ const userSchema = new mongoose.Schema({
     enum: ['Charleston', 'Charlotte', 'Washington D.C.'],
     default: 'Charleston'
   },
+  privateMode: {
+    type: Boolean,
+    default: false
+  },
   passwordResetToken: String,
   passwordResetExpires: Date,
   notificationPreferences: {
@@ -187,6 +191,19 @@ userSchema.methods.toJSON = function() {
   delete userObject.emailVerificationToken;
   delete userObject.passwordResetToken;
   delete userObject.passwordResetExpires;
+  
+  // If private mode is enabled, hide name and username fields
+  if (userObject.privateMode === true) {
+    userObject.displayName = 'Hidden';
+    userObject.realName = undefined;
+    userObject.discordName = undefined;
+    userObject.mahjongSoulName = undefined;
+    userObject.avatar = undefined;
+    userObject.favoriteYaku = undefined;
+    userObject.favoriteTile = undefined;
+    userObject.clubAffiliation = undefined;
+  }
+  
   return userObject;
 };
 

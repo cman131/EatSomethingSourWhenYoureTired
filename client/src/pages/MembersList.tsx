@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { usePaginatedApi } from '../hooks/useApi';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { usersApi, User } from '../services/api';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import UserDisplay from '../components/user/UserDisplay';
 
 const MembersList: React.FC = () => {
   useRequireAuth();
@@ -105,45 +105,25 @@ const MembersList: React.FC = () => {
                   key={user._id}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="flex-shrink-0">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt={user.displayName}
-                          className="w-16 h-16 rounded-full object-cover border border-gray-200"
-                          onError={(e) => {
-                            // Hide image if it fails to load
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center">
-                          <span className="text-gray-400 text-xs">No avatar</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <Link
-                        to={`/profile/${user._id}`}
-                        className="text-lg font-semibold text-gray-900 hover:text-primary-600 transition-colors cursor-pointer"
-                      >
-                        {user.displayName}
-                      </Link>
-                      {(user.realName || user.discordName || user.mahjongSoulName) && (
-                        <div className="mt-1 text-sm text-gray-600 space-y-1">
-                          {user.realName && (
-                            <div>Real Name: {user.realName}</div>
-                          )}
-                          {user.discordName && (
-                            <div>Discord: {user.discordName}</div>
-                          )}
-                          {user.mahjongSoulName && (
-                            <div>Mahjong Soul: {user.mahjongSoulName}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                  <div>
+                    <UserDisplay
+                      user={user}
+                      size="lg"
+                      nameClassName="text-lg font-semibold"
+                    />
+                    {(user.realName || user.discordName || user.mahjongSoulName) && (
+                      <div className="mt-1 ml-0 text-sm text-gray-600 space-y-1">
+                        {user.realName && (
+                          <div>Real Name: {user.realName}</div>
+                        )}
+                        {user.discordName && (
+                          <div>Discord: {user.discordName}</div>
+                        )}
+                        {user.mahjongSoulName && (
+                          <div>Mahjong Soul: {user.mahjongSoulName}</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

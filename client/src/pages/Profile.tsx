@@ -1,9 +1,10 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { usersApi, Game, User } from '../services/api';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import AchievementsSection from '../components/profile/AchievementsSection';
 import StatisticsSection from '../components/profile/StatisticsSection';
 import GameHistorySection from '../components/profile/GameHistorySection';
@@ -74,6 +75,24 @@ const Profile: React.FC = () => {
     );
   }
 
+  // If viewing someone else's profile and they have privateMode enabled, show 404
+  if (id && user.privateMode === true) {
+    return (
+      <div className="space-y-6">
+        <div className="card">
+          <div className="text-center py-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h1>
+            <p className="text-gray-600 mb-4">The profile you're looking for doesn't exist or is not available.</p>
+            <Link to="/members" className="btn-secondary inline-flex items-center gap-2">
+              <ArrowLeftIcon className="h-5 w-5" />
+              Back to Members
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -92,40 +111,45 @@ const Profile: React.FC = () => {
         />
       )}
 
-      {/* Head-to-Head Statistics */}
-      <HeadToHeadSection
-        currentUser={currentUser}
-        profileUserId={profileUserId || ''}
-        profileUserDisplayName={user?.displayName || ''}
-        allGames={allGames}
-        allGamesLoading={allGamesLoading}
-        isOwnProfile={isOwnProfile}
-      />
+      {/* Only show other sections if user is not in private mode */}
+      {!user?.privateMode && (
+        <>
+          {/* Head-to-Head Statistics */}
+          <HeadToHeadSection
+            currentUser={currentUser}
+            profileUserId={profileUserId || ''}
+            profileUserDisplayName={user?.displayName || ''}
+            allGames={allGames}
+            allGamesLoading={allGamesLoading}
+            isOwnProfile={isOwnProfile}
+          />
 
-      {/* Achievements */}
-      {profileUserId && <AchievementsSection userId={profileUserId} />}
+          {/* Achievements */}
+          {profileUserId && <AchievementsSection userId={profileUserId} />}
 
-      {/* Statistics */}
-      {profileUserId && (
-        <StatisticsSection
-          profileUserId={profileUserId}
-          allGames={allGames}
-          allGamesLoading={allGamesLoading}
-        />
-      )}
+          {/* Statistics */}
+          {profileUserId && (
+            <StatisticsSection
+              profileUserId={profileUserId}
+              allGames={allGames}
+              allGamesLoading={allGamesLoading}
+            />
+          )}
 
-      {/* Recent Game Performance */}
-      {profileUserId && (
-        <RecentGamePerformanceSection profileUserId={profileUserId} />
-      )}
+          {/* Recent Game Performance */}
+          {profileUserId && (
+            <RecentGamePerformanceSection profileUserId={profileUserId} />
+          )}
 
-      {/* Game History */}
-      {profileUserId && (
-        <GameHistorySection
-          gamesLoading={allGamesLoading}
-          profileUserId={profileUserId}
-          allGames={allGames}
-        />
+          {/* Game History */}
+          {profileUserId && (
+            <GameHistorySection
+              gamesLoading={allGamesLoading}
+              profileUserId={profileUserId}
+              allGames={allGames}
+            />
+          )}
+        </>
       )}
     </div>
   );

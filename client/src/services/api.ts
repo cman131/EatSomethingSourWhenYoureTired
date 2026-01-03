@@ -34,6 +34,7 @@ export interface User {
   notifications?: Notification[];
   notificationPreferences?: NotificationPreferences;
   isAdmin?: boolean;
+  privateMode?: boolean;
 }
 
 export interface GamePlayer {

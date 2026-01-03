@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import UserDisplay from '../components/user/UserDisplay';
 import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
@@ -371,29 +372,12 @@ const TournamentDetail: React.FC = () => {
                       isCurrentUser ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      {playerEntry.player.avatar && (
-                        <img
-                          src={playerEntry.player.avatar}
-                          alt={playerEntry.player.displayName}
-                          className="w-12 h-12 rounded-full object-cover border border-gray-200"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      )}
-                      <div className="flex-1">
-                        <Link
-                          to={`/profile/${playerEntry.player._id}`}
-                          className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
-                        >
-                          {playerEntry.player.displayName}
-                          {isCurrentUser && (
-                            <span className="ml-2 text-xs text-primary-600 font-normal">(You)</span>
-                          )}
-                        </Link>
-                      </div>
-                    </div>
+                    <UserDisplay
+                      user={playerEntry.player}
+                      size="md"
+                      showYouIndicator={true}
+                      nameClassName="text-base"
+                    />
                   </div>
                 );
               })}

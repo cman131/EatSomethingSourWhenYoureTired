@@ -4,6 +4,7 @@ import { usePaginatedApi } from '../hooks/useApi';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { tournamentsApi, Tournament } from '../services/api';
+import UserAvatar from '../components/user/UserAvatar';
 import { MagnifyingGlassIcon, PlusIcon, CalendarIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 const TournamentsList: React.FC = () => {
@@ -182,23 +183,30 @@ const TournamentsList: React.FC = () => {
                               .filter(p => !p.dropped)
                               .slice(0, 8)
                               .map((playerEntry) => (
-                                <Link
-                                  key={playerEntry.player._id}
-                                  to={`/profile/${playerEntry.player._id}`}
-                                  className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors"
-                                >
-                                  {playerEntry.player.avatar && (
-                                    <img
-                                      src={playerEntry.player.avatar}
-                                      alt={playerEntry.player.displayName}
-                                      className="w-5 h-5 rounded-full object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = 'none';
-                                      }}
+                                playerEntry.player.privateMode ? (
+                                  <div
+                                    key={playerEntry.player._id}
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-700"
+                                  >
+                                    <UserAvatar
+                                      user={playerEntry.player}
+                                      size="xs"
                                     />
-                                  )}
-                                  <span>{playerEntry.player.displayName}</span>
-                                </Link>
+                                    <span>{playerEntry.player.displayName}</span>
+                                  </div>
+                                ) : (
+                                  <Link
+                                    key={playerEntry.player._id}
+                                    to={`/profile/${playerEntry.player._id}`}
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors"
+                                  >
+                                    <UserAvatar
+                                      user={playerEntry.player}
+                                      size="xs"
+                                    />
+                                    <span>{playerEntry.player.displayName}</span>
+                                  </Link>
+                                )
                               ))}
                             {activePlayerCount > 8 && (
                               <span className="inline-flex items-center px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-500">

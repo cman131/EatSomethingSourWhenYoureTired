@@ -123,5 +123,50 @@ gameSchema.pre('save', function(next) {
   next();
 });
 
+// Ensure populated User fields go through their toJSON method
+gameSchema.methods.toJSON = function() {
+  const gameObject = this.toObject();
+  
+  // Apply toJSON to populated submittedBy if it exists and is populated
+  if (this.submittedBy && this.submittedBy.toJSON && typeof this.submittedBy.toJSON === 'function') {
+    gameObject.submittedBy = this.submittedBy.toJSON();
+  }
+  
+  // Apply toJSON to populated verifiedBy if it exists and is populated
+  if (this.verifiedBy && this.verifiedBy.toJSON && typeof this.verifiedBy.toJSON === 'function') {
+    gameObject.verifiedBy = this.verifiedBy.toJSON();
+  }
+  
+  // Handle players array - check if player fields are populated
+  if (this.players && Array.isArray(this.players)) {
+    gameObject.players = this.players.map((player, index) => {
+      const playerObj = gameObject.players[index];
+      if (player.player && player.player.toJSON && typeof player.player.toJSON === 'function') {
+        return {
+          ...playerObj,
+          player: player.player.toJSON()
+        };
+      }
+      return playerObj;
+    });
+  }
+  
+  // Handle comments array - check if commenter fields are populated
+  if (this.comments && Array.isArray(this.comments)) {
+    gameObject.comments = this.comments.map((comment, index) => {
+      const commentObj = gameObject.comments[index];
+      if (comment.commenter && comment.commenter.toJSON && typeof comment.commenter.toJSON === 'function') {
+        return {
+          ...commentObj,
+          commenter: comment.commenter.toJSON()
+        };
+      }
+      return commentObj;
+    });
+  }
+  
+  return gameObject;
+};
+
 module.exports = mongoose.model('Game', gameSchema);
 

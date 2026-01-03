@@ -41,8 +41,8 @@ async function createGame(gameData, submitterId) {
   await game.save();
 
   // Populate before sending response
-  await game.populate('submittedBy', 'displayName email');
-  await game.populate('players.player', 'displayName email');
+  await game.populate('submittedBy', 'displayName avatar privateMode');
+  await game.populate('players.player', 'displayName avatar privateMode');
 
   // Send notifications to players who aren't the submitter
   const submitterIdString = submitterId.toString();

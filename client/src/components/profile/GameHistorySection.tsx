@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Game } from '../../services/api';
+import UserDisplay from '../user/UserDisplay';
 
 const PlayerSeats = ['East', 'South', 'West', 'North'];
 
@@ -88,21 +89,33 @@ const GameHistorySection: React.FC<GameHistorySectionProps> = ({
                       </div>
                       <p className="text-sm text-gray-600 mb-3">
                         Submitted by{' '}
-                        <Link
-                          to={`/profile/${game.submittedBy._id}`}
-                          className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
-                        >
-                          {game.submittedBy.displayName}
-                        </Link>
+                        {game.submittedBy.privateMode ? (
+                          <span className="font-medium text-gray-900">
+                            {game.submittedBy.displayName}
+                          </span>
+                        ) : (
+                          <Link
+                            to={`/profile/${game.submittedBy._id}`}
+                            className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                          >
+                            {game.submittedBy.displayName}
+                          </Link>
+                        )}
                         {game.verifiedBy && (
                           <>
                             {' '}• Verified by{' '}
-                            <Link
-                              to={`/profile/${game.verifiedBy._id}`}
-                              className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
-                            >
-                              {game.verifiedBy.displayName}
-                            </Link>
+                            {game.verifiedBy.privateMode ? (
+                              <span className="font-medium text-gray-900">
+                                {game.verifiedBy.displayName}
+                              </span>
+                            ) : (
+                              <Link
+                                to={`/profile/${game.verifiedBy._id}`}
+                                className="font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                              >
+                                {game.verifiedBy.displayName}
+                              </Link>
+                            )}
                           </>
                         )}
                       </p>
@@ -119,28 +132,12 @@ const GameHistorySection: React.FC<GameHistorySectionProps> = ({
                               <div className="text-xs text-gray-500 mb-1">
                                 {PlayerSeats[player.position - 1]}
                               </div>
-                              <div className="flex items-center gap-2 mb-1">
-                                {player.player.avatar && (
-                                  <img
-                                    src={player.player.avatar}
-                                    alt={player.player.displayName}
-                                    className="w-8 h-8 rounded-full object-cover"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                    }}
-                                  />
-                                )}
-                                {player.player._id !== profileUserId ? (
-                                  <Link
-                                    to={`/profile/${player.player._id}`}
-                                    className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
-                                  >
-                                    {player.player.displayName}
-                                  </Link>
-                                ) : (
-                                  <span className="font-medium text-gray-900">{player.player.displayName}</span>
-                                )}
-                              </div>
+                              <UserDisplay
+                                user={player.player}
+                                size="sm"
+                                showLink={player.player._id !== profileUserId}
+                                className="mb-1"
+                              />
                               <div className="text-sm text-gray-700 mt-1">
                                 Score: <span className="font-semibold">{player.score}</span>
                               </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TableCellsIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { Tournament, User } from '../../services/api';
+import UserDisplay from '../user/UserDisplay';
 
 interface CurrentRoundPairingProps {
   tournament: Tournament;
@@ -202,32 +203,20 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
                 }`}
               >
                 <div className="text-xs font-medium text-gray-500 mb-2">{seat}</div>
-                <div className="flex items-center gap-2">
-                  {avatar && (
-                    <img
-                      src={avatar}
-                      alt={displayName}
-                      className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <div className="font-medium text-gray-900 flex-1">
-                    {isCurrentUser ? (
-                      <span className="text-primary-600">{displayName} (You)</span>
-                    ) : playerId ? (
-                      <Link
-                        to={`/profile/${playerId}`}
-                        className="hover:text-primary-600 hover:underline transition-colors"
-                      >
-                        {displayName}
-                      </Link>
-                    ) : (
-                      <span className="text-gray-400">{displayName}</span>
-                    )}
-                  </div>
-                </div>
+                {playerId ? (
+                  <UserDisplay
+                    user={{
+                      _id: playerId,
+                      displayName: displayName,
+                      avatar: avatar || null,
+                    }}
+                    size="sm"
+                    showYouIndicator={true}
+                    nameClassName={isCurrentUser ? 'text-primary-600' : ''}
+                  />
+                ) : (
+                  <div className="font-medium text-gray-400 text-sm">{displayName}</div>
+                )}
               </div>
             );
           })}

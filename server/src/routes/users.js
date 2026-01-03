@@ -32,7 +32,7 @@ router.get('/profile', async (req, res) => {
 // @access  Private
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
-    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode } = req.body;
     const user = await User.findById(req.user._id);
 
     if (displayName !== undefined) {
@@ -78,6 +78,10 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
 
     if (clubAffiliation !== undefined) {
       user.clubAffiliation = clubAffiliation;
+    }
+
+    if (privateMode !== undefined) {
+      user.privateMode = privateMode;
     }
 
     await user.save();
@@ -380,9 +384,9 @@ router.get('/:id/games', async (req, res) => {
     const games = await Game.find({
       'players.player': req.params.id
     })
-      .populate('submittedBy', 'displayName email avatar')
-      .populate('players.player', 'displayName email avatar')
-      .populate('verifiedBy', 'displayName')
+      .populate('submittedBy', 'displayName avatar privateMode')
+      .populate('players.player', 'displayName avatar privateMode')
+      .populate('verifiedBy', 'displayName avatar privateMode')
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);

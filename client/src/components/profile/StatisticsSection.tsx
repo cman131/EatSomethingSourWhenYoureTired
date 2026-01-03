@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
 import { usersApi, UserStats, User, Game } from '../../services/api';
+import UserAvatar from '../user/UserAvatar';
 
 interface StatisticsSectionProps {
   profileUserId: string;
@@ -152,23 +153,32 @@ const StatisticsSection: React.FC<StatisticsSectionProps> = ({
             ) : mostPlayedWith.length > 0 ? (
               <div className="flex flex-wrap justify-center items-center gap-3">
                 {mostPlayedWith.map((player) => (
-                  <Link
-                    key={player._id}
-                    to={`/profile/${player._id}`}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                  >
-                    {player.avatar && (
-                      <img
-                        src={player.avatar}
-                        alt={player.displayName}
-                        className="w-6 h-6 rounded-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
+                  player.privateMode ? (
+                    <div
+                      key={player._id}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-md"
+                    >
+                      <UserAvatar
+                        user={player}
+                        size="xs"
+                        className="w-6 h-6"
                       />
-                    )}
-                    <span className="text-sm font-medium text-gray-900">{player.displayName}</span>
-                  </Link>
+                      <span className="text-sm font-medium text-gray-900">{player.displayName}</span>
+                    </div>
+                  ) : (
+                    <Link
+                      key={player._id}
+                      to={`/profile/${player._id}`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    >
+                      <UserAvatar
+                        user={player}
+                        size="xs"
+                        className="w-6 h-6"
+                      />
+                      <span className="text-sm font-medium text-gray-900">{player.displayName}</span>
+                    </Link>
+                  )
                 ))}
               </div>
             ) : (

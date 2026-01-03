@@ -141,7 +141,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const tournaments = await Tournament.find()
-      .populate('players.player', 'displayName avatar')
+      .populate('players.player', 'displayName avatar privateMode')
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit);
@@ -175,7 +175,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id)
-      .populate('players.player', 'displayName avatar');
+      .populate('players.player', 'displayName avatar privateMode');
 
     if (!tournament) {
       return res.status(404).json({
@@ -186,7 +186,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 
     // Populate rounds pairings players and games if tournament has started
     if (tournament.status !== 'NotStarted' && tournament.rounds && tournament.rounds.length > 0) {
-      await tournament.populate('rounds.pairings.players.player', 'displayName avatar');
+      await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
       await tournament.populate('rounds.pairings.game');
     }
 
@@ -252,7 +252,7 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar');
+    await tournament.populate('players.player', 'displayName avatar privateMode');
 
     // Send notifications to all users about the new tournament
     sendNewTournamentNotifications(tournament);
@@ -354,8 +354,8 @@ router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId(
     
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar');
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar');
+    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
 
     res.json({
       success: true,
@@ -539,8 +539,8 @@ router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin
     // Round is complete
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar');
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar');
+    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
     await tournament.populate('rounds.pairings.game');
 
     res.json({
@@ -595,7 +595,7 @@ router.put('/admin/:id/rounds/:roundNumber/reset', authenticateToken, requireAdm
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar');
+    await tournament.populate('players.player', 'displayName avatar privateMode');
 
     res.json({
       success: true,
@@ -638,7 +638,7 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
         existingPlayer.dropped = false;
         await tournament.save();
         
-        await tournament.populate('players.player', 'displayName avatar');
+        await tournament.populate('players.player', 'displayName avatar privateMode');
         
         return res.json({
           success: true,
@@ -664,7 +664,7 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar');
+    await tournament.populate('players.player', 'displayName avatar privateMode');
 
     res.status(201).json({
       success: true,
@@ -721,7 +721,7 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar');
+    await tournament.populate('players.player', 'displayName avatar privateMode');
 
     res.json({
       success: true,
@@ -862,7 +862,7 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
     await tournament.save();
 
     // Populate tournament before sending response (game is already populated by createGame)
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar');
+    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
 
     res.status(201).json({
       success: true,
@@ -953,7 +953,7 @@ router.get('/:id/my-pairing', authenticateToken, validateMongoId('id'), async (r
     }
 
     // Populate player and game data
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar');
+    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
     await tournament.populate('rounds.pairings.game');
 
     // Get the updated pairing after population

@@ -182,5 +182,58 @@ tournamentSchema.pre('save', function(next) {
   next();
 });
 
+// Ensure populated User fields go through their toJSON method
+tournamentSchema.methods.toJSON = function() {
+  const tournamentObject = this.toObject();
+  
+  // Handle players array - check if player fields are populated
+  if (this.players && Array.isArray(this.players)) {
+    tournamentObject.players = this.players.map((player, index) => {
+      const playerObj = tournamentObject.players[index];
+      if (player.player && player.player.toJSON && typeof player.player.toJSON === 'function') {
+        return {
+          ...playerObj,
+          player: player.player.toJSON()
+        };
+      }
+      return playerObj;
+    });
+  }
+  
+  // Handle rounds array - check if player fields are populated
+  if (this.rounds && Array.isArray(this.rounds)) {
+    tournamentObject.rounds = this.rounds.map((round, roundIndex) => {
+      const roundObj = tournamentObject.rounds[roundIndex];
+      if (round.pairings && Array.isArray(round.pairings)) {
+        roundObj.pairings = round.pairings.map((pairing, pairingIndex) => {
+          const pairingObj = roundObj.pairings[pairingIndex];
+          if (pairing.players && Array.isArray(pairing.players)) {
+            pairingObj.players = pairing.players.map((playerEntry, playerIndex) => {
+              const playerEntryObj = pairingObj.players[playerIndex];
+              if (playerEntry.player && playerEntry.player.toJSON && typeof playerEntry.player.toJSON === 'function') {
+                return {
+                  ...playerEntryObj,
+                  player: playerEntry.player.toJSON()
+                };
+              }
+              return playerEntryObj;
+            });
+          }
+          
+          // Also handle populated game if it exists
+          if (pairing.game && pairing.game.toJSON && typeof pairing.game.toJSON === 'function') {
+            pairingObj.game = pairing.game.toJSON();
+          }
+          
+          return pairingObj;
+        });
+      }
+      return roundObj;
+    });
+  }
+  
+  return tournamentObject;
+};
+
 module.exports = mongoose.model('Tournament', tournamentSchema);
 

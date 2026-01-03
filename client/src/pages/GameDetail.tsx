@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { gamesApi, Game } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import UserDisplay from '../components/user/UserDisplay';
 import { ArrowLeftIcon, TrophyIcon, CheckCircleIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 
 const GameDetail: React.FC = () => {
@@ -198,22 +199,34 @@ const GameDetail: React.FC = () => {
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div>
               <span className="font-medium">Submitted by:</span>{' '}
-              <Link
-                to={`/profile/${game.submittedBy._id}`}
-                className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
-              >
-                {game.submittedBy.displayName}
-              </Link>
+              {game.submittedBy.privateMode ? (
+                <span className="text-gray-900 font-medium">
+                  {game.submittedBy.displayName}
+                </span>
+              ) : (
+                <Link
+                  to={`/profile/${game.submittedBy._id}`}
+                  className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                >
+                  {game.submittedBy.displayName}
+                </Link>
+              )}
             </div>
             {game.verifiedBy && (
               <div>
                 <span className="font-medium">Verified by:</span>{' '}
-                <Link
-                  to={`/profile/${game.verifiedBy._id}`}
-                  className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
-                >
-                  {game.verifiedBy.displayName}
-                </Link>
+                {game.verifiedBy.privateMode ? (
+                  <span className="text-gray-900 font-medium">
+                    {game.verifiedBy.displayName}
+                  </span>
+                ) : (
+                  <Link
+                    to={`/profile/${game.verifiedBy._id}`}
+                    className="text-primary-600 hover:text-primary-700 hover:underline font-medium"
+                  >
+                    {game.verifiedBy.displayName}
+                  </Link>
+                )}
               </div>
             )}
             {game.verifiedAt && (
@@ -255,24 +268,11 @@ const GameDetail: React.FC = () => {
                       <div className="text-xs text-gray-500 mb-1">
                         {PlayerSeats[player.position - 1]} • {getOrdinalPlace(index)} place
                       </div>
-                      <div className="flex items-center gap-2">
-                        {player.player.avatar && (
-                          <img
-                            src={player.player.avatar}
-                            alt={player.player.displayName}
-                            className="w-10 h-10 rounded-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        )}
-                        <Link
-                          to={`/profile/${player.player._id}`}
-                          className="font-semibold text-lg text-gray-900 hover:text-primary-600 hover:underline transition-colors"
-                        >
-                          {player.player.displayName}
-                        </Link>
-                      </div>
+                      <UserDisplay
+                        user={player.player}
+                        size="md"
+                        nameClassName="font-semibold text-lg"
+                      />
                     </div>
                   </div>
                   <div className="text-right">
@@ -365,24 +365,14 @@ const GameDetail: React.FC = () => {
               {game.comments.map((comment) => (
                 <div key={comment._id || comment.createdAt} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                   <div className="flex items-start gap-3">
-                    {comment.commenter.avatar && (
-                      <img
-                        src={comment.commenter.avatar}
-                        alt={comment.commenter.displayName}
-                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    )}
+                    <UserDisplay
+                      user={comment.commenter}
+                      size="sm"
+                      className="flex-shrink-0"
+                      nameClassName="font-semibold text-sm"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Link
-                          to={`/profile/${comment.commenter._id}`}
-                          className="font-semibold text-sm text-gray-900 hover:text-primary-600 hover:underline transition-colors"
-                        >
-                          {comment.commenter.displayName}
-                        </Link>
                         <span className="text-xs text-gray-500">
                           {new Date(comment.createdAt).toLocaleDateString('en-US', {
                             year: 'numeric',

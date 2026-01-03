@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { discardQuizzesApi, DiscardQuiz, usersApi, User } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
+import UserDisplay from '../components/user/UserDisplay';
 import { LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getTileImagePath } from '../utils/tileUtils';
 
@@ -532,33 +533,21 @@ const DiscardQuizPage: React.FC = () => {
                   ) : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {modalUsers.map((user) => (
-                        <Link
+                        <div
                           key={user._id}
-                          to={`/profile/${user._id}`}
                           onClick={closeModal}
-                          className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                          className={`flex items-center gap-3 p-3 rounded-lg ${
+                            !user.privateMode ? 'hover:bg-gray-50 transition-colors cursor-pointer' : ''
+                          }`}
                         >
-                          {user.avatar && (
-                            <img
-                              src={user.avatar}
-                              alt={user.displayName}
-                              className="w-10 h-10 rounded-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                          )}
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">
-                              {user.displayName}
-                            </div>
-                            {user.realName && (
-                              <div className="text-sm text-gray-500">
-                                {user.realName}
-                              </div>
-                            )}
-                          </div>
-                        </Link>
+                          <UserDisplay
+                            user={user}
+                            size="md"
+                            showLink={true}
+                            showRealName={true}
+                            className="flex-1"
+                          />
+                        </div>
                       ))}
                     </div>
                   )}

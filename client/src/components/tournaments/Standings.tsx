@@ -1,7 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { TrophyIcon } from '@heroicons/react/24/outline';
 import { Tournament, User } from '../../services/api';
+import UserDisplay from '../user/UserDisplay';
 
 interface StandingsProps {
   tournament: Tournament;
@@ -152,26 +152,13 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-gray-300 font-bold text-gray-700">
                 {rankEmoji || playerEntry.rank}
               </div>
-              {playerEntry.player.avatar && (
-                <img
-                  src={playerEntry.player.avatar}
-                  alt={playerEntry.player.displayName}
-                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              )}
               <div className="flex-1">
-                <Link
-                  to={`/profile/${playerEntry.player._id}`}
-                  className="font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors"
-                >
-                  {playerEntry.player.displayName}
-                  {isCurrentUser && (
-                    <span className="ml-2 text-xs text-primary-600 font-normal">(You)</span>
-                  )}
-                </Link>
+                <UserDisplay
+                  user={playerEntry.player}
+                  size="md"
+                  showYouIndicator={true}
+                  nameClassName="text-base"
+                />
               </div>
               <div className="text-right">
                 <div className="text-lg font-bold text-gray-900">
