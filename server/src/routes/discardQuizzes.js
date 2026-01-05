@@ -126,7 +126,7 @@ router.get('/generate/random', async (req, res) => {
     const userIdString = userId.toString();
     
     // 50% chance to attempt loading an existing quiz or generate a new one
-    const shouldLoadExisting = Math.random() < 0.7;
+    const shouldLoadExisting = Math.random() < 0.9;
     
     if (shouldLoadExisting) {
       // Try to find an existing quiz that the user hasn't responded to using aggregation

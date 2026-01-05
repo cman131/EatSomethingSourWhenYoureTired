@@ -16,6 +16,7 @@ import MembersList from './pages/MembersList';
 import AchievementsList from './pages/AchievementsList';
 import ScoreCalculator from './pages/ScoreCalculator';
 import DiscardQuiz from './pages/DiscardQuiz';
+import DecisionQuiz from './pages/DecisionQuiz';
 import TournamentSubmission from './pages/TournamentSubmission';
 import TournamentDetail from './pages/TournamentDetail';
 import TournamentsList from './pages/TournamentsList';
@@ -44,6 +45,8 @@ function App() {
             <Route path="/calculator" element={<ScoreCalculator />} />
             <Route path="/discard-quiz/:discardQuizId" element={<DiscardQuiz />} />
             <Route path="/discard-quiz" element={<DiscardQuiz />} />
+            <Route path="/decision-quiz/:decisionQuizId" element={<DecisionQuiz />} />
+            <Route path="/decision-quiz" element={<DecisionQuiz />} />
             <Route path="/create-tournament" element={<TournamentSubmission />} />
             <Route path="/tournaments/:id" element={<TournamentDetail />} />
             <Route path="/tournaments/:tournamentId/submit-game/:roundNumber/:tableNumber" element={<TournamentGameSubmission />} />

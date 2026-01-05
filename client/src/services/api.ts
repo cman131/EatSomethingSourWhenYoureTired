@@ -137,6 +137,34 @@ export interface DiscardQuiz {
   updatedAt?: string;
 }
 
+export interface DecisionQuizMeld {
+  tiles: Tile[];
+  stolenTileIndex: number | null;
+  stolenFromSeat: 'E' | 'S' | 'W' | 'N' | null;
+}
+
+export interface DecisionQuizPlayer {
+  hand: Tile[];
+  discard: Tile[];
+  melds: DecisionQuizMeld[];
+  seat: 'E' | 'S' | 'W' | 'N';
+  isUser: boolean;
+  score: number;
+  riichiTile: number | null;
+}
+
+export interface DecisionQuiz {
+  id: string;
+  players: DecisionQuizPlayer[];
+  doraIndicators: Tile[];
+  roundWind: 'E' | 'S';
+  roundNumber: number;
+  remainingTileCount: number;
+  responses: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Tile {
   _id: string;
   id: string;
@@ -447,6 +475,23 @@ export const discardQuizzesApi = {
     return apiRequest<ApiResponse<{ quiz: DiscardQuiz }>>(`/discard-quizzes/${quizId}/response`, {
       method: 'PUT',
       body: JSON.stringify({ tileId }),
+    });
+  },
+};
+
+export const decisionQuizzesApi = {
+  getQuiz: async (quizId: string) => {
+    return apiRequest<ApiResponse<{ quiz: DecisionQuiz }>>(`/decision-quizzes/${quizId}`);
+  },
+
+  generateRandomQuiz: async () => {
+    return apiRequest<ApiResponse<{ quiz: DecisionQuiz }>>('/decision-quizzes/generate/random');
+  },
+
+  submitResponse: async (quizId: string, tileId: string, responseData?: any) => {
+    return apiRequest<ApiResponse<{ quiz: DecisionQuiz }>>(`/decision-quizzes/${quizId}/response`, {
+      method: 'PUT',
+      body: JSON.stringify({ tileId, responseData }),
     });
   },
 };
