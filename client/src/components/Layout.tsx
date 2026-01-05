@@ -50,6 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
     ...(isAuthenticated ? [
       { name: 'Discard quiz', href: '/discard-quiz', icon: QuestionMarkCircleIcon },
+      { name: 'Discard quiz V2', href: '/decision-quiz', icon: QuestionMarkCircleIcon },
     ] : []),
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
   ];
