@@ -32,12 +32,32 @@ app.use(cors({
 const isDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
 if (!isDevelopment) {
   const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 2 * 60 * 1000, // 2 minutes
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limit each IP to 1000 requests per windowMs
     message: 'Too many requests from this IP, please try again later.',
     skip: (req) => {
       // Skip rate limiting for auth routes (they have their own stricter limiter)
       return req.path.startsWith('/api/auth');
+    },
+    handler: (req, res) => {
+      // Log rate limit hit with IP, timestamp, request details, and request count
+      const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+      const timestamp = new Date().toISOString();
+      const requestPath = req.path;
+      const requestMethod = req.method;
+      
+      // Get rate limit information
+      const rateLimitInfo = req.rateLimit || {};
+      const currentRequests = rateLimitInfo.current || 'unknown';
+      const limit = rateLimitInfo.limit || parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000;
+      const requestsMade = currentRequests > limit ? currentRequests : limit + 1; // If current exceeds limit, use current; otherwise limit + 1
+      
+      console.warn(`[RATE LIMIT HIT] IP: ${clientIP} | Time: ${timestamp} | Method: ${requestMethod} | Path: ${requestPath} | Requests: ${requestsMade}/${limit} | User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
+      
+      res.status(429).json({
+        success: false,
+        message: 'Too many requests from this IP, please try again later.'
+      });
     }
   });
   app.use('/api/', limiter);
