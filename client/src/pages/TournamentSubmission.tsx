@@ -269,10 +269,10 @@ const TournamentSubmission: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               className="input-field"
               rows={4}
-              maxLength={1000}
+              maxLength={5000}
               placeholder="Enter tournament description..."
             />
-            <p className="mt-1 text-xs text-gray-500">{description.length}/1000 characters</p>
+            <p className="mt-1 text-xs text-gray-500">{description.length}/5000 characters</p>
           </div>
 
           <div>

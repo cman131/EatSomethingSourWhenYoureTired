@@ -4,6 +4,7 @@ import { gamesApi, Game } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import UserDisplay from '../components/user/UserDisplay';
+import ShareButton from '../components/ShareButton';
 import { ArrowLeftIcon, TrophyIcon, CheckCircleIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 
 const GameDetail: React.FC = () => {
@@ -137,15 +138,18 @@ const GameDetail: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          to="/games"
-          className="btn-secondary flex items-center gap-2"
-        >
-          <ArrowLeftIcon className="h-5 w-5" />
-          Back to Games
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Game Details</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/games"
+            className="btn-secondary flex items-center gap-2"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+            Back to Games
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900">Game Details</h1>
+        </div>
+        <ShareButton title="Share this game" />
       </div>
 
       {/* Game Card */}

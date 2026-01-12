@@ -10,7 +10,7 @@ const tournamentSchema = new mongoose.Schema({
   description: {
     type: String,
     trim: true,
-    maxlength: [1000, 'Description cannot be more than 1000 characters']
+    maxlength: [5000, 'Description cannot be more than 5000 characters']
   },
   date: {
     type: Date,
