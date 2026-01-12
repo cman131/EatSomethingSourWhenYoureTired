@@ -4,7 +4,8 @@ import { discardQuizzesApi, DiscardQuiz, usersApi, User } from '../services/api'
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import UserDisplay from '../components/user/UserDisplay';
-import { LinkIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import ShareButton from '../components/ShareButton';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { getTileImagePath } from '../utils/tileUtils';
 
 const DiscardQuizPage: React.FC = () => {
@@ -18,7 +19,6 @@ const DiscardQuizPage: React.FC = () => {
   const [selectedTile, setSelectedTile] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasResponded, setHasResponded] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
   const [selectedTileForModal, setSelectedTileForModal] = useState<string | null>(null);
   const [modalUsers, setModalUsers] = useState<User[]>([]);
   const [modalLoading, setModalLoading] = useState(false);
@@ -129,33 +129,6 @@ const DiscardQuizPage: React.FC = () => {
   const closeModal = () => {
     setSelectedTileForModal(null);
     setModalUsers([]);
-  };
-
-  const handleShare = async () => {
-    if (!quiz) return;
-
-    const url = `${window.location.origin}/discard-quiz/${quiz.id}`;
-    
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
-      // Fallback: select the text
-      const textArea = document.createElement('textarea');
-      textArea.value = url;
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2000);
-      } catch (fallbackErr) {
-        console.error('Fallback copy failed:', fallbackErr);
-      }
-      document.body.removeChild(textArea);
-    }
   };
 
   const handleTileClick = async (tileId: string) => {
@@ -317,25 +290,7 @@ const DiscardQuizPage: React.FC = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Discard Quiz</h1>
           <div className="flex items-center gap-2">
-            {quiz && (
-              <button
-                onClick={handleShare}
-                className="btn-secondary flex items-center gap-2"
-                title="Share this quiz"
-              >
-                {shareCopied ? (
-                  <>
-                    <CheckIcon className="h-5 w-5" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="h-5 w-5" />
-                    Share
-                  </>
-                )}
-              </button>
-            )}
+            <ShareButton title="Share this quiz" />
             <button
               onClick={loadNewQuiz}
               className="btn-secondary"

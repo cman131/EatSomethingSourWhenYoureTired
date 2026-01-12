@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-import UserDisplay from '../components/user/UserDisplay';
-import { ArrowLeftIcon, CalendarIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline';
+import ShareButton from '../components/ShareButton';
+import AddressDisplay from '../components/AddressDisplay';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -289,25 +290,6 @@ const TournamentDetail: React.FC = () => {
         <div className="flex items-center gap-3">
           {tournament.status === 'NotStarted' && (
             <>
-              {user?.isAdmin === true && (
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="btn-primary flex items-center"
-                  title="Edit Tournament"
-                >
-                  <PencilIcon className="h-4 w-4 mr-2" />
-                  Edit
-                </button>
-              )}
-              {user?.isAdmin === true && (
-                <button
-                  onClick={handleStart}
-                  disabled={actionLoading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {actionLoading ? 'Starting...' : 'Start Tournament'}
-                </button>
-              )}
               {isSignedUp ? (
                 <button
                   onClick={handleDrop}
@@ -327,21 +309,50 @@ const TournamentDetail: React.FC = () => {
               )}
             </>
           )}
-          {tournament.status === 'InProgress' && user?.isAdmin === true && (
-            <button
-              onClick={handleEndRound}
-              disabled={actionLoading || !allRoundsHaveGames}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {actionLoading ? 'Ending Round...' : `End Round ${currentRoundToEnd?.roundNumber}`}
-            </button>
-          )}
+          <ShareButton title="Share this tournament" />
         </div>
       </div>
 
       {actionError && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-sm text-red-600">{actionError}</p>
+        </div>
+      )}
+
+      {user?.isAdmin === true && (
+        <div className="card bg-blue-50 border-2 border-blue-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Controls</h2>
+          <div className="flex flex-wrap items-center gap-3">
+            {tournament.status === 'NotStarted' && (
+              <>
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="btn-primary flex items-center"
+                  title="Edit Tournament"
+                >
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  Edit Tournament
+                </button>
+                <button
+                  onClick={handleStart}
+                  disabled={actionLoading}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? 'Starting...' : 'Start Tournament'}
+                </button>
+              </>
+            )}
+            {tournament.status === 'InProgress' && (
+              <button
+                onClick={handleEndRound}
+                disabled={actionLoading || !allRoundsHaveGames}
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!allRoundsHaveGames ? 'All games must be verified before ending the round' : ''}
+              >
+                {actionLoading ? 'Ending Round...' : `End Round ${currentRoundToEnd?.roundNumber}`}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -353,21 +364,7 @@ const TournamentDetail: React.FC = () => {
       )}
 
       {tournament.location && (
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <MapPinIcon className="h-5 w-5" />
-            Location
-          </h2>
-          <div className="text-gray-700 space-y-1">
-            <div>{tournament.location.streetAddress}</div>
-            {tournament.location.addressLine2 && (
-              <div>{tournament.location.addressLine2}</div>
-            )}
-            <div>
-              {tournament.location.city}, {tournament.location.state} {tournament.location.zipCode}
-            </div>
-          </div>
-        </div>
+        <AddressDisplay address={tournament.location} />
       )}
 
       {tournament.status === 'InProgress' && (
