@@ -28,6 +28,7 @@ const GameSubmission: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
+  const [playerErrors, setPlayerErrors] = useState<boolean[]>([false, false, false, false]);
   const PlayerSeats = ['East', 'South', 'West', 'North'];
   const searchInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -113,7 +114,61 @@ const GameSubmission: React.FC = () => {
       setSearchTerm('');
       setSearchResults([]);
       setSelectedPlayerIndex(null);
+      // Clear error when player is selected
+      const newErrors = [...playerErrors];
+      newErrors[selectedPlayerIndex] = false;
+      setPlayerErrors(newErrors);
     }
+  };
+
+  const handlePlayerBlur = (index: number) => {
+    // Validate that a player is selected
+    if (!players[index].player) {
+      const newErrors = [...playerErrors];
+      newErrors[index] = true;
+      setPlayerErrors(newErrors);
+    } else {
+      const newErrors = [...playerErrors];
+      newErrors[index] = false;
+      setPlayerErrors(newErrors);
+    }
+  };
+
+  const isFormValid = () => {
+    // Validate all players are selected
+    if (players.some(p => !p.player)) {
+      return false;
+    }
+
+    // Validate all scores are numbers
+    if (players.some(p => p.score === undefined || p.score === null || isNaN(Number(p.score)))) {
+      return false;
+    }
+
+    // Validate all players are unique
+    const playerIds = players.map(p => p.player);
+    if (new Set(playerIds).size !== 4) {
+      return false;
+    }
+
+    // Validate that the authenticated user is one of the players
+    if (!user || !playerIds.includes(user._id)) {
+      return false;
+    }
+
+    // Validate points left on table is a multiple of 1000
+    if (pointsLeftOnTable % 1000 !== 0) {
+      return false;
+    }
+
+    // Validate total score (players + table) equals 100000 or 120000
+    const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
+    const totalScore = playersTotal + pointsLeftOnTable;
+    if (totalScore !== 100000 && totalScore !== 120000) {
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -232,9 +287,13 @@ const GameSubmission: React.FC = () => {
                           setSearchTerm(player.playerName);
                         }
                       }}
-                      className="input-field"
+                      onBlur={() => handlePlayerBlur(index)}
+                      className={`input-field ${playerErrors[index] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                       required
                     />
+                    {playerErrors[index] && (
+                      <p className="mt-1 text-xs text-red-600">Please select a valid player</p>
+                    )}
                     {selectedPlayerIndex === index && (
                       <div className="user-search-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
                       {searchResults.length > 0 ? (
@@ -371,7 +430,7 @@ const GameSubmission: React.FC = () => {
         <div className="flex gap-4">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !isFormValid()}
             className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Submitting...' : 'Submit Game'}
