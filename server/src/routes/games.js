@@ -1,6 +1,8 @@
 const express = require('express');
 const Game = require('../models/Game');
+const Tournament = require('../models/Tournament');
 const User = require('../models/User');
+const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const { validateGameCreation, validateMongoId } = require('../middleware/validation');
 const { sendNewCommentNotificationEmail } = require('../utils/emailService');
 const { createGame } = require('../utils/gameService');
@@ -17,9 +19,9 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const games = await Game.find()
-      .populate('submittedBy', 'displayName avatar privateMode')
-      .populate('players.player', 'displayName avatar privateMode')
-      .populate('verifiedBy', 'displayName avatar privateMode')
+      .populate('submittedBy', PLAYER_POPULATE_FIELDS)
+      .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('verifiedBy', PLAYER_POPULATE_FIELDS)
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);
@@ -90,9 +92,9 @@ router.get('/pending-verification', async (req, res) => {
       verified: false,
       submittedBy: { $ne: req.user._id }
     })
-      .populate('submittedBy', 'displayName avatar privateMode')
-      .populate('players.player', 'displayName avatar privateMode')
-      .populate('verifiedBy', 'displayName avatar privateMode')
+      .populate('submittedBy', PLAYER_POPULATE_FIELDS)
+      .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('verifiedBy', PLAYER_POPULATE_FIELDS)
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);
@@ -130,10 +132,10 @@ router.get('/pending-verification', async (req, res) => {
 router.get('/:id', validateMongoId('id'), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id)
-      .populate('submittedBy', 'displayName avatar privateMode')
-      .populate('players.player', 'displayName avatar privateMode')
-      .populate('verifiedBy', 'displayName avatar privateMode')
-      .populate('comments.commenter', 'displayName avatar privateMode');
+      .populate('submittedBy', PLAYER_POPULATE_FIELDS)
+      .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('verifiedBy', PLAYER_POPULATE_FIELDS)
+      .populate('comments.commenter', PLAYER_POPULATE_FIELDS);
 
     if (!game) {
       return res.status(404).json({
@@ -184,10 +186,10 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
 
     await game.save();
 
-    await game.populate('submittedBy', 'displayName avatar privateMode');
-    await game.populate('players.player', 'displayName avatar privateMode');
-    await game.populate('verifiedBy', 'displayName avatar privateMode');
-    await game.populate('comments.commenter', 'displayName avatar privateMode');
+    await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
+    await game.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await game.populate('verifiedBy', PLAYER_POPULATE_FIELDS);
+    await game.populate('comments.commenter', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -248,10 +250,10 @@ router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
     await game.save();
 
     // Populate all fields before sending response
-    await game.populate('submittedBy', 'displayName avatar privateMode');
-    await game.populate('players.player', 'displayName avatar privateMode');
-    await game.populate('verifiedBy', 'displayName avatar privateMode');
-    await game.populate('comments.commenter', 'displayName avatar privateMode');
+    await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
+    await game.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await game.populate('verifiedBy', PLAYER_POPULATE_FIELDS);
+    await game.populate('comments.commenter', PLAYER_POPULATE_FIELDS);
 
     // Send notifications to relevant users
     const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
@@ -366,6 +368,29 @@ router.delete('/:id', validateMongoId('id'), async (req, res) => {
         success: false,
         message: 'You can only delete games you submitted'
       });
+    }
+
+    const gameId = game._id;
+
+    // Remove game references from tournament pairings
+    const tournaments = await Tournament.find({
+      'rounds.pairings.game': gameId
+    });
+
+    for (const tournament of tournaments) {
+      let modified = false;
+      for (const round of tournament.rounds) {
+        for (const pairing of round.pairings) {
+          if (pairing.game && pairing.game.toString() === gameId.toString()) {
+            pairing.game = null;
+            modified = true;
+          }
+        }
+      }
+      if (modified) {
+        tournament.markModified('rounds');
+        await tournament.save();
+      }
     }
 
     await game.deleteOne();

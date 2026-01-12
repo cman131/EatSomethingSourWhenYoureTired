@@ -10,6 +10,7 @@ interface UserDisplayProps {
     avatar?: string | null;
     realName?: string | null;
     privateMode?: boolean;
+    isGuest?: boolean;
   };
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showLink?: boolean;
@@ -40,7 +41,9 @@ const UserDisplay: React.FC<UserDisplayProps> = ({
   const displayName = user.displayName || 'Unknown';
   const shouldShowYouIndicator = showYouIndicator && isCurrentUser;
   const isPrivate = user.privateMode === true;
-  const shouldShowLink = showLink && !isPrivate;
+  const isGuest = user.isGuest === true;
+  // Don't show link for guest users or private users
+  const shouldShowLink = showLink && !isPrivate && !isGuest;
 
   const nameContent = (
     <>

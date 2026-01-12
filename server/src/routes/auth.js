@@ -81,6 +81,14 @@ router.post('/login', authLimiter, validateUserLogin, async (req, res) => {
       });
     }
 
+    // Prevent guest users from logging in
+    if (user.isGuest) {
+      return res.status(401).json({
+        success: false,
+        message: 'Guest users cannot log in'
+      });
+    }
+
     // Check password
     const isMatch = await user.comparePassword(password);
 

@@ -144,8 +144,8 @@ const TournamentGameSubmission: React.FC = () => {
       return false;
     }
 
-    // Validate that the authenticated user is one of the players
-    if (!user || !playerIds.includes(user._id)) {
+    // Validate that the authenticated user is one of the players (or is an admin)
+    if (!user || (!playerIds.includes(user._id) && !user.isAdmin)) {
       return false;
     }
 
@@ -192,8 +192,8 @@ const TournamentGameSubmission: React.FC = () => {
     }
 
     // Validate that the authenticated user is one of the players
-    if (!user || !playerIds.includes(user._id)) {
-      alert('You must be one of the players in this pairing');
+    if (!user || (!playerIds.includes(user._id) && !user.isAdmin)) {
+      alert('You must be one of the players in this pairing or an admin');
       return;
     }
 

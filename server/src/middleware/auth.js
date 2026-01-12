@@ -25,6 +25,14 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
+    // Prevent guest users from authenticating
+    if (user.isGuest) {
+      return res.status(403).json({
+        success: false,
+        message: 'Guest users cannot access authenticated routes'
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

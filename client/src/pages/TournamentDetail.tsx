@@ -10,6 +10,8 @@ import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
 import TournamentGamesList from '../components/tournaments/TournamentGamesList';
+import AddPlayerModal from '../components/tournaments/AddPlayerModal';
+import { UserPlusIcon } from '@heroicons/react/24/outline';
 
 const TournamentDetail: React.FC = () => {
   useRequireAuth();
@@ -23,6 +25,7 @@ const TournamentDetail: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [allRoundsHaveGames, setAllRoundsHaveGames] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -204,6 +207,21 @@ const TournamentDetail: React.FC = () => {
     setTournament(response.data.tournament);
   };
 
+  const handleAddPlayer = async (playerId: string) => {
+    if (!id) return;
+    try {
+      setActionLoading(true);
+      setActionError(null);
+      const response = await tournamentsApi.addPlayer(id, playerId);
+      setTournament(response.data.tournament);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to add player');
+      throw err; // Re-throw so modal can handle it
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'NotStarted':
@@ -335,6 +353,14 @@ const TournamentDetail: React.FC = () => {
             {tournament.status === 'NotStarted' && (
               <>
                 <button
+                  onClick={() => setIsAddPlayerModalOpen(true)}
+                  className="btn-secondary flex items-center"
+                  title="Add Player"
+                >
+                  <UserPlusIcon className="h-4 w-4 mr-2" />
+                  Add Player
+                </button>
+                <button
                   onClick={() => setIsEditModalOpen(true)}
                   className="btn-primary flex items-center"
                   title="Edit Tournament"
@@ -395,6 +421,13 @@ const TournamentDetail: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleUpdateTournament}
         tournament={tournament}
+      />
+
+      <AddPlayerModal
+        isOpen={isAddPlayerModalOpen}
+        onClose={() => setIsAddPlayerModalOpen(false)}
+        onAdd={handleAddPlayer}
+        existingPlayerIds={tournament.players.map((p) => p.player._id || p.player.toString())}
       />
     </div>
   );

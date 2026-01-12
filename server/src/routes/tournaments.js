@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Tournament = require('../models/Tournament');
 const User = require('../models/User');
+const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const Game = require('../models/Game');
 const { validateMongoId, validateGameCreation } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
@@ -141,7 +142,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const tournaments = await Tournament.find()
-      .populate('players.player', 'displayName avatar privateMode')
+      .populate('players.player', PLAYER_POPULATE_FIELDS)
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit);
@@ -175,7 +176,7 @@ router.get('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id)
-      .populate('players.player', 'displayName avatar privateMode');
+      .populate('players.player', PLAYER_POPULATE_FIELDS);
 
     if (!tournament) {
       return res.status(404).json({
@@ -186,12 +187,12 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 
     // Populate rounds pairings players and games if tournament has started
     if (tournament.status !== 'NotStarted' && tournament.rounds && tournament.rounds.length > 0) {
-      await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
+      await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
       await tournament.populate({
         path: 'rounds.pairings.game',
         populate: {
           path: 'players.player',
-          select: 'displayName avatar privateMode'
+          select: PLAYER_POPULATE_FIELDS
         }
       });
     }
@@ -258,7 +259,7 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
 
     // Send notifications to all users about the new tournament
     sendNewTournamentNotifications(tournament);
@@ -336,7 +337,7 @@ router.put('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'),
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
 
     res.status(200).json({
       success: true,
@@ -370,17 +371,10 @@ router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId(
 
     // Check if tournament has players
     const activePlayers = tournament.players.filter(p => !p.dropped);
-    if (!activePlayers || activePlayers.length === 0) {
+    if (!activePlayers || activePlayers.length < 8) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot start tournament without players'
-      });
-    }
-
-    if (activePlayers.length % 4 !== 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot start tournament: ${activePlayers.length} active players is not divisible by 4`
+        message: 'Cannot start tournament with less than 8 players'
       });
     }
 
@@ -389,7 +383,7 @@ router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId(
     
     if (!firstRound || !firstRound.pairings || firstRound.pairings.length === 0) {
       try {
-        const firstRoundPairings = generateRoundPairings(tournament, 1);
+        const firstRoundPairings = await generateRoundPairings(tournament, 1);
         
         // Convert player IDs from strings to ObjectIds
         const pairingsWithObjectIds = firstRoundPairings.map(pairing => ({
@@ -435,8 +429,8 @@ router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId(
     
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -576,7 +570,7 @@ router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin
     if (roundNumber < tournament.maxRounds) {
       try {
         const nextRoundNumber = roundNumber + 1;
-        const nextRoundPairings = generateRoundPairings(tournament, nextRoundNumber);
+        const nextRoundPairings = await generateRoundPairings(tournament, nextRoundNumber);
         
         // Convert player IDs from strings to ObjectIds
         const pairingsWithObjectIds = nextRoundPairings.map(pairing => ({
@@ -623,8 +617,8 @@ router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin
     // Round is complete
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.game');
 
     res.json({
@@ -679,7 +673,7 @@ router.put('/admin/:id/rounds/:roundNumber/reset', authenticateToken, requireAdm
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -722,7 +716,7 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
         existingPlayer.dropped = false;
         await tournament.save();
         
-        await tournament.populate('players.player', 'displayName avatar privateMode');
+        await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
         
         return res.json({
           success: true,
@@ -748,7 +742,7 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
 
     res.status(201).json({
       success: true,
@@ -762,6 +756,108 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to sign up for tournament'
+    });
+  }
+});
+
+// @route   POST /api/tournaments/admin/:id/players
+// @desc    Add a player to a tournament (Admin only)
+// @access  Private (Admin)
+router.post('/admin/:id/players', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+  try {
+    const { playerId } = req.body;
+
+    if (!playerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Player ID is required'
+      });
+    }
+
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Check if tournament has started
+    if (tournament.status !== 'NotStarted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot add players to a tournament that has already started'
+      });
+    }
+
+    // Verify player exists
+    const player = await User.findById(playerId);
+    if (!player) {
+      return res.status(404).json({
+        success: false,
+        message: 'Player not found'
+      });
+    }
+
+    if (player.isGuest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot add guest players to tournaments'
+      });
+    }
+
+    // Check if player is already in tournament
+    const existingPlayer = tournament.players.find(
+      p => p.player.toString() === playerId
+    );
+
+    if (existingPlayer) {
+      // If already signed up but dropped, re-enable them
+      if (existingPlayer.dropped) {
+        existingPlayer.dropped = false;
+        await tournament.save();
+        
+        await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+        
+        return res.json({
+          success: true,
+          message: 'Player re-added to tournament successfully',
+          data: {
+            tournament
+          }
+        });
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Player is already in the tournament'
+      });
+    }
+
+    // Add player to tournament
+    tournament.players.push({
+      player: playerId,
+      uma: 0,
+      dropped: false
+    });
+
+    await tournament.save();
+
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+
+    res.status(201).json({
+      success: true,
+      message: 'Player added to tournament successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Add player to tournament error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to add player to tournament'
     });
   }
 });
@@ -813,7 +909,7 @@ router.put('/admin/:id/players/:playerId/kick', authenticateToken, requireAdmin,
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -870,7 +966,7 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
 
     await tournament.save();
 
-    await tournament.populate('players.player', 'displayName avatar privateMode');
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -902,12 +998,12 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
       });
     }
 
-    // Check if user is signed up and not dropped
+    // Check if user is signed up and not dropped (or is an admin)
     const playerEntry = tournament.players.find(
       p => p.player.toString() === req.user._id.toString()
     );
 
-    if (!playerEntry) {
+    if (!playerEntry && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'You must be signed up for this tournament to report games'
@@ -945,7 +1041,7 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
       round = roundsWithPairings[0];
     }
 
-    // Find the pairing that includes the current user
+    // Find the pairing that includes the current user (or use pairingIndex if provided)
     const userId = req.user._id.toString();
     let pairing;
     
@@ -957,10 +1053,38 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
           message: 'Pairing not found at specified index'
         });
       }
+      // For non-admins, verify they are in this pairing
+      if (!req.user.isAdmin) {
+        const userInPairing = pairing.players.some(playerEntry => 
+          playerEntry.player.toString() === userId
+        );
+        if (!userInPairing) {
+          return res.status(403).json({
+            success: false,
+            message: 'You are not a player in this pairing'
+          });
+        }
+      }
     } else {
+      // If no pairingIndex provided, find pairing by user
       pairing = round.pairings.find(p => 
         p.players.some(playerEntry => playerEntry.player.toString() === userId)
       );
+      
+      if (!pairing && !req.user.isAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: 'No pairing found for you in this round'
+        });
+      }
+      
+      // If admin and no pairing found, they need to provide pairingIndex
+      if (!pairing && req.user.isAdmin) {
+        return res.status(400).json({
+          success: false,
+          message: 'pairingIndex is required for admin submissions when not in the pairing'
+        });
+      }
     }
 
     if (!pairing) {
@@ -1011,7 +1135,7 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
     await tournament.save();
 
     // Populate tournament before sending response (game is already populated by createGame)
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
     res.status(201).json({
       success: true,
@@ -1102,7 +1226,7 @@ router.get('/:id/my-pairing', authenticateToken, validateMongoId('id'), async (r
     }
 
     // Populate player and game data
-    await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.game');
 
     // Get the updated pairing after population

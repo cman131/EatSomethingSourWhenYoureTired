@@ -145,6 +145,9 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
               : isCompleted 
               ? 'Final Standings' 
               : 'Standings'}
+            <span className="text-sm font-normal text-gray-500">
+              ({tournament.players.filter(p => !p.dropped).length})
+            </span>
             {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
               <span className="text-sm font-normal text-gray-500 ml-2">
                 (After Round {lastCompletedRound})
@@ -169,6 +172,9 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
             : isCompleted 
             ? 'Final Standings' 
             : 'Standings'}
+          <span className="text-sm font-normal text-gray-500">
+            ({playerList.filter(p => !p.dropped).length})
+          </span>
           {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
             <span className="text-sm font-normal text-gray-500 ml-2">
               (After Round {lastCompletedRound})
