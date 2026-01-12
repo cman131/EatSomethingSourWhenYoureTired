@@ -766,6 +766,71 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
   }
 });
 
+// @route   PUT /api/tournaments/admin/:id/players/:playerId/kick
+// @desc    Kick a player from a tournament (Admin only)
+// @access  Private (Admin)
+router.put('/admin/:id/players/:playerId/kick', authenticateToken, requireAdmin, ...validateMongoId('id'), ...validateMongoId('playerId'), async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Check if tournament has started
+    if (tournament.status !== 'NotStarted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot kick players from a tournament that has already started'
+      });
+    }
+
+    // Find the player in the tournament
+    const playerEntry = tournament.players.find(
+      p => p.player.toString() === req.params.playerId
+    );
+
+    if (!playerEntry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Player not found in tournament'
+      });
+    }
+
+    if (playerEntry.dropped) {
+      return res.status(400).json({
+        success: false,
+        message: 'Player has already been removed from the tournament'
+      });
+    }
+
+    // Mark player as dropped
+    playerEntry.dropped = true;
+    tournament.markModified('players');
+
+    await tournament.save();
+
+    await tournament.populate('players.player', 'displayName avatar privateMode');
+
+    res.json({
+      success: true,
+      message: 'Player removed from tournament successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Kick player from tournament error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to remove player from tournament'
+    });
+  }
+});
+
 // @route   PUT /api/tournaments/:id/drop
 // @desc    Drop from a tournament
 // @access  Private

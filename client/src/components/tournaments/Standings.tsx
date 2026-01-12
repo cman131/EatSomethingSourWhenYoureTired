@@ -1,20 +1,32 @@
-import React from 'react';
-import { TrophyIcon } from '@heroicons/react/24/outline';
-import { Tournament, User } from '../../services/api';
+import React, { useState } from 'react';
+import { TrophyIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Tournament, User, tournamentsApi } from '../../services/api';
 import UserDisplay from '../user/UserDisplay';
 
 interface StandingsProps {
   tournament: Tournament;
   currentUser: User | null;
+  onUpdate?: (tournament: Tournament) => void;
 }
 
-const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
-  // Calculate standings sorted by UMA, then table number, then seat
-  const standings = React.useMemo(() => {
-    if (!tournament || tournament.status === 'NotStarted') return null;
+const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate }) => {
+  const [kickingPlayerId, setKickingPlayerId] = useState<string | null>(null);
+
+  // Get registered players for NotStarted tournaments, or standings for started tournaments
+  const playerList = React.useMemo(() => {
+    if (!tournament) return null;
     
     const active = tournament.players.filter(p => !p.dropped);
     
+    // For NotStarted tournaments, just return active players
+    if (tournament.status === 'NotStarted') {
+      return active.map((player, index) => ({
+        ...player,
+        rank: index + 1
+      }));
+    }
+    
+    // For started tournaments, calculate standings sorted by UMA, then table number, then seat
     // Find the latest round with pairings
     const roundsWithPairings = tournament.rounds
       ? tournament.rounds
@@ -89,6 +101,24 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
     }));
   }, [tournament]);
 
+  const handleKickPlayer = async (playerId: string) => {
+    if (!window.confirm('Are you sure you want to remove this player from the tournament?')) {
+      return;
+    }
+
+    try {
+      setKickingPlayerId(playerId);
+      const response = await tournamentsApi.kickPlayer(tournament._id, playerId);
+      if (onUpdate) {
+        onUpdate(response.data.tournament);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to remove player from tournament');
+    } finally {
+      setKickingPlayerId(null);
+    }
+  };
+
   // Find last completed round
   const lastCompletedRound = React.useMemo(() => {
     if (!tournament || !tournament.rounds) return null;
@@ -102,22 +132,29 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
   }, [tournament]);
 
   const isCompleted = tournament.status === 'Completed';
+  const showKickButton = tournament.status === 'NotStarted' && currentUser?.isAdmin === true;
 
-  if (!standings || standings.length === 0) {
+  if (!playerList || playerList.length === 0) {
     return (
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <TrophyIcon className="h-5 w-5" />
-            {isCompleted ? 'Final Standings' : 'Standings'}
-            {lastCompletedRound && !isCompleted && (
+            {tournament.status === 'NotStarted' 
+              ? 'Registered Players' 
+              : isCompleted 
+              ? 'Final Standings' 
+              : 'Standings'}
+            {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
               <span className="text-sm font-normal text-gray-500 ml-2">
                 (After Round {lastCompletedRound})
               </span>
             )}
           </h2>
         </div>
-        <p className="text-gray-500 text-center py-8">No standings available</p>
+        <p className="text-gray-500 text-center py-8">
+          {tournament.status === 'NotStarted' ? 'No players registered yet' : 'No standings available'}
+        </p>
       </div>
     );
   }
@@ -127,8 +164,12 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <TrophyIcon className="h-5 w-5" />
-          {isCompleted ? 'Final Standings' : 'Standings'}
-          {lastCompletedRound && !isCompleted && (
+          {tournament.status === 'NotStarted' 
+            ? 'Registered Players' 
+            : isCompleted 
+            ? 'Final Standings' 
+            : 'Standings'}
+          {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
             <span className="text-sm font-normal text-gray-500 ml-2">
               (After Round {lastCompletedRound})
             </span>
@@ -137,23 +178,25 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
       </div>
 
       <div className="space-y-2">
-        {standings.map((playerEntry) => {
+        {playerList.map((playerEntry) => {
           const isCurrentUser = currentUser && playerEntry.player._id === currentUser._id;
-          const rankEmoji = playerEntry.rank === 1 ? '🥇' : playerEntry.rank === 2 ? '🥈' : playerEntry.rank === 3 ? '🥉' : '';
+          const rankEmoji = tournament.status !== 'NotStarted' && (playerEntry.rank === 1 ? '🥇' : playerEntry.rank === 2 ? '🥈' : playerEntry.rank === 3 ? '🥉' : '');
           return (
             <div
               key={playerEntry.player._id}
               className={`flex items-center gap-4 p-3 rounded-lg border-2 ${
                 isCurrentUser 
                   ? 'border-primary-500 bg-primary-50' 
-                  : playerEntry.rank <= 3
+                  : tournament.status !== 'NotStarted' && playerEntry.rank <= 3
                   ? 'border-yellow-200 bg-yellow-50'
                   : 'border-gray-200 bg-gray-50'
               }`}
             >
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-gray-300 font-bold text-gray-700">
-                {rankEmoji || playerEntry.rank}
-              </div>
+              {tournament.status !== 'NotStarted' && (
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-gray-300 font-bold text-gray-700">
+                  {rankEmoji || playerEntry.rank}
+                </div>
+              )}
               <div className="flex-1">
                 <UserDisplay
                   user={playerEntry.player}
@@ -162,11 +205,25 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
                   nameClassName="text-base"
                 />
               </div>
-              <div className="text-right">
-                <div className="text-lg font-bold text-gray-900">
-                  {playerEntry.uma > 0 ? '+' : ''}{playerEntry.uma.toFixed(1)}
-                </div>
-                <div className="text-xs text-gray-500">UMA</div>
+              <div className="flex items-center gap-3">
+                {tournament.status !== 'NotStarted' && (
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-gray-900">
+                      {playerEntry.uma > 0 ? '+' : ''}{playerEntry.uma.toFixed(1)}
+                    </div>
+                    <div className="text-xs text-gray-500">UMA</div>
+                  </div>
+                )}
+                {showKickButton && (
+                  <button
+                    onClick={() => handleKickPlayer(playerEntry.player._id)}
+                    disabled={kickingPlayerId === playerEntry.player._id}
+                    className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Remove player from tournament"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                )}
               </div>
             </div>
           );

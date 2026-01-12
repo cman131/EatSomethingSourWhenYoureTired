@@ -4,7 +4,7 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import UserDisplay from '../components/user/UserDisplay';
-import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -52,10 +52,6 @@ const TournamentDetail: React.FC = () => {
     );
   }, [user, tournament]);
 
-  const activePlayers = React.useMemo(() => {
-    if (!tournament) return [];
-    return tournament.players.filter(p => !p.dropped);
-  }, [tournament]);
 
 
   // Find the current round that can be ended (latest round with pairings where all games are submitted)
@@ -378,43 +374,11 @@ const TournamentDetail: React.FC = () => {
         <CurrentRoundPairing tournament={tournament} currentUser={user} />
       )}
 
-      {tournament.status === 'NotStarted' ? (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <UserGroupIcon className="h-5 w-5" />
-              Registered Players ({activePlayers.length})
-            </h2>
-          </div>
-
-          {activePlayers.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No players registered yet</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activePlayers.map((playerEntry, index) => {
-                const isCurrentUser = user && playerEntry.player._id === user._id;
-                return (
-                  <div
-                    key={playerEntry.player._id}
-                    className={`bg-gray-50 rounded-lg p-4 border-2 ${
-                      isCurrentUser ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <UserDisplay
-                      user={playerEntry.player}
-                      size="md"
-                      showYouIndicator={true}
-                      nameClassName="text-base"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        <Standings tournament={tournament} currentUser={user} />
-      )}
+      <Standings 
+        tournament={tournament} 
+        currentUser={user} 
+        onUpdate={(updatedTournament) => setTournament(updatedTournament)}
+      />
 
       {tournament.status === 'Completed' && (
         <TournamentGamesList tournament={tournament} currentUser={user} />

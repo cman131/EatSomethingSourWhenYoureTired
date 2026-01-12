@@ -591,6 +591,12 @@ export const tournamentsApi = {
     });
   },
 
+  kickPlayer: async (tournamentId: string, playerId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/players/${playerId}/kick`, {
+      method: 'PUT',
+    });
+  },
+
   submitTournamentGame: async (
     tournamentId: string,
     gameData: {
