@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
-import { ArrowLeftIcon, CalendarIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -15,6 +15,7 @@ const TournamentDetail: React.FC = () => {
   useRequireAuth();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -323,6 +324,14 @@ const TournamentDetail: React.FC = () => {
         <div className="card bg-blue-50 border-2 border-blue-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Controls</h2>
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => navigate(`/tournaments/${id}/games`)}
+              className="btn-secondary flex items-center"
+              title="View All Tournament Games"
+            >
+              <TableCellsIcon className="h-4 w-4 mr-2" />
+              View All Games
+            </button>
             {tournament.status === 'NotStarted' && (
               <>
                 <button
