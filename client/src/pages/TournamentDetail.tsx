@@ -8,6 +8,7 @@ import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon, PencilIcon } fr
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
+import TournamentGamesList from '../components/tournaments/TournamentGamesList';
 
 const TournamentDetail: React.FC = () => {
   useRequireAuth();
@@ -265,7 +266,7 @@ const TournamentDetail: React.FC = () => {
         Back to Tournaments
       </Link>
 
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between pr-2 pl-2">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{tournament.name}</h1>
           <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -373,7 +374,9 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-      <CurrentRoundPairing tournament={tournament} currentUser={user} />
+      {tournament.status === 'InProgress' && (
+        <CurrentRoundPairing tournament={tournament} currentUser={user} />
+      )}
 
       {tournament.status === 'NotStarted' ? (
         <div className="card">
@@ -411,6 +414,10 @@ const TournamentDetail: React.FC = () => {
         </div>
       ) : (
         <Standings tournament={tournament} currentUser={user} />
+      )}
+
+      {tournament.status === 'Completed' && (
+        <TournamentGamesList tournament={tournament} currentUser={user} />
       )}
 
       <EditTournamentModal

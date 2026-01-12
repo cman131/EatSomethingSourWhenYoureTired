@@ -236,7 +236,7 @@ const GameSubmission: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Submit Game</h1>
+      <h1 className="text-3xl font-bold text-gray-900 mb-6 pl-2">Submit Game</h1>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">

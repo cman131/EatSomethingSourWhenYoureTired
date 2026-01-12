@@ -85,7 +85,7 @@ const TournamentsList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center pr-2 pl-2">
         <h1 className="text-3xl font-bold text-gray-900">All Tournaments</h1>
         {user?.isAdmin === true && (
           <Link to="/create-tournament" className="btn-primary flex items-center gap-2">

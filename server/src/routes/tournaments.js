@@ -187,7 +187,13 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
     // Populate rounds pairings players and games if tournament has started
     if (tournament.status !== 'NotStarted' && tournament.rounds && tournament.rounds.length > 0) {
       await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
-      await tournament.populate('rounds.pairings.game');
+      await tournament.populate({
+        path: 'rounds.pairings.game',
+        populate: {
+          path: 'players.player',
+          select: 'displayName avatar privateMode'
+        }
+      });
     }
 
     res.json({
@@ -609,6 +615,9 @@ router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin
         // Don't fail the request if round generation fails
         // Admin can manually create the round
       }
+    } else {
+      // This is the last round, end the tournament
+      tournament.status = 'Completed';
     }
 
     // Round is complete

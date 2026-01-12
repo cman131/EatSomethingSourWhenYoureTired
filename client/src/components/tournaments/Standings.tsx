@@ -101,14 +101,16 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
     return roundsWithGames.length > 0 ? roundsWithGames[0].roundNumber : null;
   }, [tournament]);
 
+  const isCompleted = tournament.status === 'Completed';
+
   if (!standings || standings.length === 0) {
     return (
       <div className="card">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <TrophyIcon className="h-5 w-5" />
-            Standings
-            {lastCompletedRound && (
+            {isCompleted ? 'Final Standings' : 'Standings'}
+            {lastCompletedRound && !isCompleted && (
               <span className="text-sm font-normal text-gray-500 ml-2">
                 (After Round {lastCompletedRound})
               </span>
@@ -125,8 +127,8 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser }) => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <TrophyIcon className="h-5 w-5" />
-          Standings
-          {lastCompletedRound && (
+          {isCompleted ? 'Final Standings' : 'Standings'}
+          {lastCompletedRound && !isCompleted && (
             <span className="text-sm font-normal text-gray-500 ml-2">
               (After Round {lastCompletedRound})
             </span>

@@ -41,6 +41,7 @@ export interface GamePlayer {
   player: User;
   score: number;
   position: number;
+  rank?: number;
 }
 
 export interface GameComment {
