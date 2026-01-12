@@ -9,7 +9,7 @@ const router = express.Router();
 
 // Rate limiting for auth routes
 // 15 attempts per 15 minutes - allows for typos while still preventing brute force attacks
-const authLimiter = createRateLimit(15 * 60 * 1000, 15, 'Too many authentication attempts, please try again later');
+const authLimiter = createRateLimit(15 * 60 * 1000, 100, 'Too many authentication attempts, please try again later');
 
 // @route   POST /api/auth/register
 // @desc    Register a new user

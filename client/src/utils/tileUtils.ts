@@ -1,5 +1,7 @@
 // Helper function to get tile image path from tile ID
 export const getTileImagePath = (tileId: string): string => {
+  if (!tileId) return '/mahjong-tiles/Front.svg';
+
   // Man tiles
   if (tileId.startsWith('M')) {
     if (tileId === 'M5R') return '/mahjong-tiles/Man5-Dora.svg';
