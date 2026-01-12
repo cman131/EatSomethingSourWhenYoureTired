@@ -360,8 +360,8 @@ router.delete('/:id', validateMongoId('id'), async (req, res) => {
       });
     }
 
-    // Only allow deletion by submitter
-    if (game.submittedBy.toString() !== req.user._id.toString()) {
+    // Only allow deletion by submitter or admin
+    if (game.submittedBy.toString() !== req.user._id.toString() && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
         message: 'You can only delete games you submitted'

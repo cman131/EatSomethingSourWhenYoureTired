@@ -21,6 +21,7 @@ import TournamentSubmission from './pages/TournamentSubmission';
 import TournamentDetail from './pages/TournamentDetail';
 import TournamentsList from './pages/TournamentsList';
 import TournamentGameSubmission from './pages/TournamentGameSubmission';
+import TournamentGamesAdmin from './pages/TournamentGamesAdmin';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
             <Route path="/decision-quiz/:decisionQuizId" element={<DecisionQuiz />} />
             <Route path="/decision-quiz" element={<DecisionQuiz />} />
             <Route path="/create-tournament" element={<TournamentSubmission />} />
+            <Route path="/tournaments/:id/games" element={<TournamentGamesAdmin />} />
             <Route path="/tournaments/:id" element={<TournamentDetail />} />
             <Route path="/tournaments/:tournamentId/submit-game/:roundNumber/:tableNumber" element={<TournamentGameSubmission />} />
           </Routes>
