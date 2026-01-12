@@ -187,7 +187,13 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
     // Populate rounds pairings players and games if tournament has started
     if (tournament.status !== 'NotStarted' && tournament.rounds && tournament.rounds.length > 0) {
       await tournament.populate('rounds.pairings.players.player', 'displayName avatar privateMode');
-      await tournament.populate('rounds.pairings.game');
+      await tournament.populate({
+        path: 'rounds.pairings.game',
+        populate: {
+          path: 'players.player',
+          select: 'displayName avatar privateMode'
+        }
+      });
     }
 
     res.json({
@@ -269,6 +275,81 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to create tournament'
+    });
+  }
+});
+
+// @route   PUT /api/tournaments/admin/:id
+// @desc    Update a tournament (Admin only)
+// @access  Private (Admin)
+router.put('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+  try {
+    const { name, description, date, location } = req.body;
+
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Update fields if provided
+    if (name !== undefined) {
+      tournament.name = name;
+    }
+
+    if (description !== undefined) {
+      tournament.description = description;
+    }
+
+    if (date !== undefined) {
+      tournament.date = date;
+    }
+
+    if (location !== undefined) {
+      // Validate location object
+      if (!location.streetAddress || !location.city || !location.state || !location.zipCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Location must include street address, city, state, and zip code'
+        });
+      }
+
+      // Validate state is 2 characters
+      if (location.state && location.state.length !== 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'State must be a 2-letter abbreviation'
+        });
+      }
+
+      tournament.location = {
+        streetAddress: location.streetAddress.trim(),
+        addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
+        city: location.city.trim(),
+        state: location.state.trim().toUpperCase(),
+        zipCode: location.zipCode.trim()
+      };
+    }
+
+    await tournament.save();
+
+    await tournament.populate('players.player', 'displayName avatar privateMode');
+
+    res.status(200).json({
+      success: true,
+      message: 'Tournament updated successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Update tournament error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update tournament'
     });
   }
 });
@@ -534,6 +615,9 @@ router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin
         // Don't fail the request if round generation fails
         // Admin can manually create the round
       }
+    } else {
+      // This is the last round, end the tournament
+      tournament.status = 'Completed';
     }
 
     // Round is complete
@@ -678,6 +762,71 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to sign up for tournament'
+    });
+  }
+});
+
+// @route   PUT /api/tournaments/admin/:id/players/:playerId/kick
+// @desc    Kick a player from a tournament (Admin only)
+// @access  Private (Admin)
+router.put('/admin/:id/players/:playerId/kick', authenticateToken, requireAdmin, ...validateMongoId('id'), ...validateMongoId('playerId'), async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Check if tournament has started
+    if (tournament.status !== 'NotStarted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot kick players from a tournament that has already started'
+      });
+    }
+
+    // Find the player in the tournament
+    const playerEntry = tournament.players.find(
+      p => p.player.toString() === req.params.playerId
+    );
+
+    if (!playerEntry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Player not found in tournament'
+      });
+    }
+
+    if (playerEntry.dropped) {
+      return res.status(400).json({
+        success: false,
+        message: 'Player has already been removed from the tournament'
+      });
+    }
+
+    // Mark player as dropped
+    playerEntry.dropped = true;
+    tournament.markModified('players');
+
+    await tournament.save();
+
+    await tournament.populate('players.player', 'displayName avatar privateMode');
+
+    res.json({
+      success: true,
+      message: 'Player removed from tournament successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Kick player from tournament error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to remove player from tournament'
     });
   }
 });

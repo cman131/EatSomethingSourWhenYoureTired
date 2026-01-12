@@ -17,6 +17,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
   max,
   className = '',
   disabled = false,
+  required = false,
   ...restProps
 }) => {
   // Treat null/undefined as 0 for display and calculations
@@ -100,6 +101,7 @@ const NumericInput: React.FC<NumericInputProps> = ({
         onChange={handleInputChange}
         onBlur={handleBlur}
         disabled={disabled}
+        required={required}
         className="flex-1 min-w-0 px-2 sm:px-3 py-2 text-center border-0 focus:outline-none focus:ring-0 disabled:bg-gray-50 disabled:cursor-not-allowed"
         {...restProps}
       />

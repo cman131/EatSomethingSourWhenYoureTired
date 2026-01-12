@@ -41,6 +41,7 @@ export interface GamePlayer {
   player: User;
   score: number;
   position: number;
+  rank?: number;
 }
 
 export interface GameComment {
@@ -554,6 +555,18 @@ export const tournamentsApi = {
     });
   },
 
+  updateTournament: async (tournamentId: string, tournamentData: {
+    name?: string;
+    description?: string;
+    date?: Date;
+    location?: TournamentAddress;
+  }) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(tournamentData),
+    });
+  },
+
   signup: async (tournamentId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/signup`, {
       method: 'POST',
@@ -574,6 +587,12 @@ export const tournamentsApi = {
 
   endRound: async (tournamentId: string, roundNumber: number) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/rounds/${roundNumber}/end`, {
+      method: 'PUT',
+    });
+  },
+
+  kickPlayer: async (tournamentId: string, playerId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/players/${playerId}/kick`, {
       method: 'PUT',
     });
   },

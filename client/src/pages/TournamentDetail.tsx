@@ -4,9 +4,11 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import UserDisplay from '../components/user/UserDisplay';
-import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
+import EditTournamentModal from '../components/tournaments/EditTournamentModal';
+import TournamentGamesList from '../components/tournaments/TournamentGamesList';
 
 const TournamentDetail: React.FC = () => {
   useRequireAuth();
@@ -18,6 +20,7 @@ const TournamentDetail: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [allRoundsHaveGames, setAllRoundsHaveGames] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -49,10 +52,6 @@ const TournamentDetail: React.FC = () => {
     );
   }, [user, tournament]);
 
-  const activePlayers = React.useMemo(() => {
-    if (!tournament) return [];
-    return tournament.players.filter(p => !p.dropped);
-  }, [tournament]);
 
 
   // Find the current round that can be ended (latest round with pairings where all games are submitted)
@@ -190,6 +189,19 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleUpdateTournament = async (data: {
+    name?: string;
+    description?: string;
+    date?: Date;
+    location?: any;
+  }) => {
+    if (!id) return;
+    await tournamentsApi.updateTournament(id, data);
+    // Refresh tournament data
+    const response = await tournamentsApi.getTournament(id);
+    setTournament(response.data.tournament);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'NotStarted':
@@ -250,7 +262,7 @@ const TournamentDetail: React.FC = () => {
         Back to Tournaments
       </Link>
 
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between pr-2 pl-2">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{tournament.name}</h1>
           <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -277,6 +289,16 @@ const TournamentDetail: React.FC = () => {
         <div className="flex items-center gap-3">
           {tournament.status === 'NotStarted' && (
             <>
+              {user?.isAdmin === true && (
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="btn-primary flex items-center"
+                  title="Edit Tournament"
+                >
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  Edit
+                </button>
+              )}
               {user?.isAdmin === true && (
                 <button
                   onClick={handleStart}
@@ -348,45 +370,26 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-      <CurrentRoundPairing tournament={tournament} currentUser={user} />
-
-      {tournament.status === 'NotStarted' ? (
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <UserGroupIcon className="h-5 w-5" />
-              Registered Players ({activePlayers.length})
-            </h2>
-          </div>
-
-          {activePlayers.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No players registered yet</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activePlayers.map((playerEntry, index) => {
-                const isCurrentUser = user && playerEntry.player._id === user._id;
-                return (
-                  <div
-                    key={playerEntry.player._id}
-                    className={`bg-gray-50 rounded-lg p-4 border-2 ${
-                      isCurrentUser ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
-                    }`}
-                  >
-                    <UserDisplay
-                      user={playerEntry.player}
-                      size="md"
-                      showYouIndicator={true}
-                      nameClassName="text-base"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ) : (
-        <Standings tournament={tournament} currentUser={user} />
+      {tournament.status === 'InProgress' && (
+        <CurrentRoundPairing tournament={tournament} currentUser={user} />
       )}
+
+      <Standings 
+        tournament={tournament} 
+        currentUser={user} 
+        onUpdate={(updatedTournament) => setTournament(updatedTournament)}
+      />
+
+      {tournament.status === 'Completed' && (
+        <TournamentGamesList tournament={tournament} currentUser={user} />
+      )}
+
+      <EditTournamentModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleUpdateTournament}
+        tournament={tournament}
+      />
     </div>
   );
 };
