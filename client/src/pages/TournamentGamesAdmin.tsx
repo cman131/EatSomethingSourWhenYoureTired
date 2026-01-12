@@ -14,6 +14,7 @@ const TournamentGamesAdmin: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingGameId, setDeletingGameId] = useState<string | null>(null);
+  const [verifyingGameId, setVerifyingGameId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -168,6 +169,22 @@ const TournamentGamesAdmin: React.FC = () => {
     }
   };
 
+  const handleVerifyGame = async (gameId: string) => {
+    if (!id) return;
+
+    try {
+      setVerifyingGameId(gameId);
+      await gamesApi.verifyGame(gameId);
+      // Refresh tournament data
+      const response = await tournamentsApi.getTournament(id);
+      setTournament(response.data.tournament);
+    } catch (err: any) {
+      alert(err.message || 'Failed to verify game');
+    } finally {
+      setVerifyingGameId(null);
+    }
+  };
+
   // Check if user is admin (after all hooks)
   if (!user?.isAdmin) {
     return (
@@ -291,6 +308,17 @@ const TournamentGamesAdmin: React.FC = () => {
                         >
                           View Game Details
                         </Link>
+                        {!tableData.isVerified && (
+                          <button
+                            onClick={() => handleVerifyGame(tableData.game!._id)}
+                            disabled={verifyingGameId === tableData.game._id}
+                            className="text-sm text-green-600 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                            title="Verify this game"
+                          >
+                            <CheckCircleIcon className="h-4 w-4" />
+                            {verifyingGameId === tableData.game._id ? 'Verifying...' : 'Verify'}
+                          </button>
+                        )}
                         {tournament.status !== 'Completed' && (
                           <button
                             onClick={() => handleDeleteGame(tableData.game!._id)}
@@ -306,11 +334,46 @@ const TournamentGamesAdmin: React.FC = () => {
                     )}
                   </div>
                   {!tableData.hasGame ? (
-                    <div className="text-center py-4">
-                      <p className="text-gray-600 font-medium">No game submitted yet</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Waiting for game submission for this table
-                      </p>
+                    <div>
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-600 font-medium mb-1">No game submitted yet</p>
+                          <p className="text-sm text-gray-500">
+                            Waiting for game submission for this table
+                          </p>
+                        </div>
+                        <Link
+                          to={`/tournaments/${id}/submit-game/${round.roundNumber}/${tableData.tableNumber}`}
+                          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Submit Game
+                        </Link>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {tableData.players.map((playerData) => {
+                          return (
+                            <div
+                              key={
+                                typeof playerData.player === 'string'
+                                  ? playerData.player
+                                  : playerData.player._id
+                              }
+                              className="bg-white rounded-lg p-3 border border-gray-200"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-gray-600">
+                                  {playerData.seat}
+                                </span>
+                              </div>
+                              <UserDisplay
+                                user={playerData.player}
+                                size="sm"
+                                showYouIndicator={false}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : (
                     <>

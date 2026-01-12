@@ -1,5 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
+const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const Game = require('../models/Game');
 const DiscardQuiz = require('../models/DiscardQuiz');
 const { validateUserUpdate } = require('../middleware/validation');
@@ -386,9 +387,9 @@ router.get('/:id/games', async (req, res) => {
     const games = await Game.find({
       'players.player': req.params.id
     })
-      .populate('submittedBy', 'displayName avatar privateMode')
-      .populate('players.player', 'displayName avatar privateMode')
-      .populate('verifiedBy', 'displayName avatar privateMode')
+      .populate('submittedBy', PLAYER_POPULATE_FIELDS)
+      .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('verifiedBy', PLAYER_POPULATE_FIELDS)
       .sort({ gameDate: -1 })
       .skip(skip)
       .limit(limit);

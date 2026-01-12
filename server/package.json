@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest",
-    "seed": "node scripts/seedDatabase.js"
+    "seed": "node scripts/seedDatabase.js",
+    "seed:guest-users": "node scripts/seedGuestPlayers.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

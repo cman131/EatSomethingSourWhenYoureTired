@@ -35,6 +35,7 @@ export interface User {
   notificationPreferences?: NotificationPreferences;
   isAdmin?: boolean;
   privateMode?: boolean;
+  isGuest?: boolean;
 }
 
 export interface GamePlayer {
@@ -588,6 +589,13 @@ export const tournamentsApi = {
   endRound: async (tournamentId: string, roundNumber: number) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/rounds/${roundNumber}/end`, {
       method: 'PUT',
+    });
+  },
+
+  addPlayer: async (tournamentId: string, playerId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/players`, {
+      method: 'POST',
+      body: JSON.stringify({ playerId }),
     });
   },
 

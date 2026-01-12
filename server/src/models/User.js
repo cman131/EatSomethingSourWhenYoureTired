@@ -9,13 +9,21 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: [true, 'Email is required'],
+    required: function() {
+      return !this.isGuest;
+    },
     unique: true,
+    sparse: true, // Allows multiple null values
     lowercase: true,
-    match: [
-      /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-      'Please provide a valid email'
-    ]
+    validate: {
+      validator: function(v) {
+        // Skip validation for guest users
+        if (this.isGuest) return true;
+        // Validate email format for non-guest users
+        return !v || /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(v);
+      },
+      message: 'Please provide a valid email'
+    }
   },
   displayName: {
     type: String,
@@ -45,7 +53,9 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: function() {
+      return !this.isGuest;
+    },
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
@@ -70,6 +80,10 @@ const userSchema = new mongoose.Schema({
     default: 'Charleston'
   },
   privateMode: {
+    type: Boolean,
+    default: false
+  },
+  isGuest: {
     type: Boolean,
     default: false
   },
@@ -131,9 +145,15 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ email: 1 });
 userSchema.index({ displayName: 1 });
 
-// Hash password before saving
+// Hash password before saving (skip for guest users)
 userSchema.pre('save', async function(next) {
-  console.info('Saving user: ', this.email, this.displayName);
+  console.info('Saving user: ', this.email || 'Guest', this.displayName);
+  
+  // Skip password hashing for guest users
+  if (this.isGuest) {
+    return next();
+  }
+  
   if (!this.isModified('password')) return next();
   
   try {
@@ -192,6 +212,11 @@ userSchema.methods.toJSON = function() {
   delete userObject.passwordResetToken;
   delete userObject.passwordResetExpires;
   
+  // Hide email for guest users (it's just a dummy email)
+  if (userObject.isGuest === true) {
+    userObject.email = undefined;
+  }
+  
   // If private mode is enabled, hide name and username fields
   if (userObject.privateMode === true) {
     userObject.displayName = 'Hidden';
@@ -207,5 +232,9 @@ userSchema.methods.toJSON = function() {
   return userObject;
 };
 
+// Common fields to populate when fetching player data
+const PLAYER_POPULATE_FIELDS = 'displayName avatar privateMode isGuest';
+
 module.exports = mongoose.model('User', userSchema);
+module.exports.PLAYER_POPULATE_FIELDS = PLAYER_POPULATE_FIELDS;
 

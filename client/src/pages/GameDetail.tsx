@@ -67,10 +67,13 @@ const GameDetail: React.FC = () => {
       return false;
     }
     
-    // User must be a player in the game
-    const isPlayer = game.players.some(p => p.player._id === user._id);
+    // Admins can always verify
+    if (user.isAdmin) {
+      return true;
+    }
     
-    // User must NOT be the submitter
+    // Non-admins: User must be a player in the game and NOT be the submitter
+    const isPlayer = game.players.some(p => p.player._id === user._id);
     const isNotSubmitter = game.submittedBy._id !== user._id;
     
     return isPlayer && isNotSubmitter;

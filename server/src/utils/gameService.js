@@ -1,5 +1,6 @@
 const Game = require('../models/Game');
 const User = require('../models/User');
+const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const { sendNewGameNotificationEmail } = require('./emailService');
 
 /**
@@ -26,6 +27,12 @@ async function createGame(gameData, submitterId) {
     throw new Error('One or more players not found');
   }
 
+  // Validate that at least 2 players are non-guest users
+  const nonGuestUsers = users.filter(u => !u.isGuest);
+  if (nonGuestUsers.length < 2) {
+    throw new Error('At least 2 players must be registered users (not guests)');
+  }
+
   // Create game
   const game = new Game({
     submittedBy: submitterId,
@@ -41,8 +48,8 @@ async function createGame(gameData, submitterId) {
   await game.save();
 
   // Populate before sending response
-  await game.populate('submittedBy', 'displayName avatar privateMode');
-  await game.populate('players.player', 'displayName avatar privateMode');
+  await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
+  await game.populate('players.player', PLAYER_POPULATE_FIELDS);
 
   // Send notifications to players who aren't the submitter
   const submitterIdString = submitterId.toString();
@@ -50,15 +57,18 @@ async function createGame(gameData, submitterId) {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
   const gameUrl = `${frontendUrl}/games/${game._id}`;
 
-  // Get all players who aren't the submitter
-  const otherPlayers = game.players.filter(p => p.player._id.toString() !== submitterIdString);
+  // Get all players who aren't the submitter and aren't guest users
+  const otherPlayers = game.players.filter(p => {
+    const playerId = p.player._id.toString();
+    return playerId !== submitterIdString && !p.player.isGuest;
+  });
   
   // Process notifications for each player (don't await - run in background)
   Promise.all(
     otherPlayers.map(async (playerData) => {
       try {
         const player = await User.findById(playerData.player._id);
-        if (!player) return;
+        if (!player || player.isGuest) return; // Skip guest users
 
         // Check notification preferences
         const prefs = player.notificationPreferences || {};

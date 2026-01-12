@@ -71,15 +71,8 @@ function calculatePairingScore(playerIds, opponentHistory) {
  * @param {number} iterations - Number of random arrangements to try (default: 10000)
  * @returns {Array} Array of pairings, each with tableNumber and players array
  */
-function generatePairingsOptimized(activePlayerIds, opponentHistory, iterations = 10000) {
-  // Fill empty slots
-  const incompletePairing = 4 - (activePlayerIds.length % 4);
-  if (incompletePairing !== 4) {
-    for (let i = 0; i < incompletePairing; i++) {
-      activePlayerIds.push(`Filler ${i}`);
-    }
-  }
-
+async function generatePairingsOptimized(activePlayerIds, opponentHistory, iterations = 10000) {
+  // Note: activePlayerIds should already be divisible by 4 when this is called
   const numTables = activePlayerIds.length / 4;
   let bestPairings = null;
   let bestScore = Infinity;
@@ -145,9 +138,11 @@ function reconstructWheelLists(firstRoundPairings) {
  * @param {Array} activePlayerIds - Array of active (non-dropped) player IDs
  * @param {number} roundNumber - Current round number (1-indexed)
  * @param {Array} firstRoundPairings - Pairings from round 1 (for reconstructing lists)
- * @returns {Array} Array of pairings with tableNumber and players array
+ * @returns {Promise<Array>} Array of pairings with tableNumber and players array
  */
-function generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings = null) {
+async function generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings = null) {
+  // Note: activePlayerIds should already be divisible by 4 when this is called
+  // This check is kept as a safety measure but should not be needed
   if (activePlayerIds.length % 4 !== 0) {
     throw new Error('Number of active players must be divisible by 4');
   }
@@ -229,19 +224,42 @@ function assignSeats(pairing) {
  * Main function to generate pairings for a round
  * @param {Object} tournament - Tournament document
  * @param {number} roundNumber - Round number to generate (1-indexed)
- * @returns {Array} Array of pairings with tableNumber, players (with seat), and game
+ * @returns {Promise<Array>} Array of pairings with tableNumber, players (with seat), and game
  */
-function generateRoundPairings(tournament, roundNumber) {
+async function generateRoundPairings(tournament, roundNumber) {
+  const User = require('../models/User');
+  
   // Get active (non-dropped) players
   const activePlayers = tournament.players.filter(p => !p.dropped);
   // Handle both ObjectId and string player IDs
-  const activePlayerIds = activePlayers.map(p => {
+  let activePlayerIds = activePlayers.map(p => {
     const playerId = p.player;
     return playerId.toString ? playerId.toString() : playerId;
   });
 
-  if (activePlayerIds.length % 4 !== 0) {
-    throw new Error(`Cannot generate pairings: ${activePlayerIds.length} active players is not divisible by 4`);
+  // Add filler users until count is divisible by 4
+  const incompletePairing = 4 - (activePlayerIds.length % 4);
+  if (incompletePairing !== 4) {
+    for (let i = 0; i < incompletePairing; i++) {
+      const fillerName = `Filler ${i + 1}`;
+      // Check if a guest user with this name already exists
+      let fillerUser = await User.findOne({ 
+        displayName: fillerName,
+        isGuest: true 
+      });
+      
+      // If it doesn't exist, create a new guest user with unique dummy email
+      if (!fillerUser) {
+        fillerUser = new User({
+          displayName: fillerName,
+          isGuest: true,
+          email: `filler.${i + 1}@guest.local` // Unique dummy email for each filler
+        });
+        await fillerUser.save();
+      }
+      
+      activePlayerIds.push(fillerUser._id.toString());
+    }
   }
 
   // Get completed rounds (rounds before the current one)
@@ -263,10 +281,10 @@ function generateRoundPairings(tournament, roundNumber) {
     // Get first round pairings to reconstruct lists
     const firstRound = tournament.rounds.find(r => r.roundNumber === 1);
     const firstRoundPairings = firstRound ? firstRound.pairings : null;
-    pairings = generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings);
+    pairings = await generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings);
   } else {
     // Use optimization algorithm
-    pairings = generatePairingsOptimized(activePlayerIds, opponentHistory);
+    pairings = await generatePairingsOptimized(activePlayerIds, opponentHistory);
   }
 
   // Assign seats to each pairing
