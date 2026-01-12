@@ -4,9 +4,10 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import UserDisplay from '../components/user/UserDisplay';
-import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, UserGroupIcon, CalendarIcon, MapPinIcon, PencilIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
+import EditTournamentModal from '../components/tournaments/EditTournamentModal';
 
 const TournamentDetail: React.FC = () => {
   useRequireAuth();
@@ -18,6 +19,7 @@ const TournamentDetail: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [allRoundsHaveGames, setAllRoundsHaveGames] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -190,6 +192,19 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleUpdateTournament = async (data: {
+    name?: string;
+    description?: string;
+    date?: Date;
+    location?: any;
+  }) => {
+    if (!id) return;
+    await tournamentsApi.updateTournament(id, data);
+    // Refresh tournament data
+    const response = await tournamentsApi.getTournament(id);
+    setTournament(response.data.tournament);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'NotStarted':
@@ -277,6 +292,16 @@ const TournamentDetail: React.FC = () => {
         <div className="flex items-center gap-3">
           {tournament.status === 'NotStarted' && (
             <>
+              {user?.isAdmin === true && (
+                <button
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="btn-primary flex items-center"
+                  title="Edit Tournament"
+                >
+                  <PencilIcon className="h-4 w-4 mr-2" />
+                  Edit
+                </button>
+              )}
               {user?.isAdmin === true && (
                 <button
                   onClick={handleStart}
@@ -387,6 +412,13 @@ const TournamentDetail: React.FC = () => {
       ) : (
         <Standings tournament={tournament} currentUser={user} />
       )}
+
+      <EditTournamentModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleUpdateTournament}
+        tournament={tournament}
+      />
     </div>
   );
 };

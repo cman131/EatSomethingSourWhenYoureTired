@@ -554,6 +554,18 @@ export const tournamentsApi = {
     });
   },
 
+  updateTournament: async (tournamentId: string, tournamentData: {
+    name?: string;
+    description?: string;
+    date?: Date;
+    location?: TournamentAddress;
+  }) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}`, {
+      method: 'PUT',
+      body: JSON.stringify(tournamentData),
+    });
+  },
+
   signup: async (tournamentId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/signup`, {
       method: 'POST',

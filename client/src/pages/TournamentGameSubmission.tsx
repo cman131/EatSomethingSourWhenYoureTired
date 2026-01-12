@@ -4,6 +4,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useMutation } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
 import { tournamentsApi } from '../services/api';
+import NumericInput from '../components/NumericInput';
 
 const TournamentGameSubmission: React.FC = () => {
   useRequireAuth();
@@ -109,7 +110,7 @@ const TournamentGameSubmission: React.FC = () => {
     loadPairingData();
   }, [tournamentId, roundNumber, tableNumber]);
 
-  const { mutate: submitGame } = useMutation(
+  const { mutate: submitGame, loading: submitting } = useMutation(
     (gameData: {
       players: Array<{ player: string; score: number; position: number }>;
       notes?: string;
@@ -120,10 +121,47 @@ const TournamentGameSubmission: React.FC = () => {
     }) => tournamentsApi.submitTournamentGame(tournamentId!, gameData)
   );
 
-  const handleScoreChange = (index: number, value: number) => {
+  const handleScoreChange = (index: number, value: number | null) => {
     const newPlayers = [...players];
-    newPlayers[index].score = value;
+    newPlayers[index].score = value ?? 0;
     setPlayers(newPlayers);
+  };
+
+  const isFormValid = () => {
+    // Validate all players are selected
+    if (players.some(p => !p.player)) {
+      return false;
+    }
+
+    // Validate all scores are numbers
+    if (players.some(p => p.score === undefined || p.score === null || isNaN(Number(p.score)))) {
+      return false;
+    }
+
+    // Validate all players are unique
+    const playerIds = players.map(p => p.player);
+    if (new Set(playerIds).size !== 4) {
+      return false;
+    }
+
+    // Validate that the authenticated user is one of the players
+    if (!user || !playerIds.includes(user._id)) {
+      return false;
+    }
+
+    // Validate points left on table is a multiple of 1000
+    if (pointsLeftOnTable % 1000 !== 0) {
+      return false;
+    }
+
+    // Validate total score (players + table) equals 100000 or 120000
+    const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
+    const totalScore = playersTotal + pointsLeftOnTable;
+    if (totalScore !== 100000 && totalScore !== 120000) {
+      return false;
+    }
+
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -253,15 +291,13 @@ const TournamentGameSubmission: React.FC = () => {
                     className="input-field bg-gray-50 cursor-not-allowed"
                   />
                 </div>
-                <div className="w-24">
+                <div className="w-24 flex-1">
                   <label className="block text-xs text-gray-600 mb-1">Score</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
+                  <NumericInput
                     value={player.score}
+                    onChange={(value) => handleScoreChange(index, value)}
                     step={1000}
-                    onChange={(e) => handleScoreChange(index, Number(e.target.value) || 0)}
-                    className="input-field"
+                    className="w-full"
                     required
                   />
                 </div>
@@ -274,16 +310,14 @@ const TournamentGameSubmission: React.FC = () => {
           <label htmlFor="pointsLeftOnTable" className="block text-sm font-medium text-gray-700 mb-2">
             Points Left on Table (optional)
           </label>
-          <input
+          <NumericInput
             id="pointsLeftOnTable"
-            type="text"
-            inputMode="numeric"
             value={pointsLeftOnTable}
+            onChange={(value) => setPointsLeftOnTable(value ?? 0)}
             step={1000}
             min={0}
-            onChange={(e) => setPointsLeftOnTable(Number(e.target.value) || 0)}
-            className="input-field"
-            placeholder="0"
+            className="w-full"
+            required
           />
           <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
             <div className="flex justify-between items-center">
@@ -326,9 +360,10 @@ const TournamentGameSubmission: React.FC = () => {
         <div className="flex gap-4">
           <button
             type="submit"
-            className="btn-primary flex-1"
+            disabled={submitting || !isFormValid()}
+            className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit Game
+            {submitting ? 'Submitting...' : 'Submit Game'}
           </button>
           <button
             type="button"

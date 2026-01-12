@@ -7,6 +7,7 @@ import { gamesApi, usersApi, User } from '../services/api';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/airbnb.css';
 import UserDisplay from '../components/user/UserDisplay';
+import NumericInput from '../components/NumericInput';
 
 const GameSubmission: React.FC = () => {
   useRequireAuth();
@@ -99,9 +100,9 @@ const GameSubmission: React.FC = () => {
     setSelectedPlayerIndex(index);
   };
 
-  const handleScoreChange = (index: number, value: number) => {
+  const handleScoreChange = (index: number, value: number | null) => {
     const newPlayers = [...players];
-    newPlayers[index].score = value;
+    newPlayers[index].score = value ?? 0;
     setPlayers(newPlayers);
   };
 
@@ -269,7 +270,7 @@ const GameSubmission: React.FC = () => {
           </label>
           <div className="space-y-4">
             {players.map((player, index) => (
-              <div key={index} className="flex gap-4 items-end">
+              <div key={index} className="flex gap-4 items-start">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-600 mb-1">
                     Player {player.position} ({PlayerSeats[player.position - 1]})
@@ -337,15 +338,13 @@ const GameSubmission: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <div className="w-24">
+                <div className="w-24 flex-1">
                   <label className="block text-xs text-gray-600 mb-1">Score</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
+                  <NumericInput
                     value={player.score}
+                    onChange={(value) => handleScoreChange(index, value)}
                     step={1000}
-                    onChange={(e) => handleScoreChange(index, Number(e.target.value) || 0)}
-                    className="input-field"
+                    className="w-full"
                     required
                   />
                 </div>
@@ -358,16 +357,14 @@ const GameSubmission: React.FC = () => {
           <label htmlFor="pointsLeftOnTable" className="block text-sm font-medium text-gray-700 mb-2">
             Points Left on Table (optional)
           </label>
-          <input
+          <NumericInput
             id="pointsLeftOnTable"
-            type="text"
-            inputMode="numeric"
             value={pointsLeftOnTable}
+            onChange={(value) => setPointsLeftOnTable(value ?? 0)}
             step={1000}
             min={0}
-            onChange={(e) => setPointsLeftOnTable(Number(e.target.value) || 0)}
-            className="input-field"
-            placeholder="0"
+            className="w-full"
+            required
           />
           <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
             <div className="flex justify-between items-center">

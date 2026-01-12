@@ -273,6 +273,81 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// @route   PUT /api/tournaments/admin/:id
+// @desc    Update a tournament (Admin only)
+// @access  Private (Admin)
+router.put('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+  try {
+    const { name, description, date, location } = req.body;
+
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Update fields if provided
+    if (name !== undefined) {
+      tournament.name = name;
+    }
+
+    if (description !== undefined) {
+      tournament.description = description;
+    }
+
+    if (date !== undefined) {
+      tournament.date = date;
+    }
+
+    if (location !== undefined) {
+      // Validate location object
+      if (!location.streetAddress || !location.city || !location.state || !location.zipCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Location must include street address, city, state, and zip code'
+        });
+      }
+
+      // Validate state is 2 characters
+      if (location.state && location.state.length !== 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'State must be a 2-letter abbreviation'
+        });
+      }
+
+      tournament.location = {
+        streetAddress: location.streetAddress.trim(),
+        addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
+        city: location.city.trim(),
+        state: location.state.trim().toUpperCase(),
+        zipCode: location.zipCode.trim()
+      };
+    }
+
+    await tournament.save();
+
+    await tournament.populate('players.player', 'displayName avatar privateMode');
+
+    res.status(200).json({
+      success: true,
+      message: 'Tournament updated successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Update tournament error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update tournament'
+    });
+  }
+});
+
 // @route   PUT /api/tournaments/admin/:id/start
 // @desc    Start a tournament (Admin only)
 // @access  Private (Admin)
