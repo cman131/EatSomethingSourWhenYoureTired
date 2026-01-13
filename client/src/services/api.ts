@@ -36,6 +36,7 @@ export interface User {
   isAdmin?: boolean;
   privateMode?: boolean;
   isGuest?: boolean;
+  riichiMusic?: string | null;
 }
 
 export interface GamePlayer {

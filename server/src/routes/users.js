@@ -34,7 +34,7 @@ router.get('/profile', async (req, res) => {
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
 
-    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode, riichiMusic } = req.body;
     const user = await User.findById(req.user._id);
 
     if (displayName !== undefined) {
@@ -84,6 +84,10 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
 
     if (privateMode !== undefined) {
       user.privateMode = privateMode;
+    }
+
+    if (riichiMusic !== undefined) {
+      user.riichiMusic = riichiMusic === '' || riichiMusic === null ? null : riichiMusic.trim();
     }
 
     await user.save();
