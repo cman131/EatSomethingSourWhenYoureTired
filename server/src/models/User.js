@@ -136,7 +136,12 @@ const userSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     }
-  }]
+  }],
+  riichiMusic: {
+    type: String,
+    trim: true,
+    default: null
+  }
 }, {
   timestamps: true
 });
