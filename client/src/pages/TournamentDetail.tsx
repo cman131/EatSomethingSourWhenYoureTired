@@ -11,6 +11,7 @@ import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
 import TournamentGamesList from '../components/tournaments/TournamentGamesList';
 import AddPlayerModal from '../components/tournaments/AddPlayerModal';
+import DescriptionDisplay from '../components/tournaments/DescriptionDisplay';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 
 const TournamentDetail: React.FC = () => {
@@ -392,10 +393,7 @@ const TournamentDetail: React.FC = () => {
       )}
 
       {tournament.description && (
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{tournament.description}</p>
-        </div>
+        <DescriptionDisplay description={tournament.description} />
       )}
 
       {tournament.location && (
