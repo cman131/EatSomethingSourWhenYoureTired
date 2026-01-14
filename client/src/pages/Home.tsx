@@ -9,8 +9,8 @@ import {
   CalendarIcon,
   ArrowTopRightOnSquareIcon,
   CalculatorIcon,
-  UserGroupIcon,
   QuestionMarkCircleIcon,
+  TrophyIcon,
   ShoppingBagIcon
 } from '@heroicons/react/24/outline';
 
@@ -60,6 +60,15 @@ const Home: React.FC = () => {
       external: true
     },
     {
+      name: 'View Tournaments',
+      description: 'Browse all upcoming and past club tournaments.',
+      icon: TophyIcon,
+      href: '/tournaments',
+      color: 'bg-purple-500',
+      requiresAuth: false,
+      external: false
+    },
+    {
       name: 'Score a Hand',
       description: 'Calculate the score for your Riichi Mahjong hand',
       icon: CalculatorIcon,
@@ -74,15 +83,6 @@ const Home: React.FC = () => {
       icon: ChartBarIcon,
       href: '/games',
       color: 'bg-green-500',
-      requiresAuth: true,
-      external: false
-    },
-    {
-      name: 'View Members',
-      description: 'Browse all club members and view their profiles.',
-      icon: UserGroupIcon,
-      href: '/members',
-      color: 'bg-purple-500',
       requiresAuth: true,
       external: false
     },
