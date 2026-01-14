@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
@@ -10,12 +10,14 @@ import StatisticsSection from '../components/profile/StatisticsSection';
 import GameHistorySection from '../components/profile/GameHistorySection';
 import HeadToHeadSection from '../components/profile/HeadToHeadSection';
 import RecentGamePerformanceSection from '../components/profile/RecentGamePerformanceSection';
+import TournamentResultsSection from '../components/profile/TournamentResultsSection';
 import UserInfoSection from '../components/profile/UserInfoSection';
 
 const Profile: React.FC = () => {
   useRequireAuth();
   const { id } = useParams<{ id?: string }>();
   const { user: currentUser, updateProfile } = useAuth();
+  const navigate = useNavigate();
   
   // Determine which user's profile we're viewing
   const profileUserId = id || currentUser?._id;
@@ -33,15 +35,25 @@ const Profile: React.FC = () => {
       }
       // Fetch other user's data
       const response = await usersApi.getUser(profileUserId);
+      if (response.data.user.isGuest) {
+        return Promise.reject(new Error('User is a guest'));
+      }
       return response.data.user;
     },
     [profileUserId, isOwnProfile, currentUser]
   );
 
-  const { data: profileUser, loading: profileUserLoading, refetch: refetchProfileUser } = useApi<User>(
+  const { data: profileUser, loading: profileUserLoading, error: profileUserError, refetch: refetchProfileUser } = useApi<User>(
     getProfileUser,
     [profileUserId, isOwnProfile, currentUser?._id]
   );
+
+  // Redirect if trying to view another user's profile and they're a guest
+  React.useEffect(() => {
+    if (profileUserError && profileUserError === 'User is a guest') {
+      navigate('/members');
+    }
+  }, [profileUserError, navigate]);
 
   // Use profile user for display, fallback to current user
   // When viewing own profile, prioritize currentUser to ensure we have the latest data
@@ -126,6 +138,9 @@ const Profile: React.FC = () => {
 
           {/* Achievements */}
           {profileUserId && <AchievementsSection userId={profileUserId} />}
+
+          {/* Tournament Results */}
+          {profileUserId && <TournamentResultsSection profileUserId={profileUserId} />}
 
           {/* Statistics */}
           {profileUserId && (

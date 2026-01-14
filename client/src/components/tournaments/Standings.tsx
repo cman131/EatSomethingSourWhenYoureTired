@@ -132,7 +132,7 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
   }, [tournament]);
 
   const isCompleted = tournament.status === 'Completed';
-  const showKickButton = tournament.status === 'NotStarted' && currentUser?.isAdmin === true;
+  const showKickButton = tournament.status !== 'Completed' && currentUser?.isAdmin === true;
 
   if (!playerList || playerList.length === 0) {
     return (

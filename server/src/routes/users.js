@@ -195,7 +195,7 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const users = await User.find({ privateMode: false })
-      .select('displayName avatar privateMode realName discordName mahjongSoulName favoriteYaku')
+      .select(`${PLAYER_POPULATE_FIELDS} realName discordName mahjongSoulName`)
       .sort({ displayName: 1 })
       .skip(skip)
       .limit(limit);
@@ -249,7 +249,7 @@ router.get('/search', async (req, res) => {
         { mahjongSoulName: { $regex: q.trim(), $options: 'i' } }
       ]
     })
-      .select('displayName realName avatar')
+      .select(`${PLAYER_POPULATE_FIELDS} realName`)
       .limit(limit);
 
     res.json({

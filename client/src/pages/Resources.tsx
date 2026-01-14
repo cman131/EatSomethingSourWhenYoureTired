@@ -146,19 +146,19 @@ const Resources: React.FC = () => {
                   className="block p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-md transition-all group"
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-medium text-gray-900 group-hover:text-primary-600">
+                        <h3 className="text-lg font-medium text-gray-900 group-hover:text-primary-600 truncate">
                           {link.name}
                         </h3>
-                        <ArrowTopRightOnSquareIcon className="h-4 w-4 text-gray-400 group-hover:text-primary-600" />
+                        <ArrowTopRightOnSquareIcon className="h-4 w-4 text-gray-400 group-hover:text-primary-600 flex-shrink-0" />
                       </div>
                       {link.description && (
                         <p className="text-sm text-gray-600 mt-1">
                           {link.description}
                         </p>
                       )}
-                      <p className="text-xs text-gray-400 mt-2 truncate">
+                      <p className="text-xs text-gray-400 mt-2 truncate overflow-hidden">
                         {link.href}
                       </p>
                     </div>
