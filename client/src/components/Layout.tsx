@@ -36,6 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navigation = [
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
+    ...(!isAuthenticated ? [{ name: 'Tournaments', href: '/tournaments', icon: TrophyIcon }] : []),
     { name: 'Store', href: 'https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club', icon: ShoppingBagIcon, external: true },
   ];
 

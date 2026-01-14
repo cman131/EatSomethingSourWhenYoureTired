@@ -25,12 +25,19 @@ const MembersList: React.FC = () => {
 
   // Filter users based on search term (client-side filtering)
   const filteredUsers = useMemo(() => {
-    if (!users || !searchTerm.trim()) {
-      return users || [];
+    if (!users) {
+      return [];
+    }
+
+    // First, filter out guest users
+    const nonGuestUsers = users.filter((user: User) => !user.isGuest);
+
+    if (!searchTerm.trim()) {
+      return nonGuestUsers;
     }
 
     const searchLower = searchTerm.toLowerCase();
-    return users.filter((user: User) => {
+    return nonGuestUsers.filter((user: User) => {
       // Search in display name
       const displayName = (user.displayName || '').toLowerCase();
       

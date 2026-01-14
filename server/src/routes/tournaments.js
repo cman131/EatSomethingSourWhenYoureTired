@@ -907,10 +907,10 @@ router.put('/admin/:id/players/:playerId/kick', authenticateToken, requireAdmin,
     }
 
     // Check if tournament has started
-    if (tournament.status !== 'NotStarted') {
+    if (tournament.status === 'Completed') {
       return res.status(400).json({
         success: false,
-        message: 'Cannot kick players from a tournament that has already started'
+        message: 'Cannot kick players from a tournament that has already ended'
       });
     }
 
