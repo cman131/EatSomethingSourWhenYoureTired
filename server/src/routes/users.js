@@ -87,7 +87,32 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
     }
 
     if (riichiMusic !== undefined) {
-      user.riichiMusic = riichiMusic === '' || riichiMusic === null ? null : riichiMusic.trim();
+      // Handle new object format: { url: string, type: 'youtube' | 'spotify' }
+      if (riichiMusic === null || riichiMusic === '') {
+        user.riichiMusic = null;
+      } else if (typeof riichiMusic === 'object' && riichiMusic !== null) {
+        // Validate the object structure
+        if (riichiMusic.url === null || riichiMusic.url === '' || riichiMusic.url === undefined) {
+          user.riichiMusic = null;
+        } else {
+          // Validate type enum
+          if (!riichiMusic.type || !['youtube', 'spotify'].includes(riichiMusic.type)) {
+            return res.status(400).json({
+              success: false,
+              message: 'riichiMusic.type must be either "youtube" or "spotify"'
+            });
+          }
+          user.riichiMusic = {
+            url: riichiMusic.url.trim(),
+            type: riichiMusic.type
+          };
+        }
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'riichiMusic must be an object with url and type properties, or null'
+        });
+      }
     }
 
     await user.save();

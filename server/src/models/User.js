@@ -138,9 +138,16 @@ const userSchema = new mongoose.Schema({
     }
   }],
   riichiMusic: {
-    type: String,
-    trim: true,
-    default: null
+    url: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    type: {
+      type: String,
+      enum: ['youtube', 'spotify'],
+      default: 'spotify'
+    }
   }
 }, {
   timestamps: true

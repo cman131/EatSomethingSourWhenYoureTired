@@ -36,7 +36,10 @@ export interface User {
   isAdmin?: boolean;
   privateMode?: boolean;
   isGuest?: boolean;
-  riichiMusic?: string | null;
+  riichiMusic?: {
+    url: string;
+    type: 'youtube' | 'spotify';
+  } | null;
 }
 
 export interface GamePlayer {
@@ -543,6 +546,10 @@ export const tournamentsApi = {
 
   getTournament: async (tournamentId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`);
+  },
+
+  getTournamentPublic: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/public/${tournamentId}`);
   },
 
   createTournament: async (tournamentData: {

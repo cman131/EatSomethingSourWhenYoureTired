@@ -62,7 +62,7 @@ const Home: React.FC = () => {
     {
       name: 'View Tournaments',
       description: 'Browse all upcoming and past club tournaments.',
-      icon: TophyIcon,
+      icon: TrophyIcon,
       href: '/tournaments',
       color: 'bg-purple-500',
       requiresAuth: false,
