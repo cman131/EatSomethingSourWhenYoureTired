@@ -4,6 +4,7 @@ import { getTileImagePath } from '../../utils/tileUtils';
 import NotificationPreferencesModal from '../NotificationPreferencesModal';
 import RiichiMusicModal from '../RiichiMusicModal';
 import EditProfileModal from '../EditProfileModal';
+import RiichiMusicDisplay from './RiichiMusicDisplay';
 import UserAvatar from '../user/UserAvatar';
 import { PencilIcon, BellIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
 
@@ -45,8 +46,8 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
   };
 
   // Handle riichi music save
-  const handleRiichiMusicSave = async (spotifyUrl: string | null) => {
-    await onUpdateProfile({ riichiMusic: spotifyUrl });
+  const handleRiichiMusicSave = async (riichiMusic: { url: string; type: 'youtube' | 'spotify' } | null) => {
+    await onUpdateProfile({ riichiMusic });
     // Refetch to ensure we have the latest data
     await onRefetchProfile();
   };
@@ -105,31 +106,9 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
           </div>
 
           {/* Riichi Music */}
-          {!user?.privateMode && user?.riichiMusic && (() => {
-            const trackIdMatch = user.riichiMusic.match(/track\/([a-zA-Z0-9]+)/);
-            const trackId = trackIdMatch ? trackIdMatch[1] : null;
-            const spotifyUriMatch = user.riichiMusic.match(/spotify:track:([a-zA-Z0-9]+)/);
-            const trackIdFromUri = spotifyUriMatch ? spotifyUriMatch[1] : null;
-            const finalTrackId = trackId || trackIdFromUri;
-            
-            return finalTrackId ? (
-              <div className="pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Riichi Music</h3>
-                <div className="max-w-md">
-                  <iframe
-                    title="Riichi Music"
-                    src={`https://open.spotify.com/embed/track/${finalTrackId}?utm_source=generator&theme=0`}
-                    width="100%"
-                    height="152"
-                    frameBorder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    className="rounded-lg"
-                  />
-                </div>
-              </div>
-            ) : null;
-          })()}
+          {!user?.privateMode && user?.riichiMusic && (
+            <RiichiMusicDisplay riichiMusic={user.riichiMusic} />
+          )}
 
           {/* Other Information */}
           {(!user.privateMode && (user?.realName || user?.discordName || user?.mahjongSoulName || user?.favoriteYaku || user?.favoriteTile || user?.clubAffiliation || (isOwnProfile && user?.email))) && (

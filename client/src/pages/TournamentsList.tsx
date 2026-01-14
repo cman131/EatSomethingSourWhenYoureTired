@@ -1,14 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePaginatedApi } from '../hooks/useApi';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { tournamentsApi, Tournament } from '../services/api';
-import UserAvatar from '../components/user/UserAvatar';
 import { MagnifyingGlassIcon, PlusIcon, CalendarIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 
 const TournamentsList: React.FC = () => {
-  useRequireAuth();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const pageLimit = 20;
@@ -176,44 +173,6 @@ const TournamentsList: React.FC = () => {
                           <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                             {tournament.description}
                           </p>
-                        )}
-                        {activePlayerCount > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {tournament.players
-                              .filter(p => !p.dropped)
-                              .slice(0, 8)
-                              .map((playerEntry) => (
-                                playerEntry.player.privateMode ? (
-                                  <div
-                                    key={playerEntry.player._id}
-                                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-700"
-                                  >
-                                    <UserAvatar
-                                      user={playerEntry.player}
-                                      size="xs"
-                                    />
-                                    <span>{playerEntry.player.displayName}</span>
-                                  </div>
-                                ) : (
-                                  <Link
-                                    key={playerEntry.player._id}
-                                    to={`/profile/${playerEntry.player._id}`}
-                                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-700 hover:bg-gray-200 transition-colors"
-                                  >
-                                    <UserAvatar
-                                      user={playerEntry.player}
-                                      size="xs"
-                                    />
-                                    <span>{playerEntry.player.displayName}</span>
-                                  </Link>
-                                )
-                              ))}
-                            {activePlayerCount > 8 && (
-                              <span className="inline-flex items-center px-2 py-1 bg-gray-100 rounded-md text-sm text-gray-500">
-                                +{activePlayerCount - 8} more
-                              </span>
-                            )}
-                          </div>
                         )}
                       </div>
                     </div>

@@ -86,7 +86,7 @@ app.use('/api/tiles', authenticateToken, tileRoutes);
 app.use('/api/discard-quizzes', authenticateToken, discardQuizRoutes);
 app.use('/api/decision-quizzes', authenticateToken, decisionQuizRoutes);
 app.use('/api/achievements', authenticateToken, achievementRoutes);
-app.use('/api/tournaments', authenticateToken, tournamentRoutes);
+app.use('/api/tournaments', tournamentRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

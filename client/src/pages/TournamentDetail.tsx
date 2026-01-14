@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { useRequireAuth } from '../hooks/useRequireAuth';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
-import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -15,9 +14,8 @@ import DescriptionDisplay from '../components/tournaments/DescriptionDisplay';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 
 const TournamentDetail: React.FC = () => {
-  useRequireAuth();
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +36,10 @@ const TournamentDetail: React.FC = () => {
 
       try {
         setLoading(true);
-        const response = await tournamentsApi.getTournament(id);
+        // Use public endpoint if not authenticated, otherwise use authenticated endpoint
+        const response = isAuthenticated 
+          ? await tournamentsApi.getTournament(id)
+          : await tournamentsApi.getTournamentPublic(id);
         setTournament(response.data.tournament);
         setError(null);
       } catch (err: any) {
@@ -49,7 +50,7 @@ const TournamentDetail: React.FC = () => {
     };
 
     fetchTournament();
-  }, [id]);
+  }, [id, isAuthenticated]);
 
   const isSignedUp = React.useMemo(() => {
     if (!user || !tournament) return false;
@@ -310,7 +311,14 @@ const TournamentDetail: React.FC = () => {
         <div className="flex items-center gap-3">
           {tournament.status === 'NotStarted' && (
             <>
-              {isSignedUp ? (
+              {!isAuthenticated ? (
+                <Link
+                  to={`/login?redirect=${encodeURIComponent(`/tournaments/${id}`)}`}
+                  className="btn-primary"
+                >
+                  Login to Register
+                </Link>
+              ) : isSignedUp ? (
                 <button
                   onClick={handleDrop}
                   disabled={actionLoading}
@@ -328,6 +336,15 @@ const TournamentDetail: React.FC = () => {
                 </button>
               )}
             </>
+          )}
+
+          {tournament.status !== 'NotStarted' && !isAuthenticated && (
+            <Link
+              to={`/login?redirect=${encodeURIComponent(`/tournaments/${id}`)}`}
+              className="btn-primary"
+            >
+              Login to View
+            </Link>
           )}
           <ShareButton title="Share this tournament" />
         </div>
@@ -400,17 +417,33 @@ const TournamentDetail: React.FC = () => {
         <AddressDisplay address={tournament.location} />
       )}
 
-      {tournament.status === 'InProgress' && (
+      {isAuthenticated && tournament.status === 'InProgress' && (
         <CurrentRoundPairing tournament={tournament} currentUser={user} />
       )}
 
-      <Standings 
-        tournament={tournament} 
-        currentUser={user} 
-        onUpdate={(updatedTournament) => setTournament(updatedTournament)}
-      />
+      {isAuthenticated && (
+        <Standings 
+          tournament={tournament} 
+          currentUser={user} 
+          onUpdate={(updatedTournament) => setTournament(updatedTournament)}
+        />
+      )}
 
-      {tournament.status === 'Completed' && (
+      {!isAuthenticated && (
+        <div className="card">
+          <div className="flex items-center gap-3">
+            <UserGroupIcon className="h-6 w-6 text-gray-600" />
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Players</h3>
+              <p className="text-sm text-gray-600">
+                {tournament.players.filter(p => !p.dropped).length} player{tournament.players.filter(p => !p.dropped).length !== 1 ? 's' : ''} {tournament.status === 'NotStarted' ? 'registered' : tournament.status === 'InProgress' ? 'playing' : 'played'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAuthenticated && tournament.status === 'Completed' && (
         <TournamentGamesList tournament={tournament} currentUser={user} />
       )}
 

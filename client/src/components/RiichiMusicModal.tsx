@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
+import { User } from '../services/api';
 
 interface RiichiMusicModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (spotifyUrl: string | null) => Promise<void>;
-  currentRiichiMusic?: string | null;
+  onSave: (riichiMusic: { url: string; type: 'youtube' | 'spotify' } | null) => Promise<void>;
+  currentRiichiMusic?: User['riichiMusic'];
 }
 
 const RiichiMusicModal: React.FC<RiichiMusicModalProps> = ({
@@ -14,71 +15,108 @@ const RiichiMusicModal: React.FC<RiichiMusicModalProps> = ({
   onSave,
   currentRiichiMusic,
 }) => {
-  const [spotifyUrl, setSpotifyUrl] = useState('');
+  const [musicUrl, setMusicUrl] = useState('');
+  const [musicType, setMusicType] = useState<'youtube' | 'spotify'>('spotify');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [previewTrackId, setPreviewTrackId] = useState<string | null>(null);
+  const [previewMediaId, setPreviewMediaId] = useState<string | null>(null);
 
-  // Initialize URL when modal opens
+  // Initialize URL and type when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSpotifyUrl(currentRiichiMusic || '');
-      setError(null);
-      setPreviewTrackId(null);
-      if (currentRiichiMusic) {
-        extractTrackId(currentRiichiMusic);
+      if (currentRiichiMusic && currentRiichiMusic.url) {
+        setMusicUrl(currentRiichiMusic.url);
+        setMusicType(currentRiichiMusic.type || 'spotify');
+        extractMediaId(currentRiichiMusic.url, currentRiichiMusic.type || 'spotify');
+      } else {
+        setMusicUrl('');
+        setMusicType('spotify');
+        setPreviewMediaId(null);
       }
+      setError(null);
     }
   }, [isOpen, currentRiichiMusic]);
 
-  // Extract track ID from Spotify URL
-  const extractTrackId = (url: string): string | null => {
+  // Extract media ID from URL based on type
+  const extractMediaId = (url: string, type: 'youtube' | 'spotify'): string | null => {
     if (!url) return null;
     
-    // Handle different Spotify URL formats:
-    // https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT
-    // spotify:track:4cOdK2wGLETKBW3PvgPWqT
-    // https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT?si=...
-    
-    const trackMatch = url.match(/track\/([a-zA-Z0-9]+)/);
-    if (trackMatch) {
-      return trackMatch[1];
+    if (type === 'spotify') {
+      // Handle different Spotify URL formats
+      const trackMatch = url.match(/track\/([a-zA-Z0-9]+)/);
+      if (trackMatch) {
+        return trackMatch[1];
+      }
+      const spotifyUriMatch = url.match(/spotify:track:([a-zA-Z0-9]+)/);
+      if (spotifyUriMatch) {
+        return spotifyUriMatch[1];
+      }
+      return null;
+    } else if (type === 'youtube') {
+      // Handle different YouTube URL formats
+      const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+      if (watchMatch) {
+        return watchMatch[1];
+      }
+      const youtuBeMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+      if (youtuBeMatch) {
+        return youtuBeMatch[1];
+      }
+      const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]+)/);
+      if (embedMatch) {
+        return embedMatch[1];
+      }
+      return null;
     }
-    
-    const spotifyUriMatch = url.match(/spotify:track:([a-zA-Z0-9]+)/);
-    if (spotifyUriMatch) {
-      return spotifyUriMatch[1];
-    }
-    
     return null;
   };
 
-  // Validate Spotify URL
-  const validateSpotifyUrl = (url: string): boolean => {
+  // Validate URL based on type
+  const validateUrl = (url: string, type: 'youtube' | 'spotify'): boolean => {
     if (!url.trim()) return true; // Empty is valid (to clear)
     
-    const trackId = extractTrackId(url);
-    return trackId !== null;
+    const mediaId = extractMediaId(url, type);
+    return mediaId !== null;
   };
 
   // Handle URL input change
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
-    setSpotifyUrl(url);
+    setMusicUrl(url);
     setError(null);
     
     if (url.trim()) {
-      const trackId = extractTrackId(url);
-      setPreviewTrackId(trackId);
+      const mediaId = extractMediaId(url, musicType);
+      setPreviewMediaId(mediaId);
       
-      if (!trackId) {
-        setError('Please enter a valid Spotify track URL');
+      if (!mediaId) {
+        setError(`Please enter a valid ${musicType === 'spotify' ? 'Spotify' : 'YouTube'} URL`);
       } else {
         setError(null);
       }
     } else {
-      setPreviewTrackId(null);
+      setPreviewMediaId(null);
       setError(null);
+    }
+  };
+
+  // Handle type change
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value as 'youtube' | 'spotify';
+    setMusicType(newType);
+    setError(null);
+    
+    if (musicUrl.trim()) {
+      const mediaId = extractMediaId(musicUrl, newType);
+      setPreviewMediaId(mediaId);
+      
+      if (!mediaId) {
+        setError(`Please enter a valid ${newType === 'spotify' ? 'Spotify' : 'YouTube'} URL`);
+      } else {
+        setError(null);
+      }
+    } else {
+      setPreviewMediaId(null);
     }
   };
 
@@ -88,15 +126,24 @@ const RiichiMusicModal: React.FC<RiichiMusicModalProps> = ({
     setError(null);
     
     try {
-      const urlToSave = spotifyUrl.trim() || null;
+      const urlToSave = musicUrl.trim();
       
-      if (urlToSave && !validateSpotifyUrl(urlToSave)) {
-        setError('Please enter a valid Spotify track URL');
+      if (!urlToSave) {
+        await onSave(null);
+        onClose();
+        return;
+      }
+      
+      if (!validateUrl(urlToSave, musicType)) {
+        setError(`Please enter a valid ${musicType === 'spotify' ? 'Spotify' : 'YouTube'} URL`);
         setIsLoading(false);
         return;
       }
       
-      await onSave(urlToSave);
+      await onSave({
+        url: urlToSave,
+        type: musicType
+      });
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to save riichi music');
@@ -112,8 +159,8 @@ const RiichiMusicModal: React.FC<RiichiMusicModalProps> = ({
 
   // Handle clear
   const handleClear = () => {
-    setSpotifyUrl('');
-    setPreviewTrackId(null);
+    setMusicUrl('');
+    setPreviewMediaId(null);
     setError(null);
   };
 
@@ -152,44 +199,74 @@ const RiichiMusicModal: React.FC<RiichiMusicModalProps> = ({
 
             <div className="space-y-4">
               <p className="text-sm text-gray-600">
-                Set your riichi music! Paste a Spotify track URL below. This will be displayed on your profile.
+                Set your riichi music! Choose a platform and paste a track/video URL below. This will be displayed on your profile.
               </p>
 
               <div>
-                <label htmlFor="spotifyUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                  Spotify Track URL
+                <label htmlFor="musicType" className="block text-sm font-medium text-gray-700 mb-2">
+                  Platform
+                </label>
+                <select
+                  id="musicType"
+                  value={musicType}
+                  onChange={handleTypeChange}
+                  className="input-field w-full"
+                >
+                  <option value="spotify">Spotify</option>
+                  <option value="youtube">YouTube</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="musicUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                  {musicType === 'spotify' ? 'Spotify Track URL' : 'YouTube Video URL'}
                 </label>
                 <input
-                  id="spotifyUrl"
+                  id="musicUrl"
                   type="text"
-                  value={spotifyUrl}
+                  value={musicUrl}
                   onChange={handleUrlChange}
-                  placeholder="https://open.spotify.com/track/..."
+                  placeholder={musicType === 'spotify' ? 'https://open.spotify.com/track/...' : 'https://www.youtube.com/watch?v=...'}
                   className="input-field w-full"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  Paste a Spotify track URL (e.g., https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT)
+                  {musicType === 'spotify' 
+                    ? 'Paste a Spotify track URL (e.g., https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT)'
+                    : 'Paste a YouTube video URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)'}
                 </p>
               </div>
 
               {/* Preview */}
-              {previewTrackId && (
+              {previewMediaId && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-xs font-medium text-gray-700 mb-2">Preview:</p>
-                  <iframe
-                    title="Riichi Music Preview"
-                    src={`https://open.spotify.com/embed/track/${previewTrackId}?utm_source=generator&theme=0`}
-                    width="100%"
-                    height="152"
-                    frameBorder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    className="rounded-lg"
-                  />
+                  {musicType === 'spotify' ? (
+                    <iframe
+                      title="Riichi Music Preview"
+                      src={`https://open.spotify.com/embed/track/${previewMediaId}?utm_source=generator&theme=0`}
+                      width="100%"
+                      height="152"
+                      frameBorder="0"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      className="rounded-lg"
+                    />
+                  ) : (
+                    <iframe
+                      title="Riichi Music Preview"
+                      src={`https://www.youtube.com/embed/${previewMediaId}`}
+                      width="100%"
+                      height="315"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="rounded-lg"
+                    />
+                  )}
                 </div>
               )}
 
-              {currentRiichiMusic && (
+              {currentRiichiMusic && currentRiichiMusic.url && (
                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                   <p className="text-xs text-blue-800">
                     You currently have riichi music set. Leave the field empty and save to remove it.
@@ -203,12 +280,12 @@ const RiichiMusicModal: React.FC<RiichiMusicModalProps> = ({
             <button
               type="button"
               onClick={handleSave}
-              disabled={isLoading || !!(spotifyUrl.trim() && !previewTrackId)}
+              disabled={isLoading || !!(musicUrl.trim() && !previewMediaId)}
               className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Saving...' : 'Save'}
             </button>
-            {spotifyUrl && (
+            {musicUrl && (
               <button
                 type="button"
                 onClick={handleClear}

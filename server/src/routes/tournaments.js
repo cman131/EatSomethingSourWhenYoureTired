@@ -134,8 +134,8 @@ const sendRoundPairingNotifications = async (tournament, roundNumber) => {
 
 // @route   GET /api/tournaments
 // @desc    Get all tournaments with pagination
-// @access  Private
-router.get('/', authenticateToken, async (req, res) => {
+// @access  Public
+router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -166,6 +166,36 @@ router.get('/', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get tournaments'
+    });
+  }
+});
+
+// @route   GET /api/tournaments/public/:id
+// @desc    Get tournament by ID (public, minimal data)
+// @access  Public
+router.get('/public/:id', validateMongoId('id'), async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id)
+      .select('-rounds'); // Exclude rounds, pairings, and games
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Get tournament (public) error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get tournament'
     });
   }
 });
