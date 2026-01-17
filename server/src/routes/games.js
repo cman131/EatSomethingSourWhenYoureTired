@@ -161,7 +161,7 @@ router.get('/:id', validateMongoId('id'), async (req, res) => {
 
 // @route   PUT /api/games/:id/verify
 // @desc    Verify a game
-// @access  Private
+// @access  Private (Admin or player in game, but not submitter)
 router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
   try {
     const game = await Game.findById(req.params.id);
@@ -177,6 +177,38 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Game is already verified'
+      });
+    }
+
+    // Check if user is admin
+    const isAdmin = req.user.isAdmin === true;
+
+    // Check if user is in the game's players array
+    const isPlayerInGame = game.players.some(
+      p => p.player.toString() === req.user._id.toString()
+    );
+
+    // Check if user is the submitter
+    const isSubmitter = game.submittedBy.toString() === req.user._id.toString();
+
+    // Check if game is part of a tournament and user is the tournament creator
+    let isTournamentCreator = false;
+    const tournament = await Tournament.findOne({
+      'rounds.pairings.game': game._id
+    }).populate('createdBy', '_id');
+
+    if (tournament && tournament.createdBy) {
+      const creatorId = typeof tournament.createdBy === 'object' 
+        ? tournament.createdBy._id.toString() 
+        : tournament.createdBy.toString();
+      isTournamentCreator = creatorId === req.user._id.toString();
+    }
+
+    // Allow if: admin OR tournament creator OR (player in game AND not submitter)
+    if (!isAdmin && !isTournamentCreator && (!isPlayerInGame || isSubmitter)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admins, tournament creators, or players in the game (excluding the submitter) can verify games'
       });
     }
 

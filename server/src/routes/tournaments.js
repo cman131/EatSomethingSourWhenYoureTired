@@ -23,6 +23,57 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// Tournament owner or admin middleware - requires user to be admin OR tournament creator
+const requireTournamentOwnerOrAdmin = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Admins can always access
+    if (req.user.isAdmin) {
+      return next();
+    }
+
+    // Check if user is the tournament creator
+    const tournamentId = req.params.id;
+    if (!tournamentId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tournament ID is required'
+      });
+    }
+
+    const tournament = await Tournament.findById(tournamentId);
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Check if user is the creator
+    if (tournament.createdBy && tournament.createdBy.toString() === req.user._id.toString()) {
+      return next();
+    }
+
+    // User is neither admin nor creator
+    return res.status(403).json({
+      success: false,
+      message: 'You must be the tournament creator or an admin to perform this action'
+    });
+  } catch (error) {
+    console.error('Error in requireTournamentOwnerOrAdmin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error checking tournament permissions'
+    });
+  }
+};
+
 // Helper function to send new tournament notifications to all users
 const sendNewTournamentNotifications = async (tournament) => {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
@@ -143,6 +194,7 @@ router.get('/', async (req, res) => {
 
     const tournaments = await Tournament.find()
       .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('createdBy', 'displayName email')
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit);
@@ -226,6 +278,9 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
         }
       });
     }
+    
+    // Always populate createdBy
+    await tournament.populate('createdBy', 'displayName email');
 
     res.json({
       success: true,
@@ -242,12 +297,12 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
   }
 });
 
-// @route   POST /api/tournaments/admin
-// @desc    Create a new tournament (Admin only)
-// @access  Private (Admin)
-router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
+// @route   POST /api/tournaments
+// @desc    Create a new tournament (Any authenticated user)
+// @access  Private
+router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location } = req.body;
+    const { name, description, date, location, modifications, ruleset } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -283,6 +338,11 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
         state: location.state.trim().toUpperCase(),
         zipCode: location.zipCode.trim()
       },
+      ruleset: ruleset || 'WRC2025', // Use provided ruleset or default to WRC2025
+      modifications: modifications && Array.isArray(modifications) 
+        ? modifications.map(m => m.trim()).filter(m => m.length > 0)
+        : [],
+      createdBy: req.user._id, // Set the creator
       players: [],
       rounds: []
     });
@@ -290,6 +350,7 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
 
     // Send notifications to all users about the new tournament
     sendNewTournamentNotifications(tournament);
@@ -310,12 +371,12 @@ router.post('/admin', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// @route   PUT /api/tournaments/admin/:id
-// @desc    Update a tournament (Admin only)
-// @access  Private (Admin)
-router.put('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+// @route   PUT /api/tournaments/:id
+// @desc    Update a tournament (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location } = req.body;
+    const { name, description, date, location, modifications, ruleset } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -365,9 +426,34 @@ router.put('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'),
       };
     }
 
+    if (ruleset !== undefined) {
+      // Validate ruleset is a valid enum value
+      if (ruleset !== 'WRC2025') {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid ruleset. Must be WRC2025'
+        });
+      }
+      tournament.ruleset = ruleset;
+    }
+
+    if (modifications !== undefined) {
+      // Validate modifications is an array
+      if (!Array.isArray(modifications)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Modifications must be an array'
+        });
+      }
+
+      // Trim and filter empty strings
+      tournament.modifications = modifications.map(m => String(m).trim()).filter(m => m.length > 0);
+    }
+
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
 
     res.status(200).json({
       success: true,
@@ -385,10 +471,10 @@ router.put('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'),
   }
 });
 
-// @route   PUT /api/tournaments/admin/:id/start
-// @desc    Start a tournament (Admin only)
-// @access  Private (Admin)
-router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+// @route   PUT /api/tournaments/:id/start
+// @desc    Start a tournament (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.put('/:id/start', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
 
@@ -460,6 +546,7 @@ router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId(
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
     res.json({
@@ -478,10 +565,10 @@ router.put('/admin/:id/start', authenticateToken, requireAdmin, validateMongoId(
   }
 });
 
-// @route   DELETE /api/tournaments/admin/:id
-// @desc    Delete a tournament (Admin only)
-// @access  Private (Admin)
-router.delete('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+// @route   DELETE /api/tournaments/:id
+// @desc    Delete a tournament (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.delete('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
 
@@ -507,10 +594,10 @@ router.delete('/admin/:id', authenticateToken, requireAdmin, validateMongoId('id
   }
 });
 
-// @route   PUT /api/tournaments/admin/:id/rounds/:roundNumber/end
-// @desc    End a round in a tournament (Admin only)
-// @access  Private (Admin)
-router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+// @route   PUT /api/tournaments/:id/rounds/:roundNumber/end
+// @desc    End a round in a tournament (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
     const roundNumber = parseInt(req.params.roundNumber);
@@ -667,10 +754,10 @@ router.put('/admin/:id/rounds/:roundNumber/end', authenticateToken, requireAdmin
   }
 });
 
-// @route   PUT /api/tournaments/admin/:id/rounds/:roundNumber/reset
-// @desc    Reset round pairings in a tournament (Admin only)
-// @access  Private (Admin)
-router.put('/admin/:id/rounds/:roundNumber/reset', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+// @route   PUT /api/tournaments/:id/rounds/:roundNumber/reset
+// @desc    Reset round pairings in a tournament (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
     const roundNumber = parseInt(req.params.roundNumber);
@@ -704,6 +791,7 @@ router.put('/admin/:id/rounds/:roundNumber/reset', authenticateToken, requireAdm
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
 
     res.json({
       success: true,
@@ -790,10 +878,10 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
   }
 });
 
-// @route   POST /api/tournaments/admin/:id/players
+// @route   POST /api/tournaments/:id/players
 // @desc    Add a player to a tournament (Admin only)
-// @access  Private (Admin)
-router.post('/admin/:id/players', authenticateToken, requireAdmin, validateMongoId('id'), async (req, res) => {
+// @access  Private (AdminOnly)
+router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdmin, async (req, res) => {
   try {
     const { playerId } = req.body;
 
@@ -892,10 +980,10 @@ router.post('/admin/:id/players', authenticateToken, requireAdmin, validateMongo
   }
 });
 
-// @route   PUT /api/tournaments/admin/:id/players/:playerId/kick
-// @desc    Kick a player from a tournament (Admin only)
-// @access  Private (Admin)
-router.put('/admin/:id/players/:playerId/kick', authenticateToken, requireAdmin, ...validateMongoId('id'), ...validateMongoId('playerId'), async (req, res) => {
+// @route   PUT /api/tournaments/:id/players/:playerId/kick
+// @desc    Kick a player from a tournament (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.put('/:id/players/:playerId/kick', authenticateToken, validateMongoId('id'), validateMongoId('playerId'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
 
@@ -940,6 +1028,7 @@ router.put('/admin/:id/players/:playerId/kick', authenticateToken, requireAdmin,
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
 
     res.json({
       success: true,
@@ -997,6 +1086,7 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
 
     res.json({
       success: true,
@@ -1028,15 +1118,20 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
       });
     }
 
-    // Check if user is signed up and not dropped (or is an admin)
+    // Check if user is signed up and not dropped, is an admin, or is the tournament creator
     const playerEntry = tournament.players.find(
       p => p.player.toString() === req.user._id.toString()
     );
+    
+    const isAdmin = req.user.isAdmin === true;
+    const createdById = tournament.createdBy ? tournament.createdBy.toString() : null;
+    const isCreator = createdById === req.user._id.toString();
+    const isPlayer = playerEntry && !playerEntry.dropped;
 
-    if (!playerEntry && !req.user.isAdmin) {
+    if (!isPlayer && !isAdmin && !isCreator) {
       return res.status(403).json({
         success: false,
-        message: 'You must be signed up for this tournament to report games'
+        message: 'You must be signed up for this tournament, be the tournament creator, or be an admin to report games'
       });
     }
 
@@ -1083,8 +1178,11 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
           message: 'Pairing not found at specified index'
         });
       }
-      // For non-admins, verify they are in this pairing
-      if (!req.user.isAdmin) {
+      // For non-admins and non-creators, verify they are in this pairing
+      const createdById = tournament.createdBy ? tournament.createdBy.toString() : null;
+      const isCreator = createdById === req.user._id.toString();
+      
+      if (!req.user.isAdmin && !isCreator) {
         const userInPairing = pairing.players.some(playerEntry => 
           playerEntry.player.toString() === userId
         );
@@ -1101,18 +1199,21 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
         p.players.some(playerEntry => playerEntry.player.toString() === userId)
       );
       
-      if (!pairing && !req.user.isAdmin) {
+      const createdById = tournament.createdBy ? tournament.createdBy.toString() : null;
+      const isCreator = createdById === req.user._id.toString();
+      
+      if (!pairing && !req.user.isAdmin && !isCreator) {
         return res.status(404).json({
           success: false,
           message: 'No pairing found for you in this round'
         });
       }
       
-      // If admin and no pairing found, they need to provide pairingIndex
-      if (!pairing && req.user.isAdmin) {
+      // If admin/creator and no pairing found, they need to provide pairingIndex
+      if (!pairing && (req.user.isAdmin || isCreator)) {
         return res.status(400).json({
           success: false,
-          message: 'pairingIndex is required for admin submissions when not in the pairing'
+          message: 'pairingIndex is required for admin/creator submissions when not in the pairing'
         });
       }
     }
@@ -1166,6 +1267,7 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
 
     // Populate tournament before sending response (game is already populated by createGame)
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', 'displayName email');
 
     res.status(201).json({
       success: true,

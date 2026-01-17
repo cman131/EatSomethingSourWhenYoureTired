@@ -84,7 +84,7 @@ const TournamentsList: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center pr-2 pl-2">
         <h1 className="text-3xl font-bold text-gray-900">All Tournaments</h1>
-        {user?.isAdmin === true && (
+        {user && (
           <Link to="/create-tournament" className="btn-primary flex items-center gap-2">
             <PlusIcon className="h-5 w-5" />
             Create Tournament

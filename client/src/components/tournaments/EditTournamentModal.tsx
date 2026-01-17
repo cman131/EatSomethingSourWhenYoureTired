@@ -12,6 +12,8 @@ interface EditTournamentModalProps {
     description?: string;
     date?: Date;
     location?: TournamentAddress;
+    modifications?: string[];
+    ruleset?: 'WRC2025';
   }) => Promise<void>;
   tournament: Tournament | null;
 }
@@ -91,6 +93,9 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const stateInputRef = React.useRef<HTMLInputElement>(null);
+  const [modifications, setModifications] = useState<string[]>([]);
+  const [newModification, setNewModification] = useState('');
+  const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
 
   // Initialize form when modal opens or tournament changes
   useEffect(() => {
@@ -109,6 +114,9 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         const state = US_STATES.find(s => s.code === tournament.location?.state);
         setStateSearchTerm(state ? `${state.code} - ${state.name}` : tournament.location.state || '');
       }
+      setModifications(tournament.modifications ? [...tournament.modifications] : []);
+      setNewModification('');
+      setRuleset(tournament.ruleset || 'WRC2025');
       setError(null);
     }
   }, [isOpen, tournament]);
@@ -179,6 +187,8 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         description: description.trim() || undefined,
         date: date,
         location: address,
+        modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
+        ruleset: ruleset,
       });
       onClose();
     } catch (err: any) {
@@ -413,6 +423,90 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                       placeholder="12345 or 12345-6789"
                       pattern="^\d{5}(-\d{4})?$"
                     />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="ruleset" className="block text-sm font-medium text-gray-700 mb-2">
+                  Ruleset <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="ruleset"
+                  value={ruleset}
+                  onChange={(e) => setRuleset(e.target.value as 'WRC2025')}
+                  className="input-field"
+                  required
+                >
+                  <option value="WRC2025">WRC 2025</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Rule Modifications (optional)
+                </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  Add any modifications to the standard WRC 2025 rules for this tournament.
+                </p>
+                <div className="space-y-2">
+                  {modifications.map((mod, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <input
+                        type="text"
+                        value={mod}
+                        onChange={(e) => {
+                          const updated = [...modifications];
+                          updated[index] = e.target.value;
+                          setModifications(updated);
+                        }}
+                        className="input-field flex-1"
+                        maxLength={500}
+                        placeholder="Enter modification..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = modifications.filter((_, i) => i !== index);
+                          setModifications(updated);
+                        }}
+                        className="btn-secondary px-3 py-2"
+                        title="Remove modification"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="text"
+                      value={newModification}
+                      onChange={(e) => setNewModification(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newModification.trim()) {
+                          e.preventDefault();
+                          setModifications([...modifications, newModification.trim()]);
+                          setNewModification('');
+                        }
+                      }}
+                      className="input-field flex-1"
+                      maxLength={500}
+                      placeholder="Enter new modification and press Enter or click Add..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (newModification.trim()) {
+                          setModifications([...modifications, newModification.trim()]);
+                          setNewModification('');
+                        }
+                      }}
+                      className="btn-secondary px-3 py-2"
+                      disabled={!newModification.trim()}
+                    >
+                      Add
+                    </button>
                   </div>
                 </div>
               </div>

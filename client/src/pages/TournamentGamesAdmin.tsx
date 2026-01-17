@@ -185,12 +185,29 @@ const TournamentGamesAdmin: React.FC = () => {
     }
   };
 
-  // Check if user is admin (after all hooks)
-  if (!user?.isAdmin) {
+  // Check if user can manage tournament (admin or creator)
+  const canManageTournament = React.useMemo(() => {
+    if (!user || !tournament) return false;
+    const isAdmin = user.isAdmin === true;
+    const createdById = typeof tournament.createdBy === 'string' 
+      ? tournament.createdBy 
+      : tournament.createdBy?._id;
+    const isCreator = createdById === user._id;
+    return isAdmin || isCreator;
+  }, [user, tournament]);
+
+  if (!canManageTournament) {
     return (
       <div className="space-y-6">
+        <Link
+          to={`/tournaments/${id}`}
+          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <ArrowLeftIcon className="h-4 w-4 mr-2" />
+          Back to Tournament
+        </Link>
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">Access denied. Admin privileges required.</p>
+          <p className="text-sm text-red-600">Access denied. You must be the tournament creator or an admin to view this page.</p>
         </div>
       </div>
     );
@@ -243,7 +260,7 @@ const TournamentGamesAdmin: React.FC = () => {
             Back to Tournament
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">{tournament.name} - All Games</h1>
-          <p className="text-gray-600 mt-2">Admin view of all tournament games organized by round</p>
+          <p className="text-gray-600 mt-2">View of all tournament games organized by round</p>
         </div>
       </div>
 
@@ -311,7 +328,6 @@ const TournamentGamesAdmin: React.FC = () => {
                         {!tableData.isVerified && (
                           <button
                             onClick={() => handleVerifyGame(tableData.game!._id)}
-                            disabled={verifyingGameId === tableData.game._id}
                             className="text-sm text-green-600 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                             title="Verify this game"
                           >

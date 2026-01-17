@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useMutation } from '../hooks/useApi';
-import { useAuth } from '../contexts/AuthContext';
 import { tournamentsApi, TournamentAddress } from '../services/api';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/airbnb.css';
@@ -64,7 +63,6 @@ const US_STATES = [
 const TournamentSubmission: React.FC = () => {
   useRequireAuth();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -81,6 +79,9 @@ const TournamentSubmission: React.FC = () => {
   const [stateSearchResults, setStateSearchResults] = useState<typeof US_STATES>([]);
   const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false);
   const stateInputRef = useRef<HTMLInputElement | null>(null);
+  const [modifications, setModifications] = useState<string[]>([]);
+  const [newModification, setNewModification] = useState('');
+  const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
 
   const { mutate: createTournament, loading, error } = useMutation(
     (tournamentData: {
@@ -88,10 +89,10 @@ const TournamentSubmission: React.FC = () => {
       description?: string;
       date: Date;
       location: TournamentAddress;
+      modifications?: string[];
+      ruleset?: 'WRC2025';
     }) => tournamentsApi.createTournament(tournamentData)
   );
-
-  const isAdmin = user?.isAdmin === true;
 
   // Initialize state search term if state is already set
   useEffect(() => {
@@ -210,6 +211,8 @@ const TournamentSubmission: React.FC = () => {
           state: address.state.trim().toUpperCase(),
           zipCode: address.zipCode.trim()
         },
+        modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
+        ruleset: ruleset,
       });
       // Navigate to the newly created tournament's detail page
       if (response.data.tournament._id) {
@@ -226,21 +229,13 @@ const TournamentSubmission: React.FC = () => {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Create Tournament</h1>
 
-      {!isAdmin && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-          <p className="text-sm text-red-600">
-            You must be an administrator to create tournaments. Please contact an administrator if you need to create a tournament.
-          </p>
-        </div>
-      )}
-
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
           <p className="text-sm text-red-600">{error}</p>
         </div>
       )}
 
-      {isAdmin && (
+      {(
         <form onSubmit={handleSubmit} className="card space-y-6">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -421,6 +416,90 @@ const TournamentSubmission: React.FC = () => {
                   pattern="\d{5}(-\d{4})?"
                 />
                 <p className="mt-1 text-xs text-gray-500">Format: 12345 or 12345-6789</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="ruleset" className="block text-sm font-medium text-gray-700 mb-2">
+              Ruleset <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="ruleset"
+              value={ruleset}
+              onChange={(e) => setRuleset(e.target.value as 'WRC2025')}
+              className="input-field"
+              required
+            >
+              <option value="WRC2025">WRC 2025</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rule Modifications (optional)
+            </label>
+            <p className="text-xs text-gray-500 mb-3">
+              Add any modifications to the standard WRC 2025 rules for this tournament.
+            </p>
+            <div className="space-y-2">
+              {modifications.map((mod, index) => (
+                <div key={index} className="flex items-start gap-2">
+                  <input
+                    type="text"
+                    value={mod}
+                    onChange={(e) => {
+                      const updated = [...modifications];
+                      updated[index] = e.target.value;
+                      setModifications(updated);
+                    }}
+                    className="input-field flex-1"
+                    maxLength={500}
+                    placeholder="Enter modification..."
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = modifications.filter((_, i) => i !== index);
+                      setModifications(updated);
+                    }}
+                    className="btn-secondary px-3 py-2"
+                    title="Remove modification"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-start gap-2">
+                <input
+                  type="text"
+                  value={newModification}
+                  onChange={(e) => setNewModification(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newModification.trim()) {
+                      e.preventDefault();
+                      setModifications([...modifications, newModification.trim()]);
+                      setNewModification('');
+                    }
+                  }}
+                  className="input-field flex-1"
+                  maxLength={500}
+                  placeholder="Enter new modification and press Enter or click Add..."
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newModification.trim()) {
+                      setModifications([...modifications, newModification.trim()]);
+                      setNewModification('');
+                    }
+                  }}
+                  className="btn-secondary px-3 py-2"
+                  disabled={!newModification.trim()}
+                >
+                  Add
+                </button>
               </div>
             </div>
           </div>
