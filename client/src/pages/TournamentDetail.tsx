@@ -4,7 +4,7 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
-import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon, UserIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -318,6 +318,16 @@ const TournamentDetail: React.FC = () => {
                 minute: '2-digit'
               })}
             </div>
+            {tournament.createdBy && (
+              <div className="flex items-center gap-1">
+                <UserIcon className="h-4 w-4" />
+                <span>
+                  {typeof tournament.createdBy === 'object' && tournament.createdBy?.displayName
+                    ? tournament.createdBy.displayName
+                    : 'Tournament Creator'}
+                </span>
+              </div>
+            )}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tournament.status)}`}>
               {tournament.status}
             </span>
