@@ -1391,7 +1391,7 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
         notes,
         pointsLeftOnTable: pointsLeftOnTable || 0,
         isEastOnly: tournament.isEastOnly || false,
-        isInPerson: true,
+        isInPerson: !tournament.isOnline,
         ranOutOfTime: ranOutOfTime || false,
         isTournamentGame: true
       },
