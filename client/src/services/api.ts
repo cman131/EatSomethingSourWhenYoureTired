@@ -197,14 +197,17 @@ export interface Tournament {
   name: string;
   description?: string;
   date: string;
-  location: TournamentAddress;
+  isOnline?: boolean;
+  location?: TournamentAddress;
+  onlineLocation?: string;
   isEastOnly: boolean;
   ruleset: 'WRC2025';
-  createdBy?: string | { _id: string; displayName?: string; email?: string };
+  createdBy?: string | { _id: string; displayName?: string; avatar?: string };
   status: 'NotStarted' | 'InProgress' | 'Completed' | 'Cancelled';
   players: TournamentPlayer[];
   rounds?: any[];
   modifications?: string[];
+  top4?: (string | { _id?: string })[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -559,7 +562,9 @@ export const tournamentsApi = {
     name: string;
     description?: string;
     date: Date;
-    location: TournamentAddress;
+    isOnline?: boolean;
+    location?: TournamentAddress;
+    onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
   }) => {
@@ -573,7 +578,9 @@ export const tournamentsApi = {
     name?: string;
     description?: string;
     date?: Date;
+    isOnline?: boolean;
     location?: TournamentAddress;
+    onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
   }) => {

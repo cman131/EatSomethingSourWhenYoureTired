@@ -16,10 +16,13 @@ const tournamentSchema = new mongoose.Schema({
     type: Date,
     required: [true, 'Tournament date is required']
   },
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
   location: {
     streetAddress: {
       type: String,
-      required: [true, 'Street address is required'],
       trim: true,
       maxlength: [200, 'Street address cannot be more than 200 characters']
     },
@@ -30,23 +33,25 @@ const tournamentSchema = new mongoose.Schema({
     },
     city: {
       type: String,
-      required: [true, 'City is required'],
       trim: true,
       maxlength: [100, 'City cannot be more than 100 characters']
     },
     state: {
       type: String,
-      required: [true, 'State is required'],
       trim: true,
       maxlength: [2, 'State must be a 2-letter abbreviation'],
       uppercase: true
     },
     zipCode: {
       type: String,
-      required: [true, 'Zip code is required'],
       trim: true,
       match: [/^\d{5}(-\d{4})?$/, 'Zip code must be in format 12345 or 12345-6789']
     }
+  },
+  onlineLocation: {
+    type: String,
+    trim: true,
+    maxlength: [500, 'Online location cannot be more than 500 characters']
   },
   isEastOnly: {
     type: Boolean,
@@ -122,6 +127,10 @@ const tournamentSchema = new mongoose.Schema({
       }
     }]
   }],
+  top4: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
 }, {
   timestamps: true
 });
@@ -136,6 +145,37 @@ tournamentSchema.index({ 'players.player': 1 });
 
 // Validation: ensure exactly 4 players in each pairing
 tournamentSchema.pre('save', function(next) {
+  // Validate location based on isOnline flag
+  if (this.isOnline) {
+    // If online, onlineLocation is required and location should not be set
+    if (!this.onlineLocation || this.onlineLocation.trim() === '') {
+      return next(new Error('Online location is required when tournament is online'));
+    }
+    if (this.location && (this.location.streetAddress || this.location.city || this.location.state || this.location.zipCode)) {
+      return next(new Error('Physical location should not be set when tournament is online'));
+    }
+  } else {
+    // If not online, location is required with all required fields
+    if (!this.location) {
+      return next(new Error('Physical location is required when tournament is not online'));
+    }
+    if (!this.location.streetAddress || this.location.streetAddress.trim() === '') {
+      return next(new Error('Street address is required for physical location'));
+    }
+    if (!this.location.city || this.location.city.trim() === '') {
+      return next(new Error('City is required for physical location'));
+    }
+    if (!this.location.state || this.location.state.trim() === '') {
+      return next(new Error('State is required for physical location'));
+    }
+    if (!this.location.zipCode || this.location.zipCode.trim() === '') {
+      return next(new Error('Zip code is required for physical location'));
+    }
+    if (this.onlineLocation && this.onlineLocation.trim() !== '') {
+      return next(new Error('Online location should not be set when tournament is not online'));
+    }
+  }
+  
   // Validate each pairing has exactly 4 unique players
   for (const round of this.rounds) {
     const roundPlayers = [];

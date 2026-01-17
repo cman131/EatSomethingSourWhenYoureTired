@@ -255,7 +255,19 @@ const TournamentGameSubmission: React.FC = () => {
         pairingIndex: pairingIndex,
       };
       await submitGame(gameData);
-      navigate(`/tournaments/${tournamentId}`);
+      
+      // Navigate to games admin page if user is admin or tournament creator, otherwise go to tournament detail
+      const isAdmin = user?.isAdmin === true;
+      const createdById = tournament?.createdBy 
+        ? (typeof tournament.createdBy === 'string' ? tournament.createdBy : tournament.createdBy._id)
+        : null;
+      const isCreator = createdById === user?._id;
+      
+      if (isAdmin || isCreator) {
+        navigate(`/tournaments/${tournamentId}/games`);
+      } else {
+        navigate(`/tournaments/${tournamentId}`);
+      }
     } catch (err) {
       console.error('Failed to submit game:', err);
     }

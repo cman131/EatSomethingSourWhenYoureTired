@@ -4,7 +4,7 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
-import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon, UserIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -13,6 +13,7 @@ import AddPlayerModal from '../components/tournaments/AddPlayerModal';
 import DescriptionDisplay from '../components/tournaments/DescriptionDisplay';
 import EtiquetteDisplay from '../components/tournaments/EtiquetteDisplay';
 import RulesDisplay from '../components/tournaments/RulesDisplay';
+import UserDisplay from '../components/user/UserDisplay';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 
 const TournamentDetail: React.FC = () => {
@@ -214,7 +215,9 @@ const TournamentDetail: React.FC = () => {
     name?: string;
     description?: string;
     date?: Date;
+    isOnline?: boolean;
     location?: any;
+    onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
   }) => {
@@ -318,15 +321,17 @@ const TournamentDetail: React.FC = () => {
                 minute: '2-digit'
               })}
             </div>
-            {tournament.createdBy && (
-              <div className="flex items-center gap-1">
-                <UserIcon className="h-4 w-4" />
-                <span>
-                  {typeof tournament.createdBy === 'object' && tournament.createdBy?.displayName
-                    ? tournament.createdBy.displayName
-                    : 'Tournament Creator'}
-                </span>
-              </div>
+            {tournament.createdBy && typeof tournament.createdBy === 'object' && tournament.createdBy._id && (
+              <UserDisplay
+                user={{
+                  _id: tournament.createdBy._id,
+                  displayName: tournament.createdBy.displayName || 'Tournament Creator',
+                  avatar: tournament.createdBy.avatar,
+                }}
+                size="sm"
+                showLink={true}
+                showYouIndicator={false}
+              />
             )}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tournament.status)}`}>
               {tournament.status}
@@ -448,13 +453,23 @@ const TournamentDetail: React.FC = () => {
         <DescriptionDisplay description={tournament.description} />
       )}
 
-      {tournament.location && (
+      {tournament.isOnline && tournament.onlineLocation ? (
+        <div className="card">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5" />
+            Online Location
+          </h2>
+          <div className="text-gray-700">
+            {tournament.onlineLocation}
+          </div>
+        </div>
+      ) : tournament.location ? (
         <AddressDisplay address={tournament.location} />
-      )}
+      ) : null}
 
-      <EtiquetteDisplay/>
+      {!tournament.isOnline && <EtiquetteDisplay/> }
 
-      <RulesDisplay ruleset={tournament.ruleset} modifications={tournament.modifications} />
+      {!tournament.isOnline && <RulesDisplay ruleset={tournament.ruleset} modifications={tournament.modifications} />}
 
       {isAuthenticated && (
         <Standings 

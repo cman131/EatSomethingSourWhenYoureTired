@@ -67,6 +67,8 @@ const TournamentSubmission: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date());
+  const [isOnline, setIsOnline] = useState(false);
+  const [onlineLocation, setOnlineLocation] = useState('');
   const [address, setAddress] = useState({
     streetAddress: '',
     addressLine2: '',
@@ -88,7 +90,9 @@ const TournamentSubmission: React.FC = () => {
       name: string;
       description?: string;
       date: Date;
-      location: TournamentAddress;
+      isOnline?: boolean;
+      location?: TournamentAddress;
+      onlineLocation?: string;
       modifications?: string[];
       ruleset?: 'WRC2025';
     }) => tournamentsApi.createTournament(tournamentData)
@@ -181,39 +185,63 @@ const TournamentSubmission: React.FC = () => {
       return;
     }
 
-    if (!address.streetAddress.trim() || !address.city.trim() || !address.state.trim() || !address.zipCode.trim()) {
-      alert('Please fill in all required address fields (street address, city, state, and zip code)');
-      return;
-    }
+    if (isOnline) {
+      if (!onlineLocation.trim()) {
+        alert('Online location is required when tournament is online');
+        return;
+      }
+    } else {
+      if (!address.streetAddress.trim() || !address.city.trim() || !address.state.trim() || !address.zipCode.trim()) {
+        alert('Please fill in all required address fields (street address, city, state, and zip code)');
+        return;
+      }
 
-    // Validate state is selected and is a valid state code
-    if (!address.state.trim() || !US_STATES.find(s => s.code === address.state)) {
-      alert('Please select a valid state from the dropdown');
-      return;
-    }
+      // Validate state is selected and is a valid state code
+      if (!address.state.trim() || !US_STATES.find(s => s.code === address.state)) {
+        alert('Please select a valid state from the dropdown');
+        return;
+      }
 
-    // Validate zip code format
-    const zipCodeRegex = /^\d{5}(-\d{4})?$/;
-    if (!zipCodeRegex.test(address.zipCode.trim())) {
-      alert('Zip code must be in format 12345 or 12345-6789');
-      return;
+      // Validate zip code format
+      const zipCodeRegex = /^\d{5}(-\d{4})?$/;
+      if (!zipCodeRegex.test(address.zipCode.trim())) {
+        alert('Zip code must be in format 12345 or 12345-6789');
+        return;
+      }
     }
 
     try {
-      const response = await createTournament({
+      const tournamentData: {
+        name: string;
+        description?: string;
+        date: Date;
+        isOnline?: boolean;
+        location?: TournamentAddress;
+        onlineLocation?: string;
+        modifications?: string[];
+        ruleset?: 'WRC2025';
+      } = {
         name: name.trim(),
         description: description.trim() || undefined,
         date,
-        location: {
+        isOnline,
+        modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
+        ruleset: ruleset,
+      };
+
+      if (isOnline) {
+        tournamentData.onlineLocation = onlineLocation.trim();
+      } else {
+        tournamentData.location = {
           streetAddress: address.streetAddress.trim(),
           addressLine2: address.addressLine2.trim() || undefined,
           city: address.city.trim(),
           state: address.state.trim().toUpperCase(),
           zipCode: address.zipCode.trim()
-        },
-        modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
-        ruleset: ruleset,
-      });
+        };
+      }
+
+      const response = await createTournament(tournamentData);
       // Navigate to the newly created tournament's detail page
       if (response.data.tournament._id) {
         navigate(`/tournaments/${response.data.tournament._id}`);
@@ -293,7 +321,36 @@ const TournamentSubmission: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Location <span className="text-red-500">*</span>
             </label>
-            <div className="space-y-4">
+            <div className="mb-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isOnline}
+                  onChange={(e) => setIsOnline(e.target.checked)}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">This is an online tournament</span>
+              </label>
+            </div>
+            {isOnline ? (
+              <div>
+                <label htmlFor="onlineLocation" className="block text-xs text-gray-600 mb-1">
+                  Online Location <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="onlineLocation"
+                  type="text"
+                  value={onlineLocation}
+                  onChange={(e) => setOnlineLocation(e.target.value)}
+                  className="input-field"
+                  required
+                  maxLength={500}
+                  placeholder="e.g., Mahjong Soul, Tenhou, Discord, etc."
+                />
+                <p className="mt-1 text-xs text-gray-500">{onlineLocation.length}/500 characters</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
               <div>
                 <label htmlFor="streetAddress" className="block text-xs text-gray-600 mb-1">
                   Street Address <span className="text-red-500">*</span>
@@ -418,6 +475,7 @@ const TournamentSubmission: React.FC = () => {
                 <p className="mt-1 text-xs text-gray-500">Format: 12345 or 12345-6789</p>
               </div>
             </div>
+            )}
           </div>
 
           <div>
