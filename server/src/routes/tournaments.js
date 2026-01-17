@@ -194,7 +194,7 @@ router.get('/', async (req, res) => {
 
     const tournaments = await Tournament.find()
       .populate('players.player', PLAYER_POPULATE_FIELDS)
-      .populate('createdBy', 'displayName email')
+      .populate('createdBy', PLAYER_POPULATE_FIELDS)
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit);
@@ -280,7 +280,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
     }
     
     // Always populate createdBy
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -302,7 +302,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, modifications, ruleset } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -311,33 +311,40 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Validate location object
-    if (!location || !location.streetAddress || !location.city || !location.state || !location.zipCode) {
-      return res.status(400).json({
-        success: false,
-        message: 'Location must include street address, city, state, and zip code'
-      });
+    const isOnlineTournament = isOnline === true;
+
+    // Validate location based on isOnline flag
+    if (isOnlineTournament) {
+      // If online, onlineLocation is required
+      if (!onlineLocation || onlineLocation.trim() === '') {
+        return res.status(400).json({
+          success: false,
+          message: 'Online location is required when tournament is online'
+        });
+      }
+    } else {
+      // If not online, physical location is required
+      if (!location || !location.streetAddress || !location.city || !location.state || !location.zipCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'Location must include street address, city, state, and zip code'
+        });
+      }
+
+      // Validate state is 2 characters
+      if (location.state && location.state.length !== 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'State must be a 2-letter abbreviation'
+        });
+      }
     }
 
-    // Validate state is 2 characters
-    if (location.state && location.state.length !== 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'State must be a 2-letter abbreviation'
-      });
-    }
-
-    const tournament = new Tournament({
+    const tournamentData = {
       name,
       description: description || '',
       date,
-      location: {
-        streetAddress: location.streetAddress.trim(),
-        addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
-        city: location.city.trim(),
-        state: location.state.trim().toUpperCase(),
-        zipCode: location.zipCode.trim()
-      },
+      isOnline: isOnlineTournament,
       ruleset: ruleset || 'WRC2025', // Use provided ruleset or default to WRC2025
       modifications: modifications && Array.isArray(modifications) 
         ? modifications.map(m => m.trim()).filter(m => m.length > 0)
@@ -345,15 +352,36 @@ router.post('/', authenticateToken, async (req, res) => {
       createdBy: req.user._id, // Set the creator
       players: [],
       rounds: []
-    });
+    };
+
+    if (isOnlineTournament) {
+      tournamentData.onlineLocation = onlineLocation.trim();
+    } else {
+      tournamentData.location = {
+        streetAddress: location.streetAddress.trim(),
+        addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
+        city: location.city.trim(),
+        state: location.state.trim().toUpperCase(),
+        zipCode: location.zipCode.trim()
+      };
+    }
+
+    const tournament = new Tournament(tournamentData);
 
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     // Send notifications to all users about the new tournament
-    sendNewTournamentNotifications(tournament);
+    // Only send if tournament is 7 or more days away from current date
+    const tournamentDate = new Date(tournament.date);
+    const currentDate = new Date();
+    const daysUntilTournament = Math.ceil((tournamentDate - currentDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilTournament >= 7) {
+      sendNewTournamentNotifications(tournament);
+    }
 
     res.status(201).json({
       success: true,
@@ -376,7 +404,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, modifications, ruleset } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -400,30 +428,61 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
       tournament.date = date;
     }
 
-    if (location !== undefined) {
-      // Validate location object
-      if (!location.streetAddress || !location.city || !location.state || !location.zipCode) {
-        return res.status(400).json({
-          success: false,
-          message: 'Location must include street address, city, state, and zip code'
-        });
-      }
+    // Handle isOnline flag
+    if (isOnline !== undefined) {
+      tournament.isOnline = isOnline === true;
+    }
 
-      // Validate state is 2 characters
-      if (location.state && location.state.length !== 2) {
-        return res.status(400).json({
-          success: false,
-          message: 'State must be a 2-letter abbreviation'
-        });
-      }
+    const isOnlineTournament = tournament.isOnline;
 
-      tournament.location = {
-        streetAddress: location.streetAddress.trim(),
-        addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
-        city: location.city.trim(),
-        state: location.state.trim().toUpperCase(),
-        zipCode: location.zipCode.trim()
-      };
+    // Handle location updates
+    if (location !== undefined || onlineLocation !== undefined || isOnline !== undefined) {
+      if (isOnlineTournament) {
+        // If online, validate and set onlineLocation
+        if (onlineLocation !== undefined) {
+          if (!onlineLocation || onlineLocation.trim() === '') {
+            return res.status(400).json({
+              success: false,
+              message: 'Online location is required when tournament is online'
+            });
+          }
+          tournament.onlineLocation = onlineLocation.trim();
+        }
+        // Clear physical location if switching to online
+        if (isOnline !== undefined) {
+          tournament.location = undefined;
+        }
+      } else {
+        // If not online, validate and set physical location
+        if (location !== undefined) {
+          if (!location.streetAddress || !location.city || !location.state || !location.zipCode) {
+            return res.status(400).json({
+              success: false,
+              message: 'Location must include street address, city, state, and zip code'
+            });
+          }
+
+          // Validate state is 2 characters
+          if (location.state && location.state.length !== 2) {
+            return res.status(400).json({
+              success: false,
+              message: 'State must be a 2-letter abbreviation'
+            });
+          }
+
+          tournament.location = {
+            streetAddress: location.streetAddress.trim(),
+            addressLine2: location.addressLine2 ? location.addressLine2.trim() : undefined,
+            city: location.city.trim(),
+            state: location.state.trim().toUpperCase(),
+            zipCode: location.zipCode.trim()
+          };
+        }
+        // Clear online location if switching to physical
+        if (isOnline !== undefined) {
+          tournament.onlineLocation = undefined;
+        }
+      }
     }
 
     if (ruleset !== undefined) {
@@ -453,7 +512,7 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.status(200).json({
       success: true,
@@ -546,7 +605,7 @@ router.put('/:id/start', authenticateToken, validateMongoId('id'), requireTourna
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
     res.json({
@@ -655,29 +714,63 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       });
     }
     
-    for (const pairing of round.pairings) {
-      if (pairing.game && pairing.game.players) {
-        // Calculate uma for each player in this game
-        // Uma is typically calculated as: (player's score - 30,000) / 1000
-        // But this can vary by tournament rules
-        for (const gamePlayer of pairing.game.players) {
-          const playerId = gamePlayer.player.toString();
-          const tournamentPlayer = tournament.players.find(
-            p => p.player.toString() === playerId
-          );
-          
-          if (tournamentPlayer) {
-            // Calculate uma: (score - 30000) / 1000
-            // This is a standard calculation, but may need adjustment based on tournament rules
-            const umaBase = (gamePlayer.score - 30000) / 1000;
-            // Rank uma adjustment: 1st = 30, 2nd = 10, 3rd = -10, 4th = -30
-            const rankUmaAdjustment = {
-              1: 30,
-              2: 10,
-              3: -10,
-              4: -30
-            }[gamePlayer.rank];
-            tournamentPlayer.uma = (tournamentPlayer.uma || 0) + umaBase + rankUmaAdjustment;
+    // Check if this is the final 4 round
+    const isFinalRound = roundNumber === tournament.maxRounds + 1;
+    
+    if (isFinalRound) {
+      // For the final round, don't update UMA - just populate top4 array
+      // The final round should have exactly one pairing with one game
+      const finalPairing = round.pairings.find(p => p.game);
+      
+      if (finalPairing && finalPairing.game && finalPairing.game.players) {
+        // Sort players by rank (1st, 2nd, 3rd, 4th)
+        const sortedPlayers = [...finalPairing.game.players].sort((a, b) => a.rank - b.rank);
+        
+        // Populate top4 array with player IDs in order (1st to 4th)
+        tournament.top4 = sortedPlayers.map(gamePlayer => {
+          const playerId = gamePlayer.player;
+          // Handle both ObjectId and populated object cases
+          if (typeof playerId === 'string') {
+            return new mongoose.Types.ObjectId(playerId);
+          } else if (playerId && playerId._id) {
+            // Populated object
+            return typeof playerId._id === 'string' 
+              ? new mongoose.Types.ObjectId(playerId._id)
+              : playerId._id;
+          } else {
+            // Already an ObjectId
+            return playerId;
+          }
+        });
+        
+        tournament.markModified('top4');
+      }
+    } else {
+      // For regular rounds, update UMA as normal
+      for (const pairing of round.pairings) {
+        if (pairing.game && pairing.game.players) {
+          // Calculate uma for each player in this game
+          // Uma is typically calculated as: (player's score - 30,000) / 1000
+          // But this can vary by tournament rules
+          for (const gamePlayer of pairing.game.players) {
+            const playerId = gamePlayer.player.toString();
+            const tournamentPlayer = tournament.players.find(
+              p => p.player.toString() === playerId
+            );
+            
+            if (tournamentPlayer) {
+              // Calculate uma: (score - 30000) / 1000
+              // This is a standard calculation, but may need adjustment based on tournament rules
+              const umaBase = (gamePlayer.score - 30000) / 1000;
+              // Rank uma adjustment: 1st = 30, 2nd = 10, 3rd = -10, 4th = -30
+              const rankUmaAdjustment = {
+                1: 30,
+                2: 10,
+                3: -10,
+                4: -30
+              }[gamePlayer.rank];
+              tournamentPlayer.uma = (tournamentPlayer.uma || 0) + umaBase + rankUmaAdjustment;
+            }
           }
         }
       }
@@ -726,8 +819,53 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
         // Don't fail the request if round generation fails
         // Admin can manually create the round
       }
+    } else if (roundNumber === tournament.maxRounds) {
+      // This is the last regular round - create the final 4 round
+      const finalRoundNumber = tournament.maxRounds + 1;
+      const finalRoundExists = tournament.rounds.some(r => r.roundNumber === finalRoundNumber);
+      
+      if (!finalRoundExists) {
+        // Get top 4 players by UMA (non-dropped only)
+        const activePlayers = tournament.players
+          .filter(p => !p.dropped)
+          .sort((a, b) => (b.uma || 0) - (a.uma || 0))
+          .slice(0, 4);
+        
+        if (activePlayers.length < 4) {
+          // Not enough players for final 4 round, just end the tournament
+          tournament.status = 'Completed';
+        } else {
+          // Create final 4 round with single pairing
+          const seats = ['East', 'South', 'West', 'North'];
+          const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
+          
+          const finalPairing = {
+            tableNumber: 1,
+            players: activePlayers.map((playerEntry, index) => ({
+              player: new mongoose.Types.ObjectId(playerEntry.player),
+              seat: shuffledSeats[index]
+            })),
+            game: null
+          };
+          
+          tournament.rounds.push({
+            roundNumber: finalRoundNumber,
+            startDate: new Date(),
+            pairings: [finalPairing]
+          });
+          
+          tournament.markModified('rounds');
+          
+          // Send notifications to the top 4 players about the final round
+          sendRoundPairingNotifications(tournament, finalRoundNumber);
+        }
+      }
+      // If final round already exists, don't create it again - tournament will be completed when final round ends
+    } else if (roundNumber === tournament.maxRounds + 1) {
+      // This is the final 4 round, end the tournament
+      tournament.status = 'Completed';
     } else {
-      // This is the last round, end the tournament
+      // Round number is beyond final round (shouldn't happen), end the tournament
       tournament.status = 'Completed';
     }
 
@@ -791,7 +929,7 @@ router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId(
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -1028,7 +1166,7 @@ router.put('/:id/players/:playerId/kick', authenticateToken, validateMongoId('id
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -1086,7 +1224,7 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
@@ -1254,7 +1392,8 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
         pointsLeftOnTable: pointsLeftOnTable || 0,
         isEastOnly: tournament.isEastOnly || false,
         isInPerson: true,
-        ranOutOfTime: ranOutOfTime || false
+        ranOutOfTime: ranOutOfTime || false,
+        isTournamentGame: true
       },
       req.user._id
     );
@@ -1267,7 +1406,7 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
 
     // Populate tournament before sending response (game is already populated by createGame)
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
-    await tournament.populate('createdBy', 'displayName email');
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.status(201).json({
       success: true,

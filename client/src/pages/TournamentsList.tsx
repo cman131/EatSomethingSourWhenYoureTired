@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { usePaginatedApi } from '../hooks/useApi';
 import { useAuth } from '../contexts/AuthContext';
 import { tournamentsApi, Tournament } from '../services/api';
-import { MagnifyingGlassIcon, PlusIcon, CalendarIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, PlusIcon, CalendarIcon, UserGroupIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 const TournamentsList: React.FC = () => {
   const { user } = useAuth();
@@ -152,6 +152,11 @@ const TournamentsList: React.FC = () => {
                               East Only
                             </span>
                           )}
+                          {tournament.isOnline && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
+                              Online
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                           <div className="flex items-center gap-1">
@@ -168,6 +173,19 @@ const TournamentsList: React.FC = () => {
                             <UserGroupIcon className="h-4 w-4" />
                             {activePlayerCount} player{activePlayerCount !== 1 ? 's' : ''}
                           </div>
+                          {tournament.isOnline && tournament.onlineLocation ? (
+                            <div className="flex items-center gap-1">
+                              <MapPinIcon className="h-4 w-4" />
+                              <span className="truncate max-w-[200px]" title={tournament.onlineLocation}>
+                                {tournament.onlineLocation}
+                              </span>
+                            </div>
+                          ) : tournament.location ? (
+                            <div className="flex items-center gap-1">
+                              <MapPinIcon className="h-4 w-4" />
+                              {tournament.location.city}, {tournament.location.state}
+                            </div>
+                          ) : null}
                         </div>
                         {tournament.description && (
                           <p className="text-sm text-gray-600 mb-3 line-clamp-2">

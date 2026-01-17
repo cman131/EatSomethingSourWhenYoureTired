@@ -67,14 +67,34 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
       return null;
     };
     
-    // Sort by UMA descending, then table number ascending, then seat order
+    // Sort by top4 position first (if tournament has top4), then UMA, then table number, then seat order
     const sorted = [...active].sort((a, b) => {
-      // First: UMA (descending - higher is better)
+      // First: Check if tournament has top4 array (completed tournament with final round)
+      if (tournament.top4 && tournament.top4.length > 0) {
+        const aTop4Index = tournament.top4.findIndex((id: any) => {
+          const top4Id = typeof id === 'string' ? id : id._id || id;
+          return top4Id === a.player._id;
+        });
+        const bTop4Index = tournament.top4.findIndex((id: any) => {
+          const top4Id = typeof id === 'string' ? id : id._id || id;
+          return top4Id === b.player._id;
+        });
+        
+        // If both players are in top4, sort by their position (lower index = better rank)
+        if (aTop4Index !== -1 && bTop4Index !== -1) {
+          return aTop4Index - bTop4Index;
+        }
+        // If only one is in top4, they rank higher
+        if (aTop4Index !== -1) return -1;
+        if (bTop4Index !== -1) return 1;
+      }
+      
+      // Second: UMA (descending - higher is better)
       if (b.uma !== a.uma) {
         return b.uma - a.uma;
       }
       
-      // Second: Table number (ascending - lower is better)
+      // Third: Table number (ascending - lower is better)
       const aPairing = getPlayerPairing(a.player._id);
       const bPairing = getPlayerPairing(b.player._id);
       
@@ -89,7 +109,7 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
         return aPairing.tableNumber - bPairing.tableNumber;
       }
       
-      // Third: Seat order (East, South, West, North)
+      // Fourth: Seat order (East, South, West, North)
       const aSeatOrder = getSeatOrder(aPairing.seat);
       const bSeatOrder = getSeatOrder(bPairing.seat);
       return aSeatOrder - bSeatOrder;

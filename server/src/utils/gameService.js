@@ -13,11 +13,12 @@ const { sendNewGameNotificationEmail } = require('./emailService');
  * @param {Boolean} gameData.isEastOnly - Whether it's an east-only game
  * @param {Boolean} gameData.isInPerson - Whether it's in person
  * @param {Boolean} gameData.ranOutOfTime - Whether time ran out
+ * @param {Boolean} gameData.isTournamentGame - Whether this is a tournament game (optional)
  * @param {ObjectId} submitterId - ID of the user submitting the game
  * @returns {Promise<Game>} The created game with populated fields
  */
 async function createGame(gameData, submitterId) {
-  const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime } = gameData;
+  const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime, isTournamentGame } = gameData;
 
   // Verify all player IDs exist
   const playerIds = players.map(p => p.player);
@@ -27,10 +28,12 @@ async function createGame(gameData, submitterId) {
     throw new Error('One or more players not found');
   }
 
-  // Validate that at least 2 players are non-guest users
-  const nonGuestUsers = users.filter(u => !u.isGuest);
-  if (nonGuestUsers.length < 2) {
-    throw new Error('At least 2 players must be registered users (not guests)');
+  // Validate that at least 2 players are non-guest users (skip for tournament games)
+  if (!isTournamentGame) {
+    const nonGuestUsers = users.filter(u => !u.isGuest);
+    if (nonGuestUsers.length < 2) {
+      throw new Error('At least 2 players must be registered users (not guests)');
+    }
   }
 
   // Create game

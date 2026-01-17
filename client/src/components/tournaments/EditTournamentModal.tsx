@@ -11,7 +11,9 @@ interface EditTournamentModalProps {
     name?: string;
     description?: string;
     date?: Date;
+    isOnline?: boolean;
     location?: TournamentAddress;
+    onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
   }) => Promise<void>;
@@ -80,6 +82,8 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const [onlineLocation, setOnlineLocation] = useState('');
   const [address, setAddress] = useState<TournamentAddress>({
     streetAddress: '',
     addressLine2: '',
@@ -103,6 +107,8 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setName(tournament.name || '');
       setDescription(tournament.description || '');
       setDate(tournament.date ? new Date(tournament.date) : null);
+      setIsOnline(tournament.isOnline || false);
+      setOnlineLocation(tournament.onlineLocation || '');
       if (tournament.location) {
         setAddress({
           streetAddress: tournament.location.streetAddress || '',
@@ -112,7 +118,16 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
           zipCode: tournament.location.zipCode || '',
         });
         const state = US_STATES.find(s => s.code === tournament.location?.state);
-        setStateSearchTerm(state ? `${state.code} - ${state.name}` : tournament.location.state || '');
+        setStateSearchTerm(state ? state.name : tournament.location.state || '');
+      } else {
+        setAddress({
+          streetAddress: '',
+          addressLine2: '',
+          city: '',
+          state: '',
+          zipCode: '',
+        });
+        setStateSearchTerm('');
       }
       setModifications(tournament.modifications ? [...tournament.modifications] : []);
       setNewModification('');
@@ -142,6 +157,11 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
 
   const handleStateSearchChange = (value: string) => {
     setStateSearchTerm(value);
+    // Clear state selection if user is typing
+    const currentStateName = US_STATES.find(s => s.code === address.state)?.name;
+    if (value !== currentStateName) {
+      setAddress({ ...address, state: '' });
+    }
     if (value.trim().length > 0) {
       const searchLower = value.toLowerCase();
       const filtered = US_STATES.filter(
@@ -150,14 +170,16 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
           state.code.toLowerCase().includes(searchLower)
       );
       setStateSearchResults(filtered);
+      setIsStateDropdownOpen(true);
     } else {
       setStateSearchResults([]);
+      setIsStateDropdownOpen(false);
     }
   };
 
   const selectState = (state: typeof US_STATES[0]) => {
     setAddress({ ...address, state: state.code });
-    setStateSearchTerm(`${state.code} - ${state.name}`);
+    setStateSearchTerm(state.name);
     setIsStateDropdownOpen(false);
   };
 
@@ -175,21 +197,64 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       return;
     }
 
-    if (!address.streetAddress.trim() || !address.city.trim() || !address.state.trim() || !address.zipCode.trim()) {
-      setError('All location fields (street address, city, state, zip code) are required');
-      return;
+    if (isOnline) {
+      if (!onlineLocation.trim()) {
+        setError('Online location is required when tournament is online');
+        return;
+      }
+    } else {
+      if (!address.streetAddress.trim() || !address.city.trim() || !address.state.trim() || !address.zipCode.trim()) {
+        setError('All location fields (street address, city, state, zip code) are required');
+        return;
+      }
+
+      // Validate state is selected and is a valid state code
+      if (!address.state.trim() || !US_STATES.find(s => s.code === address.state)) {
+        setError('Please select a valid state from the dropdown');
+        return;
+      }
+
+      // Validate zip code format
+      const zipCodeRegex = /^\d{5}(-\d{4})?$/;
+      if (!zipCodeRegex.test(address.zipCode.trim())) {
+        setError('Zip code must be in format 12345 or 12345-6789');
+        return;
+      }
     }
 
     setIsLoading(true);
     try {
-      await onSave({
+      const updateData: {
+        name?: string;
+        description?: string;
+        date?: Date;
+        isOnline?: boolean;
+        location?: TournamentAddress;
+        onlineLocation?: string;
+        modifications?: string[];
+        ruleset?: 'WRC2025';
+      } = {
         name: name.trim(),
         description: description.trim() || undefined,
         date: date,
-        location: address,
+        isOnline: isOnline,
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
-      });
+      };
+
+      if (isOnline) {
+        updateData.onlineLocation = onlineLocation.trim();
+      } else {
+        updateData.location = {
+          streetAddress: address.streetAddress.trim(),
+          addressLine2: address.addressLine2?.trim() || undefined,
+          city: address.city.trim(),
+          state: address.state.trim().toUpperCase(),
+          zipCode: address.zipCode.trim()
+        };
+      }
+
+      await onSave(updateData);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to update tournament');
@@ -288,143 +353,178 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Location <span className="text-red-500">*</span>
                 </label>
-                <div className="space-y-4">
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isOnline}
+                      onChange={(e) => setIsOnline(e.target.checked)}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">This is an online tournament</span>
+                  </label>
+                </div>
+                {isOnline ? (
                   <div>
-                    <label htmlFor="streetAddress" className="block text-xs text-gray-600 mb-1">
-                      Street Address <span className="text-red-500">*</span>
+                    <label htmlFor="onlineLocation" className="block text-xs text-gray-600 mb-1">
+                      Online Location <span className="text-red-500">*</span>
                     </label>
                     <input
-                      id="streetAddress"
+                      id="onlineLocation"
                       type="text"
-                      value={address.streetAddress}
-                      onChange={(e) => setAddress({ ...address, streetAddress: e.target.value })}
+                      value={onlineLocation}
+                      onChange={(e) => setOnlineLocation(e.target.value)}
                       className="input-field"
                       required
-                      maxLength={200}
-                      placeholder="123 Main St"
+                      maxLength={500}
+                      placeholder="e.g., Mahjong Soul, Tenhou, Discord, etc."
                     />
+                    <p className="mt-1 text-xs text-gray-500">{onlineLocation.length}/500 characters</p>
                   </div>
-
-                  <div>
-                    <label htmlFor="addressLine2" className="block text-xs text-gray-600 mb-1">
-                      Address Line 2 (optional)
-                    </label>
-                    <input
-                      id="addressLine2"
-                      type="text"
-                      value={address.addressLine2}
-                      onChange={(e) => setAddress({ ...address, addressLine2: e.target.value })}
-                      className="input-field"
-                      maxLength={100}
-                      placeholder="Apt, Suite, Unit, etc."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                ) : (
+                  <div className="space-y-4">
                     <div>
-                      <label htmlFor="city" className="block text-xs text-gray-600 mb-1">
-                        City <span className="text-red-500">*</span>
+                      <label htmlFor="streetAddress" className="block text-xs text-gray-600 mb-1">
+                        Street Address <span className="text-red-500">*</span>
                       </label>
                       <input
-                        id="city"
+                        id="streetAddress"
                         type="text"
-                        value={address.city}
-                        onChange={(e) => setAddress({ ...address, city: e.target.value })}
+                        value={address.streetAddress}
+                        onChange={(e) => setAddress({ ...address, streetAddress: e.target.value })}
                         className="input-field"
                         required
-                        maxLength={100}
-                        placeholder="City"
+                        maxLength={200}
+                        placeholder="123 Main St"
                       />
                     </div>
 
                     <div>
-                      <label htmlFor="state" className="block text-xs text-gray-600 mb-1">
-                        State <span className="text-red-500">*</span>
+                      <label htmlFor="addressLine2" className="block text-xs text-gray-600 mb-1">
+                        Address Line 2 (optional)
                       </label>
-                      <div className="relative">
+                      <input
+                        id="addressLine2"
+                        type="text"
+                        value={address.addressLine2}
+                        onChange={(e) => setAddress({ ...address, addressLine2: e.target.value })}
+                        className="input-field"
+                        maxLength={100}
+                        placeholder="Apt, Suite, Unit, etc."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="city" className="block text-xs text-gray-600 mb-1">
+                          City <span className="text-red-500">*</span>
+                        </label>
                         <input
-                          ref={stateInputRef}
-                          id="state"
+                          id="city"
                           type="text"
-                          placeholder="Search for state..."
-                          value={stateSearchTerm}
-                          onChange={(e) => handleStateSearchChange(e.target.value)}
-                          onFocus={() => {
-                            setIsStateDropdownOpen(true);
-                            if (stateSearchTerm.trim().length > 0) {
-                              const searchLower = stateSearchTerm.toLowerCase();
-                              const filtered = US_STATES.filter(
-                                (state) =>
-                                  state.name.toLowerCase().includes(searchLower) ||
-                                  state.code.toLowerCase().includes(searchLower)
-                              );
-                              setStateSearchResults(filtered);
-                            }
-                          }}
+                          value={address.city}
+                          onChange={(e) => setAddress({ ...address, city: e.target.value })}
                           className="input-field"
                           required
+                          maxLength={100}
+                          placeholder="City"
                         />
-                        {isStateDropdownOpen && (
-                          <div className="state-search-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
-                            {stateSearchResults.length > 0 ? (
-                              <div className="py-1">
-                                {stateSearchResults.map((state) => (
-                                  <button
-                                    key={state.code}
-                                    type="button"
-                                    onClick={() => selectState(state)}
-                                    className="w-full text-left px-4 py-2 hover:bg-primary-50 transition-colors cursor-pointer"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{state.code}</span>
-                                      <span className="text-gray-600">{state.name}</span>
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            ) : stateSearchTerm.trim().length > 0 ? (
-                              <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                                No states found matching "{stateSearchTerm}"
-                              </div>
-                            ) : (
-                              <div className="py-1">
-                                {US_STATES.map((state) => (
-                                  <button
-                                    key={state.code}
-                                    type="button"
-                                    onClick={() => selectState(state)}
-                                    className="w-full text-left px-4 py-2 hover:bg-primary-50 transition-colors cursor-pointer"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{state.code}</span>
-                                      <span className="text-gray-600">{state.name}</span>
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="state" className="block text-xs text-gray-600 mb-1">
+                          State <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            ref={stateInputRef}
+                            id="state"
+                            type="text"
+                            placeholder="Search for state..."
+                            value={stateSearchTerm}
+                            onChange={(e) => handleStateSearchChange(e.target.value)}
+                            onFocus={() => {
+                              setIsStateDropdownOpen(true);
+                              if (stateSearchTerm.trim().length > 0) {
+                                const searchLower = stateSearchTerm.toLowerCase();
+                                const filtered = US_STATES.filter(
+                                  (state) =>
+                                    state.name.toLowerCase().includes(searchLower) ||
+                                    state.code.toLowerCase().includes(searchLower)
+                                );
+                                setStateSearchResults(filtered);
+                              }
+                            }}
+                            className="input-field"
+                            required
+                          />
+                          {isStateDropdownOpen && (
+                            <div className="state-search-dropdown absolute left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
+                              {stateSearchResults.length > 0 ? (
+                                <div className="py-1">
+                                  {stateSearchResults.map((state) => (
+                                    <button
+                                      key={state.code}
+                                      type="button"
+                                      onClick={() => selectState(state)}
+                                      className="w-full text-left px-4 py-2 hover:bg-primary-50 transition-colors cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">{state.code}</span>
+                                        <span className="text-gray-600">{state.name}</span>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : stateSearchTerm.trim().length > 0 ? (
+                                <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                                  No states found matching "{stateSearchTerm}"
+                                </div>
+                              ) : (
+                                <div className="py-1">
+                                  {US_STATES.map((state) => (
+                                    <button
+                                      key={state.code}
+                                      type="button"
+                                      onClick={() => selectState(state)}
+                                      className="w-full text-left px-4 py-2 hover:bg-primary-50 transition-colors cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">{state.code}</span>
+                                        <span className="text-gray-600">{state.name}</span>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label htmlFor="zipCode" className="block text-xs text-gray-600 mb-1">
-                      Zip Code <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      id="zipCode"
-                      type="text"
-                      value={address.zipCode}
-                      onChange={(e) => setAddress({ ...address, zipCode: e.target.value })}
-                      className="input-field"
-                      required
-                      placeholder="12345 or 12345-6789"
-                      pattern="^\d{5}(-\d{4})?$"
-                    />
+                    <div>
+                      <label htmlFor="zipCode" className="block text-xs text-gray-600 mb-1">
+                        Zip Code <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        id="zipCode"
+                        type="text"
+                        value={address.zipCode}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d-]/g, '');
+                          setAddress({ ...address, zipCode: value });
+                        }}
+                        className="input-field"
+                        required
+                        maxLength={10}
+                        placeholder="12345 or 12345-6789"
+                        pattern="\d{5}(-\d{4})?"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Format: 12345 or 12345-6789</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div>
