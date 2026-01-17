@@ -132,7 +132,14 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
   }, [tournament]);
 
   const isCompleted = tournament.status === 'Completed';
-  const showKickButton = tournament.status !== 'Completed' && currentUser?.isAdmin === true;
+  const isTournamentOwner = React.useMemo(() => {
+    if (!currentUser || !tournament) return false;
+    const createdById = typeof tournament.createdBy === 'string' 
+      ? tournament.createdBy 
+      : tournament.createdBy?._id;
+    return createdById === currentUser._id;
+  }, [currentUser, tournament]);
+  const showKickButton = tournament.status !== 'Completed' && (currentUser?.isAdmin === true || isTournamentOwner);
 
   if (!playerList || playerList.length === 0) {
     return (

@@ -693,28 +693,38 @@ const sendNewTournamentNotificationEmail = async (email, displayName, tournament
 
 const sendEmail = async (transporter, mailOptions) => {
   try {
-    // List of disallowed email domains (test/fake emails)
-    const disallowedDomains = ['@mahjong.com', '@emial.giv', '@example.com'];
-    
-    // Check if the email address contains any disallowed domain
     const emailAddress = mailOptions.to.toString();
+
+    // Skip sending emails in development environment
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev';
+
+    // List of disallowed email domains (test/fake emails)
+    const disallowedDomains = ['@mahjong.com', '@emial.giv', '@example.com', '@guest.local'];
     const isDisallowed = disallowedDomains.some(domain => emailAddress.includes(domain));
-    
-    if (isDisallowed) {
-      console.log(`Email would have been sent to ${emailAddress} - skipping (disallowed domain)`);
-      return { success: true, method: 'smtp' };
+
+    if (isDevelopment || isDisallowed) {
+      console.log('='.repeat(80));
+      console.log('DEVELOPMENT MODE: Email would have been sent (skipped):');
+      console.log('To:', mailOptions.to);
+      console.log('Subject:', mailOptions.subject);
+      console.log('From:', mailOptions.from);
+      if (mailOptions.html) {
+        console.log('HTML content length:', mailOptions.html.length, 'characters');
+      }
+      console.log('='.repeat(80));
+      return { success: true, method: 'console', skipped: true };
     }
+    
     const info = await transporter.sendMail(mailOptions);
     return { success: true, messageId: info.messageId, method: 'smtp' };
   } catch (error) {
-    console.error('Error sending new comment notification email:', error);
+    console.error('Error sending email:', error);
     // Fallback to console logging on error
     console.log('='.repeat(80));
     console.log('Email sending failed. Fallback - Email details:');
-    console.log('To:', email);
+    console.log('To:', mailOptions.to);
     console.log('Subject:', mailOptions.subject);
-    console.log('Game URL:', gameUrl);
-    console.log('Commenter:', commenterDisplayName);
+    console.log('From:', mailOptions.from);
     console.log('='.repeat(80));
     throw error;
   }

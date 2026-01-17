@@ -25,6 +25,7 @@ const TournamentGameSubmission: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pairingIndex, setPairingIndex] = useState<number | undefined>(undefined);
+  const [tournament, setTournament] = useState<any>(null);
 
   // Load tournament and pairing data
   useEffect(() => {
@@ -38,6 +39,7 @@ const TournamentGameSubmission: React.FC = () => {
       try {
         const response = await tournamentsApi.getTournament(tournamentId);
         const tournament = response.data.tournament;
+        setTournament(tournament);
 
         // Find the round
         const round = tournament.rounds?.find(
@@ -144,8 +146,17 @@ const TournamentGameSubmission: React.FC = () => {
       return false;
     }
 
-    // Validate that the authenticated user is one of the players (or is an admin)
-    if (!user || (!playerIds.includes(user._id) && !user.isAdmin)) {
+    // Validate that the authenticated user is one of the players, is an admin, or is the tournament creator
+    if (!user) return false;
+    
+    const isPlayer = playerIds.includes(user._id);
+    const isAdmin = user.isAdmin === true;
+    const createdById = tournament?.createdBy 
+      ? (typeof tournament.createdBy === 'string' ? tournament.createdBy : tournament.createdBy._id)
+      : null;
+    const isCreator = createdById === user._id;
+    
+    if (!isPlayer && !isAdmin && !isCreator) {
       return false;
     }
 
@@ -191,9 +202,21 @@ const TournamentGameSubmission: React.FC = () => {
       return;
     }
 
-    // Validate that the authenticated user is one of the players
-    if (!user || (!playerIds.includes(user._id) && !user.isAdmin)) {
-      alert('You must be one of the players in this pairing or an admin');
+    // Validate that the authenticated user is one of the players, is an admin, or is the tournament creator
+    if (!user) {
+      alert('You must be logged in to submit a game');
+      return;
+    }
+    
+    const isPlayer = playerIds.includes(user._id);
+    const isAdmin = user.isAdmin === true;
+    const createdById = tournament?.createdBy 
+      ? (typeof tournament.createdBy === 'string' ? tournament.createdBy : tournament.createdBy._id)
+      : null;
+    const isCreator = createdById === user._id;
+    
+    if (!isPlayer && !isAdmin && !isCreator) {
+      alert('You must be one of the players in this pairing, the tournament creator, or an admin');
       return;
     }
 

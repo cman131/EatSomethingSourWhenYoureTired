@@ -199,9 +199,12 @@ export interface Tournament {
   date: string;
   location: TournamentAddress;
   isEastOnly: boolean;
+  ruleset: 'WRC2025';
+  createdBy?: string | { _id: string; displayName?: string; email?: string };
   status: 'NotStarted' | 'InProgress' | 'Completed' | 'Cancelled';
   players: TournamentPlayer[];
   rounds?: any[];
+  modifications?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -557,8 +560,10 @@ export const tournamentsApi = {
     description?: string;
     date: Date;
     location: TournamentAddress;
+    modifications?: string[];
+    ruleset?: 'WRC2025';
   }) => {
-    return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments/admin', {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments', {
       method: 'POST',
       body: JSON.stringify(tournamentData),
     });
@@ -569,8 +574,10 @@ export const tournamentsApi = {
     description?: string;
     date?: Date;
     location?: TournamentAddress;
+    modifications?: string[];
+    ruleset?: 'WRC2025';
   }) => {
-    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}`, {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`, {
       method: 'PUT',
       body: JSON.stringify(tournamentData),
     });
@@ -589,26 +596,26 @@ export const tournamentsApi = {
   },
 
   startTournament: async (tournamentId: string) => {
-    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/start`, {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/start`, {
       method: 'PUT',
     });
   },
 
   endRound: async (tournamentId: string, roundNumber: number) => {
-    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/rounds/${roundNumber}/end`, {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/rounds/${roundNumber}/end`, {
       method: 'PUT',
     });
   },
 
   addPlayer: async (tournamentId: string, playerId: string) => {
-    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/players`, {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/players`, {
       method: 'POST',
       body: JSON.stringify({ playerId }),
     });
   },
 
   kickPlayer: async (tournamentId: string, playerId: string) => {
-    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/admin/${tournamentId}/players/${playerId}/kick`, {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/players/${playerId}/kick`, {
       method: 'PUT',
     });
   },

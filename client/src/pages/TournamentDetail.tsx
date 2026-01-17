@@ -4,13 +4,15 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
-import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon, UserIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
 import TournamentGamesList from '../components/tournaments/TournamentGamesList';
 import AddPlayerModal from '../components/tournaments/AddPlayerModal';
 import DescriptionDisplay from '../components/tournaments/DescriptionDisplay';
+import EtiquetteDisplay from '../components/tournaments/EtiquetteDisplay';
+import RulesDisplay from '../components/tournaments/RulesDisplay';
 import { UserPlusIcon } from '@heroicons/react/24/outline';
 
 const TournamentDetail: React.FC = () => {
@@ -58,6 +60,18 @@ const TournamentDetail: React.FC = () => {
       p => p.player._id === user._id && !p.dropped
     );
   }, [user, tournament]);
+
+  const isTournamentOwner = React.useMemo(() => {
+    if (!user || !tournament) return false;
+    const createdById = typeof tournament.createdBy === 'string' 
+      ? tournament.createdBy 
+      : tournament.createdBy?._id;
+    return createdById === user._id;
+  }, [user, tournament]);
+
+  const canManageTournament = React.useMemo(() => {
+    return user?.isAdmin === true || isTournamentOwner;
+  }, [user, isTournamentOwner]);
 
 
 
@@ -201,6 +215,8 @@ const TournamentDetail: React.FC = () => {
     description?: string;
     date?: Date;
     location?: any;
+    modifications?: string[];
+    ruleset?: 'WRC2025';
   }) => {
     if (!id) return;
     await tournamentsApi.updateTournament(id, data);
@@ -211,6 +227,10 @@ const TournamentDetail: React.FC = () => {
 
   const handleAddPlayer = async (playerId: string) => {
     if (!id) return;
+    if (!user?.isAdmin) {
+      setActionError('Only admins can add players');
+      return;
+    }
     try {
       setActionLoading(true);
       setActionError(null);
@@ -298,6 +318,16 @@ const TournamentDetail: React.FC = () => {
                 minute: '2-digit'
               })}
             </div>
+            {tournament.createdBy && (
+              <div className="flex items-center gap-1">
+                <UserIcon className="h-4 w-4" />
+                <span>
+                  {typeof tournament.createdBy === 'object' && tournament.createdBy?.displayName
+                    ? tournament.createdBy.displayName
+                    : 'Tournament Creator'}
+                </span>
+              </div>
+            )}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tournament.status)}`}>
               {tournament.status}
             </span>
@@ -356,9 +386,9 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
-      {user?.isAdmin === true && (
+      {canManageTournament && (
         <div className="card bg-blue-50 border-2 border-blue-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Controls</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Tournament Management</h2>
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => navigate(`/tournaments/${id}/games`)}
@@ -372,7 +402,8 @@ const TournamentDetail: React.FC = () => {
               <>
                 <button
                   onClick={() => setIsAddPlayerModalOpen(true)}
-                  className="btn-secondary flex items-center"
+                  disabled={!user?.isAdmin}
+                  className="btn-secondary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Add Player"
                 >
                   <UserPlusIcon className="h-4 w-4 mr-2" />
@@ -409,6 +440,10 @@ const TournamentDetail: React.FC = () => {
         </div>
       )}
 
+      {isAuthenticated && tournament.status === 'InProgress' && (
+        <CurrentRoundPairing tournament={tournament} currentUser={user} />
+      )}
+
       {tournament.description && (
         <DescriptionDisplay description={tournament.description} />
       )}
@@ -417,9 +452,9 @@ const TournamentDetail: React.FC = () => {
         <AddressDisplay address={tournament.location} />
       )}
 
-      {isAuthenticated && tournament.status === 'InProgress' && (
-        <CurrentRoundPairing tournament={tournament} currentUser={user} />
-      )}
+      <EtiquetteDisplay/>
+
+      <RulesDisplay ruleset={tournament.ruleset} modifications={tournament.modifications} />
 
       {isAuthenticated && (
         <Standings 

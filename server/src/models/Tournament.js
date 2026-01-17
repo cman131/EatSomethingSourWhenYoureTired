@@ -52,6 +52,22 @@ const tournamentSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  ruleset: {
+    type: String,
+    enum: ['WRC2025'],
+    required: [true, 'Ruleset is required'],
+    default: 'WRC2025'
+  },
+  modifications: [{
+    type: String,
+    trim: true,
+    maxlength: [500, 'Each modification cannot be more than 500 characters']
+  }],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Tournament creator is required']
+  },
   status: {
     type: String,
     enum: ['NotStarted', 'InProgress', 'Completed', 'Cancelled'],
