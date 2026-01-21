@@ -55,27 +55,27 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
   return (
     <>
     <div className="card">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
         <h2 className="text-xl font-semibold text-gray-900">User Information</h2>
         {isOwnProfile && (
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors w-full sm:w-auto"
             >
               <PencilIcon className="h-4 w-4" />
               Edit
             </button>
             <button
               onClick={() => setIsRiichiMusicModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors w-full sm:w-auto"
             >
               <MusicalNoteIcon className="h-4 w-4" />
               Set Riichi Music
             </button>
             <button
               onClick={() => setIsNotificationModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors w-full sm:w-auto"
             >
               <BellIcon className="h-4 w-4" />
               Notification Preferences
