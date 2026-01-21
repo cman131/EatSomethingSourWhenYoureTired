@@ -185,6 +185,17 @@ const TournamentGamesAdmin: React.FC = () => {
     }
   };
 
+  // Check if user is in the tournament
+  const isTournamentPlayer = React.useMemo(() => {
+    if (!user || !tournament) return false;
+    return tournament.players.some(
+      p => {
+        const playerId = typeof p.player === 'string' ? p.player : p.player?._id;
+        return playerId === user._id && !p.dropped;
+      }
+    );
+  }, [user, tournament]);
+
   // Check if user can manage tournament (admin or creator)
   const canManageTournament = React.useMemo(() => {
     if (!user || !tournament) return false;
@@ -196,7 +207,25 @@ const TournamentGamesAdmin: React.FC = () => {
     return isAdmin || isCreator;
   }, [user, tournament]);
 
-  if (!canManageTournament) {
+  // Helper function to check if user is in a specific pairing
+  const isUserInPairing = React.useCallback((players: Array<{ player: any }>) => {
+    if (!user) return false;
+    return players.some((p) => {
+      const playerId = typeof p.player === 'string' ? p.player : p.player?._id;
+      return playerId === user._id;
+    });
+  }, [user]);
+
+  // Helper function to check if user is in a specific game
+  const isUserInGame = React.useCallback((game: Game | null) => {
+    if (!user || !game || !game.players) return false;
+    return game.players.some((gp) => {
+      const playerId = typeof gp.player === 'string' ? gp.player : gp.player?._id;
+      return playerId === user._id;
+    });
+  }, [user]);
+
+  if (!isTournamentPlayer && !canManageTournament) {
     return (
       <div className="space-y-6">
         <Link
@@ -207,7 +236,7 @@ const TournamentGamesAdmin: React.FC = () => {
           Back to Tournament
         </Link>
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">Access denied. You must be the tournament creator or an admin to view this page.</p>
+          <p className="text-sm text-red-600">Access denied. You must be a tournament player to view this page.</p>
         </div>
       </div>
     );
@@ -325,7 +354,7 @@ const TournamentGamesAdmin: React.FC = () => {
                         >
                           View Game Details
                         </Link>
-                        {!tableData.isVerified && (
+                        {!tableData.isVerified && (isUserInGame(tableData.game) || canManageTournament) && (
                           <button
                             onClick={() => handleVerifyGame(tableData.game!._id)}
                             className="text-sm text-green-600 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
@@ -334,6 +363,12 @@ const TournamentGamesAdmin: React.FC = () => {
                             <CheckCircleIcon className="h-4 w-4" />
                             {verifyingGameId === tableData.game._id ? 'Verifying...' : 'Verify'}
                           </button>
+                        )}
+                        {!tableData.isVerified && !isUserInGame(tableData.game) && !canManageTournament && (
+                          <span className="text-sm text-gray-400 cursor-not-allowed flex items-center gap-1" title="You must be a player in this game to verify it">
+                            <CheckCircleIcon className="h-4 w-4" />
+                            Verify
+                          </span>
                         )}
                         {tournament.status !== 'Completed' && (
                           <button
@@ -358,12 +393,18 @@ const TournamentGamesAdmin: React.FC = () => {
                             Waiting for game submission for this table
                           </p>
                         </div>
-                        <Link
-                          to={`/tournaments/${id}/submit-game/${round.roundNumber}/${tableData.tableNumber}`}
-                          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                          Submit Game
-                        </Link>
+                        {isUserInPairing(tableData.players) || canManageTournament ? (
+                          <Link
+                            to={`/tournaments/${id}/submit-game/${round.roundNumber}/${tableData.tableNumber}`}
+                            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                          >
+                            Submit Game
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-gray-400 cursor-not-allowed" title="You must be a player at this table to submit the game">
+                            Submit Game
+                          </span>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                         {tableData.players.map((playerData) => {

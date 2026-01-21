@@ -4,7 +4,7 @@ import { tournamentsApi, gamesApi, Tournament } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
-import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon, ClockIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
 import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
@@ -61,6 +61,22 @@ const TournamentDetail: React.FC = () => {
       p => p.player._id === user._id && !p.dropped
     );
   }, [user, tournament]);
+
+  const isOnWaitlist = React.useMemo(() => {
+    if (!user || !tournament || !tournament.waitlist) return false;
+    return tournament.waitlist.some(
+      w => {
+        const playerId = typeof w.player === 'string' ? w.player : w.player._id;
+        return playerId === user._id;
+      }
+    );
+  }, [user, tournament]);
+
+  const isTournamentFull = React.useMemo(() => {
+    if (!tournament || !tournament.maxPlayers) return false;
+    const activePlayersCount = tournament.players.filter(p => !p.dropped).length;
+    return activePlayersCount >= tournament.maxPlayers;
+  }, [tournament]);
 
   const isTournamentOwner = React.useMemo(() => {
     if (!user || !tournament) return false;
@@ -168,6 +184,25 @@ const TournamentDetail: React.FC = () => {
       setTournament(response.data.tournament);
     } catch (err: any) {
       setActionError(err.message || 'Failed to drop from tournament');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDropFromWaitlist = async () => {
+    if (!id) return;
+
+    if (!window.confirm('Are you sure you want to remove yourself from the waitlist?')) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setActionError(null);
+      const response = await tournamentsApi.dropFromWaitlist(id);
+      setTournament(response.data.tournament);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to remove from waitlist');
     } finally {
       setActionLoading(false);
     }
@@ -307,10 +342,10 @@ const TournamentDetail: React.FC = () => {
         Back to Tournaments
       </Link>
 
-      <div className="flex items-start justify-between pr-2 pl-2">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pr-2 pl-2">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{tournament.name}</h1>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <CalendarIcon className="h-4 w-4" />
               {new Date(tournament.date).toLocaleDateString('en-US', {
@@ -343,13 +378,13 @@ const TournamentDetail: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {tournament.status === 'NotStarted' && (
             <>
               {!isAuthenticated ? (
                 <Link
                   to={`/login?redirect=${encodeURIComponent(`/tournaments/${id}`)}`}
-                  className="btn-primary"
+                  className="btn-primary w-full sm:w-auto text-center"
                 >
                   Login to Register
                 </Link>
@@ -357,17 +392,27 @@ const TournamentDetail: React.FC = () => {
                 <button
                   onClick={handleDrop}
                   disabled={actionLoading}
-                  className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                 >
                   {actionLoading ? 'Dropping...' : 'Drop from Tournament'}
+                </button>
+              ) : isOnWaitlist ? (
+                <button
+                  onClick={handleDropFromWaitlist}
+                  disabled={actionLoading}
+                  className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                >
+                  {actionLoading ? 'Removing...' : 'Leave Waitlist'}
                 </button>
               ) : (
                 <button
                   onClick={handleSignup}
                   disabled={actionLoading}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                 >
-                  {actionLoading ? 'Signing up...' : 'Sign Up for Tournament'}
+                  {actionLoading 
+                    ? (isTournamentFull ? 'Joining waitlist...' : 'Signing up...') 
+                    : (isTournamentFull ? 'Join Waitlist' : 'Sign Up for Tournament')}
                 </button>
               )}
             </>
@@ -376,12 +421,24 @@ const TournamentDetail: React.FC = () => {
           {tournament.status !== 'NotStarted' && !isAuthenticated && (
             <Link
               to={`/login?redirect=${encodeURIComponent(`/tournaments/${id}`)}`}
-              className="btn-primary"
+              className="btn-primary w-full sm:w-auto text-center"
             >
               Login to View
             </Link>
           )}
-          <ShareButton title="Share this tournament" />
+          {isAuthenticated && (isSignedUp || canManageTournament) && tournament.status !== 'NotStarted' && (
+            <button
+              onClick={() => navigate(`/tournaments/${id}/games`)}
+              className="btn-secondary flex items-center justify-center w-full sm:w-auto"
+              title="View All Tournament Games"
+            >
+              <TableCellsIcon className="h-4 w-4 mr-2" />
+              View All Games
+            </button>
+          )}
+          <div className="w-full sm:w-auto">
+            <ShareButton title="Share this tournament" />
+          </div>
         </div>
       </div>
 
@@ -395,14 +452,6 @@ const TournamentDetail: React.FC = () => {
         <div className="card bg-blue-50 border-2 border-blue-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Tournament Management</h2>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => navigate(`/tournaments/${id}/games`)}
-              className="btn-secondary flex items-center"
-              title="View All Tournament Games"
-            >
-              <TableCellsIcon className="h-4 w-4 mr-2" />
-              View All Games
-            </button>
             {tournament.status === 'NotStarted' && (
               <>
                 <button
@@ -477,6 +526,29 @@ const TournamentDetail: React.FC = () => {
           currentUser={user} 
           onUpdate={(updatedTournament) => setTournament(updatedTournament)}
         />
+      )}
+
+      {tournament.waitlist && tournament.waitlist.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ClockIcon className="h-6 w-6 text-gray-600" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Waitlist</h3>
+                <p className="text-sm text-gray-600">
+                  {tournament.waitlist.length} player{tournament.waitlist.length !== 1 ? 's' : ''} on waitlist
+                </p>
+              </div>
+            </div>
+            <Link
+              to={`/tournaments/${id}/waitlist`}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <ClockIcon className="h-4 w-4" />
+              View Waitlist
+            </Link>
+          </div>
+        </div>
       )}
 
       {!isAuthenticated && (

@@ -78,6 +78,21 @@ const tournamentSchema = new mongoose.Schema({
     enum: ['NotStarted', 'InProgress', 'Completed', 'Cancelled'],
     default: 'NotStarted'
   },
+  maxPlayers: {
+    type: Number,
+    default: null,
+    validate: {
+      validator: function(value) {
+        // Allow null/undefined (optional field)
+        if (value == null) {
+          return true;
+        }
+        // If a value is provided, it must be at least 8
+        return value >= 8;
+      },
+      message: 'Max players must be at least 8'
+    }
+  },
   players: [{
     player: {
       type: mongoose.Schema.Types.ObjectId,
@@ -91,6 +106,17 @@ const tournamentSchema = new mongoose.Schema({
     dropped: {
       type: Boolean,
       default: false
+    }
+  }],
+  waitlist: [{
+    player: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
     }
   }],
   rounds: [{
@@ -235,6 +261,18 @@ tournamentSchema.pre('save', function(next) {
     return next(new Error('All players in tournament must be unique'));
   }
   
+  // Ensure all waitlist players are unique
+  const waitlistPlayerIds = this.waitlist.map(w => w.player?.toString()).filter(Boolean);
+  if (new Set(waitlistPlayerIds).size !== waitlistPlayerIds.length) {
+    return next(new Error('All players in waitlist must be unique'));
+  }
+  
+  // Ensure no player is both in players and waitlist
+  const allPlayerIds = [...playerIds, ...waitlistPlayerIds];
+  if (new Set(allPlayerIds).size !== allPlayerIds.length) {
+    return next(new Error('A player cannot be both registered and on the waitlist'));
+  }
+  
   next();
 });
 
@@ -253,6 +291,20 @@ tournamentSchema.methods.toJSON = function() {
         };
       }
       return playerObj;
+    });
+  }
+  
+  // Handle waitlist array - check if player fields are populated
+  if (this.waitlist && Array.isArray(this.waitlist)) {
+    tournamentObject.waitlist = this.waitlist.map((waitlistEntry, index) => {
+      const waitlistObj = tournamentObject.waitlist[index];
+      if (waitlistEntry.player && waitlistEntry.player.toJSON && typeof waitlistEntry.player.toJSON === 'function') {
+        return {
+          ...waitlistObj,
+          player: waitlistEntry.player.toJSON()
+        };
+      }
+      return waitlistObj;
     });
   }
   

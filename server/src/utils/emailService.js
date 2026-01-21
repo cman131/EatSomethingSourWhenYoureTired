@@ -730,6 +730,104 @@ const sendEmail = async (transporter, mailOptions) => {
   }
 };
 
+// Send waitlist promotion notification email
+const sendWaitlistPromotionNotificationEmail = async (email, displayName, tournamentId, tournamentName) => {
+  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const tournamentUrl = `${frontendUrl}/tournaments/${tournamentId}`;
+  const signature = getEmailSignature(frontendUrl);
+
+  const mailOptions = {
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@mahjongclub.com',
+    to: email,
+    subject: `You've Been Promoted from Waitlist - ${tournamentName} - Charleston Riichi Mahjong Club`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Waitlist Promotion Notification</title>
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <h1 style="color: #2563eb; margin-top: 0;">Charleston Riichi Mahjong Club</h1>
+          </div>
+          
+          <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e5e7eb;">
+            <h2 style="color: #111827; margin-top: 0;">You've Been Promoted from Waitlist!</h2>
+            
+            <p>Hello${displayName ? ` ${displayName}` : ''},</p>
+            
+            <p>Great news! A spot has opened up in <strong>${tournamentName}</strong> and you've been automatically promoted from the waitlist.</p>
+            
+            <div style="background-color: #d1fae5; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0; color: #065f46; font-weight: bold;">You're Now Registered!</p>
+              <p style="margin: 10px 0 0 0; color: #047857; font-size: 14px;">
+                You are now officially registered for this tournament. We look forward to seeing you there!
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${tournamentUrl}" 
+                 style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                View Tournament Details
+              </a>
+            </div>
+            
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${tournamentUrl}</p>
+          </div>
+          
+          ${signature.html}
+        </body>
+      </html>
+    `,
+    text: `
+      You've Been Promoted from Waitlist - ${tournamentName} - Charleston Riichi Mahjong Club
+      
+      Hello${displayName ? ` ${displayName}` : ''},
+      
+      Great news! A spot has opened up in ${tournamentName} and you've been automatically promoted from the waitlist.
+      
+      You're Now Registered!
+      You are now officially registered for this tournament. We look forward to seeing you there!
+      
+      View tournament details: ${tournamentUrl}
+      
+      ${signature.text}
+    `
+  };
+
+  const transporter = createTransporter();
+  
+  if (!transporter) {
+    // Fallback to console logging if SMTP is not configured
+    console.log('='.repeat(80));
+    console.log('SMTP not configured. Email would have been sent:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Tournament URL:', tournamentUrl);
+    console.log('='.repeat(80));
+    return { success: true, method: 'console' };
+  }
+
+  try {
+    const info = await sendEmail(transporter, mailOptions);
+    console.log('Waitlist promotion notification email sent:', mailOptions.to?.toString());
+    return { success: true, messageId: info.messageId, method: 'smtp' };
+  } catch (error) {
+    console.error('Error sending waitlist promotion notification email:', error);
+    // Fallback to console logging on error
+    console.log('='.repeat(80));
+    console.log('Email sending failed. Fallback - Email details:');
+    console.log('To:', email);
+    console.log('Subject:', mailOptions.subject);
+    console.log('Tournament URL:', tournamentUrl);
+    console.log('='.repeat(80));
+    throw error;
+  }
+};
+
 module.exports = {
   createTransporter,
   verifyConnection,
@@ -738,5 +836,6 @@ module.exports = {
   sendNewGameNotificationEmail,
   sendNewCommentNotificationEmail,
   sendRoundPairingNotificationEmail,
-  sendNewTournamentNotificationEmail
+  sendNewTournamentNotificationEmail,
+  sendWaitlistPromotionNotificationEmail
 };

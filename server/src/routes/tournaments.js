@@ -8,7 +8,7 @@ const { validateMongoId, validateGameCreation } = require('../middleware/validat
 const { authenticateToken } = require('../middleware/auth');
 const { generateRoundPairings } = require('../utils/roundGenerationService');
 const { createGame } = require('../utils/gameService');
-const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail } = require('../utils/emailService');
+const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -127,6 +127,149 @@ const sendNewTournamentNotifications = async (tournament) => {
   });
 };
 
+// Helper function to replace a player in pairings with a filler player
+const replacePlayerInPairingsWithFiller = async (tournament, playerId) => {
+  if (!tournament.rounds || tournament.rounds.length === 0) {
+    return; // No rounds to check
+  }
+
+  // Find or create a filler user
+  let fillerUser = await User.findOne({ 
+    displayName: 'Filler 1',
+    isGuest: true 
+  });
+  
+  if (!fillerUser) {
+    fillerUser = new User({
+      displayName: 'Filler 1',
+      isGuest: true,
+      email: 'filler.1@guest.local'
+    });
+    await fillerUser.save();
+  }
+
+  let pairingsModified = false;
+
+  // Check all rounds for pairings containing this player
+  for (const round of tournament.rounds) {
+    if (!round.pairings || round.pairings.length === 0) continue;
+
+    for (const pairing of round.pairings) {
+      // Skip if pairing already has a game
+      if (pairing.game) continue;
+
+      // Check if this pairing contains the player to replace
+      const playerIndex = pairing.players.findIndex(p => 
+        p.player.toString() === playerId.toString()
+      );
+
+      if (playerIndex !== -1) {
+        // Replace the player with filler, keeping the same seat
+        const seat = pairing.players[playerIndex].seat;
+        pairing.players[playerIndex] = {
+          player: fillerUser._id,
+          seat: seat
+        };
+        pairingsModified = true;
+      }
+    }
+  }
+
+  if (pairingsModified) {
+    tournament.markModified('rounds');
+  }
+};
+
+// Helper function to promote waitlist players when spots open up
+const promoteWaitlistPlayers = async (tournament) => {
+  if (!tournament.maxPlayers || tournament.status !== 'NotStarted') {
+    return; // Only promote for NotStarted tournaments with maxPlayers
+  }
+
+  const activePlayersCount = tournament.players.filter(p => !p.dropped).length;
+  const availableSpots = tournament.maxPlayers - activePlayersCount;
+
+  if (availableSpots <= 0 || !tournament.waitlist || tournament.waitlist.length === 0) {
+    return; // No spots available or no one on waitlist
+  }
+
+  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const tournamentUrl = `${frontendUrl}/tournaments/${tournament._id}`;
+
+  // Promote players from waitlist (FIFO - first in, first out)
+  const playersToPromote = tournament.waitlist.slice(0, availableSpots);
+  const promotedPlayerIds = [];
+  
+  for (const waitlistEntry of playersToPromote) {
+    // Check if player is already in players (shouldn't happen, but safety check)
+    const alreadyPlayer = tournament.players.find(
+      p => p.player.toString() === waitlistEntry.player.toString()
+    );
+    
+    if (!alreadyPlayer) {
+      tournament.players.push({
+        player: waitlistEntry.player,
+        uma: 0,
+        dropped: false
+      });
+      promotedPlayerIds.push(waitlistEntry.player);
+    }
+  }
+
+  // Remove promoted players from waitlist
+  tournament.waitlist = tournament.waitlist.slice(availableSpots);
+  tournament.markModified('players');
+  tournament.markModified('waitlist');
+
+  // Send notifications to promoted players (don't await - run in background)
+  if (promotedPlayerIds.length > 0) {
+    Promise.all(
+      promotedPlayerIds.map(async (playerId) => {
+        try {
+          const player = await User.findById(playerId);
+          if (!player) return;
+
+          // Check notification preferences
+          const prefs = player.notificationPreferences || {};
+          const emailEnabled = prefs.emailNotificationsEnabled !== false; // default to true
+          const newTournamentNotificationsEnabled = prefs.emailNotificationsForNewTournaments !== false; // default to true
+
+          // Send email if enabled
+          if (emailEnabled && newTournamentNotificationsEnabled) {
+            try {
+              await sendWaitlistPromotionNotificationEmail(
+                player.email,
+                player.displayName,
+                tournament._id.toString(),
+                tournament.name
+              );
+            } catch (emailError) {
+              console.error(`Failed to send waitlist promotion email to ${player.email}:`, emailError);
+              // Continue processing even if email fails
+            }
+          }
+
+          // Add notification to user's queue
+          player.notifications.push({
+            name: 'Promoted from Waitlist',
+            description: `You've been promoted from the waitlist and are now registered for "${tournament.name}"!`,
+            type: 'Other',
+            url: tournamentUrl
+          });
+
+          await player.save();
+        } catch (playerError) {
+          console.error(`Failed to process waitlist promotion notification for player ${playerId}:`, playerError);
+          // Continue processing other players even if one fails
+        }
+      })
+    ).catch(error => {
+      console.error('Error processing waitlist promotion notifications:', error);
+      // Don't fail the request if notifications fail
+    });
+  }
+};
+
 // Helper function to send round pairing notifications to all active tournament players
 const sendRoundPairingNotifications = async (tournament, roundNumber) => {
   const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
@@ -194,6 +337,7 @@ router.get('/', async (req, res) => {
 
     const tournaments = await Tournament.find()
       .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('waitlist.player', PLAYER_POPULATE_FIELDS)
       .populate('createdBy', PLAYER_POPULATE_FIELDS)
       .sort({ date: -1 })
       .skip(skip)
@@ -258,7 +402,8 @@ router.get('/public/:id', validateMongoId('id'), async (req, res) => {
 router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id)
-      .populate('players.player', PLAYER_POPULATE_FIELDS);
+      .populate('players.player', PLAYER_POPULATE_FIELDS)
+      .populate('waitlist.player', PLAYER_POPULATE_FIELDS);
 
     if (!tournament) {
       return res.status(404).json({
@@ -302,7 +447,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -354,6 +499,11 @@ router.post('/', authenticateToken, async (req, res) => {
       rounds: []
     };
 
+    // Add maxPlayers if provided
+    if (maxPlayers !== undefined) {
+      tournamentData.maxPlayers = maxPlayers;
+    }
+
     if (isOnlineTournament) {
       tournamentData.onlineLocation = onlineLocation.trim();
     } else {
@@ -371,6 +521,7 @@ router.post('/', authenticateToken, async (req, res) => {
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     // Send notifications to all users about the new tournament
@@ -404,7 +555,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -509,9 +660,14 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
       tournament.modifications = modifications.map(m => String(m).trim()).filter(m => m.length > 0);
     }
 
+    if (maxPlayers !== undefined) {
+      tournament.maxPlayers = maxPlayers;
+    }
+
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.status(200).json({
@@ -605,6 +761,7 @@ router.put('/:id/start', authenticateToken, validateMongoId('id'), requireTourna
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
@@ -929,6 +1086,7 @@ router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId(
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
@@ -986,6 +1144,43 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
       return res.status(400).json({
         success: false,
         message: 'You are already signed up for this tournament'
+      });
+    }
+
+    // Check if user is already on waitlist
+    const existingWaitlistEntry = tournament.waitlist.find(
+      w => w.player.toString() === req.user._id.toString()
+    );
+
+    if (existingWaitlistEntry) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already on the waitlist for this tournament'
+      });
+    }
+
+    // Count active (non-dropped) players
+    const activePlayersCount = tournament.players.filter(p => !p.dropped).length;
+
+    // Check if tournament is full (has maxPlayers and is at capacity)
+    if (tournament.maxPlayers && activePlayersCount >= tournament.maxPlayers) {
+      // Add to waitlist instead
+      tournament.waitlist.push({
+        player: req.user._id,
+        addedAt: new Date()
+      });
+
+      await tournament.save();
+
+      await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Tournament is full. You have been added to the waitlist.',
+        data: {
+          tournament,
+          onWaitlist: true
+        }
       });
     }
 
@@ -1075,6 +1270,7 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
         await tournament.save();
         
         await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+        await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
         
         return res.json({
           success: true,
@@ -1091,6 +1287,42 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
       });
     }
 
+    // Check if player is on waitlist and remove them
+    const waitlistIndex = tournament.waitlist.findIndex(
+      w => w.player.toString() === playerId
+    );
+    
+    if (waitlistIndex !== -1) {
+      tournament.waitlist.splice(waitlistIndex, 1);
+      tournament.markModified('waitlist');
+    }
+
+    // Count active (non-dropped) players
+    const activePlayersCount = tournament.players.filter(p => !p.dropped).length;
+
+    // Check if tournament is full (has maxPlayers and is at capacity)
+    if (tournament.maxPlayers && activePlayersCount >= tournament.maxPlayers) {
+      // Add to waitlist instead
+      tournament.waitlist.push({
+        player: playerId,
+        addedAt: new Date()
+      });
+
+      await tournament.save();
+
+      await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+      await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Tournament is full. Player has been added to the waitlist.',
+        data: {
+          tournament,
+          onWaitlist: true
+        }
+      });
+    }
+
     // Add player to tournament
     tournament.players.push({
       player: playerId,
@@ -1101,6 +1333,7 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
 
     res.status(201).json({
       success: true,
@@ -1163,9 +1396,18 @@ router.put('/:id/players/:playerId/kick', authenticateToken, validateMongoId('id
     playerEntry.dropped = true;
     tournament.markModified('players');
 
+    // Replace player in pairings without games with filler
+    if (tournament.status === 'InProgress') {
+      await replacePlayerInPairingsWithFiller(tournament, req.params.playerId);
+    }
+
+    // Promote waitlist players if tournament hasn't started
+    await promoteWaitlistPlayers(tournament);
+
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
@@ -1221,9 +1463,18 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
     playerEntry.dropped = true;
     tournament.markModified('players');
 
+    // Replace player in pairings without games with filler
+    if (tournament.status === 'InProgress') {
+      await replacePlayerInPairingsWithFiller(tournament, req.user._id);
+    }
+
+    // Promote waitlist players if tournament hasn't started
+    await promoteWaitlistPlayers(tournament);
+
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     res.json({
@@ -1238,6 +1489,58 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to drop from tournament'
+    });
+  }
+});
+
+// @route   PUT /api/tournaments/:id/waitlist/drop
+// @desc    Drop from tournament waitlist
+// @access  Private
+router.put('/:id/waitlist/drop', authenticateToken, validateMongoId('id'), async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    // Find the user in the waitlist
+    const waitlistIndex = tournament.waitlist.findIndex(
+      w => w.player.toString() === req.user._id.toString()
+    );
+
+    if (waitlistIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'You are not on the waitlist for this tournament'
+      });
+    }
+
+    // Remove from waitlist
+    tournament.waitlist.splice(waitlistIndex, 1);
+    tournament.markModified('waitlist');
+
+    await tournament.save();
+
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+
+    res.json({
+      success: true,
+      message: 'Removed from waitlist successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Drop from waitlist error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to remove from waitlist'
     });
   }
 });
