@@ -27,6 +27,7 @@ const achievements = [
   {
     name: 'First Game',
     description: 'Played your first game of mahjong',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -37,6 +38,7 @@ const achievements = [
   {
     name: 'Getting Started',
     description: 'Completed your first 5 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -47,6 +49,7 @@ const achievements = [
   {
     name: 'Regular Player',
     description: 'Played 25 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -57,6 +60,7 @@ const achievements = [
   {
     name: 'Dedicated Player',
     description: 'Played 50 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -67,6 +71,7 @@ const achievements = [
   {
     name: 'Mahjong Enthusiast',
     description: 'Played 100 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -77,6 +82,7 @@ const achievements = [
   {
     name: 'Veteran Player',
     description: 'Played 250 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -87,6 +93,7 @@ const achievements = [
   {
     name: 'Master Player',
     description: 'Played 500 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -97,6 +104,7 @@ const achievements = [
   {
     name: 'Legend',
     description: 'Played 1000 games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -107,6 +115,7 @@ const achievements = [
   {
     name: 'Grand Gamer',
     description: 'Played the most games',
+    category: 'GamesPlayed',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -120,6 +129,7 @@ const achievements = [
   {
     name: 'First Victory',
     description: 'Won your first game',
+    category: 'Victories',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -130,6 +140,7 @@ const achievements = [
   {
     name: 'Winner',
     description: 'Won 10 games',
+    category: 'Victories',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -140,6 +151,7 @@ const achievements = [
   {
     name: 'Elite',
     description: 'Won 25 games',
+    category: 'Victories',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -150,6 +162,7 @@ const achievements = [
   {
     name: 'Dominator',
     description: 'Won 50 games',
+    category: 'Victories',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -160,6 +173,7 @@ const achievements = [
   {
     name: 'Unstoppable',
     description: 'Won 100 games',
+    category: 'Victories',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -168,8 +182,9 @@ const achievements = [
     icon: '💪'
   },
   {
-    name: 'Grand Champion',
+    name: 'Grand Winner',
     description: 'Won the most games',
+    category: 'Victories',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -183,6 +198,7 @@ const achievements = [
   {
     name: 'Hot Streak',
     description: 'Won 3 games in a row',
+    category: 'WinStreaks',
     requirements: [{
       type: 'WinStreak',
       comparisonType: '>=',
@@ -193,6 +209,7 @@ const achievements = [
   {
     name: 'On Fire',
     description: 'Won 5 games in a row',
+    category: 'WinStreaks',
     requirements: [{
       type: 'WinStreak',
       comparisonType: '>=',
@@ -203,6 +220,7 @@ const achievements = [
   {
     name: 'Unbeatable',
     description: 'Won 10 games in a row',
+    category: 'WinStreaks',
     requirements: [{
       type: 'WinStreak',
       comparisonType: '>=',
@@ -213,6 +231,7 @@ const achievements = [
   {
     name: 'Grand Streaker',
     description: 'Won the most games in a row',
+    category: 'WinStreaks',
     requirements: [{
       type: 'WinStreak',
       comparisonType: '>=',
@@ -226,6 +245,7 @@ const achievements = [
   {
     name: 'High Roller',
     description: 'Scored 40,000 points in a single game',
+    category: 'Scores',
     requirements: [{
       type: 'ScoredPoints',
       comparisonType: '>=',
@@ -236,6 +256,7 @@ const achievements = [
   {
     name: 'Point Master',
     description: 'Scored 50,000 points in a single game',
+    category: 'Scores',
     requirements: [{
       type: 'ScoredPoints',
       comparisonType: '>=',
@@ -246,6 +267,7 @@ const achievements = [
   {
     name: 'Perfect Game',
     description: 'Scored 60,000+ points in a single game',
+    category: 'Scores',
     requirements: [{
       type: 'ScoredPoints',
       comparisonType: '>=',
@@ -256,6 +278,7 @@ const achievements = [
   {
     name: 'Maximum Score',
     description: 'Achieved the maximum possible score',
+    category: 'Scores',
     requirements: [{
       type: 'ScoredPoints',
       comparisonType: '>=',
@@ -266,6 +289,7 @@ const achievements = [
   {
     name: 'Grand Scorer',
     description: 'Scored the most points in a single game',
+    category: 'Scores',
     requirements: [{
       type: 'ScoredPoints',
       comparisonType: '>=',
@@ -279,6 +303,7 @@ const achievements = [
   {
     name: 'Close Call',
     description: 'Won a game with less than 30,000 points',
+    category: 'Scores',
     requirements: [{
       type: 'WonGames',
       comparisonType: '>=',
@@ -295,6 +320,7 @@ const achievements = [
   {
     name: 'Top Performer',
     description: 'Finished in 1st or 2nd place 20 times',
+    category: 'Positions',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -309,6 +335,7 @@ const achievements = [
   {
     name: 'Consistent',
     description: 'Finished in 1st or 2nd place 50 times',
+    category: 'Positions',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -323,6 +350,7 @@ const achievements = [
   {
     name: 'Never Last',
     description: 'Avoided last place for 20 consecutive games',
+    category: 'Positions',
     requirements: [{
       type: 'ConsecutivePlayedGames',
       comparisonType: '>=',
@@ -337,6 +365,7 @@ const achievements = [
   {
     name: 'Grand Wall',
     description: 'Avoided last place for the most consecutive games',
+    category: 'Positions',
     requirements: [{
       type: 'ConsecutivePlayedGames',
       comparisonType: '>=',
@@ -352,6 +381,7 @@ const achievements = [
   {
     name: 'Grand Caboose',
     description: 'Finished last place the most times',
+    category: 'Positions',
     requirements: [{
       type: 'PlayedGames',
       comparisonType: '>=',
@@ -369,6 +399,7 @@ const achievements = [
   {
     name: 'Quiz Novice',
     description: 'Completed 10 discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -379,6 +410,7 @@ const achievements = [
   {
     name: 'Quiz Master',
     description: 'Completed 50 discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -389,6 +421,7 @@ const achievements = [
   {
     name: 'Quiz Legend',
     description: 'Completed 100 discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -399,6 +432,7 @@ const achievements = [
   {
     name: 'Quiz Wizard',
     description: 'Completed 200 discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -409,6 +443,7 @@ const achievements = [
   {
     name: 'Quiz Guru',
     description: 'Completed 500 discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -419,6 +454,7 @@ const achievements = [
   {
     name: 'Quiz Genius',
     description: 'Completed 1000 discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -429,6 +465,7 @@ const achievements = [
   {
     name: 'Grand Quizzler',
     description: 'Completed the most discard quizzes',
+    category: 'Quizzes',
     requirements: [{
       type: 'CompletedQuizzes',
       comparisonType: '>=',
@@ -442,6 +479,7 @@ const achievements = [
   {
     name: 'Team Player',
     description: 'Played games with 10 different players',
+    category: 'Social',
     requirements: [{
       type: 'PlayersPlayedWith',
       comparisonType: '>=',
@@ -452,6 +490,7 @@ const achievements = [
   {
     name: 'Social Butterfly',
     description: 'Played games with 25 different players',
+    category: 'Social',
     requirements: [{
       type: 'PlayersPlayedWith',
       comparisonType: '>=',
@@ -462,6 +501,7 @@ const achievements = [
   {
     name: 'Game Submitter',
     description: 'Submitted 25 games',
+    category: 'Submissions',
     requirements: [{
       type: 'SubmittedGames',
       comparisonType: '>=',
@@ -472,6 +512,7 @@ const achievements = [
   {
     name: 'Grand Archivist',
     description: 'Submitted the most games',
+    category: 'Submissions',
     requirements: [{
       type: 'SubmittedGames',
       comparisonType: '>=',
@@ -483,6 +524,7 @@ const achievements = [
   {
     name: 'Verifier',
     description: 'Verified 10 games',
+    category: 'Verifications',
     requirements: [{
       type: 'VerifiedGames',
       comparisonType: '>=',
@@ -493,6 +535,7 @@ const achievements = [
   {
     name: 'Trusted Verifier',
     description: 'Verified 50 games',
+    category: 'Verifications',
     requirements: [{
       type: 'VerifiedGames',
       comparisonType: '>=',
@@ -503,6 +546,7 @@ const achievements = [
   {
     name: 'Grand Magistrate',
     description: 'Verified the most games',
+    category: 'Verifications',
     requirements: [{
       type: 'VerifiedGames',
       comparisonType: '>=',
@@ -516,6 +560,7 @@ const achievements = [
   {
     name: 'Early Bird',
     description: 'Played a game before 9 AM',
+    category: 'TimeBased',
     requirements: [{
       type: 'TimePlayedAt',
       comparisonType: '<',
@@ -526,6 +571,7 @@ const achievements = [
   {
     name: 'Night Owl',
     description: 'Played a game after 11 PM',
+    category: 'TimeBased',
     requirements: [{
       type: 'TimePlayedAt',
       comparisonType: '>=',
@@ -536,6 +582,7 @@ const achievements = [
   {
     name: 'Daily Player',
     description: 'Played games on 7 consecutive days',
+    category: 'Consistency',
     requirements: [{
       type: 'ConsecutivePlayedDays',
       comparisonType: '>=',
@@ -546,6 +593,7 @@ const achievements = [
   {
     name: 'Week Warrior',
     description: 'Played games on 30 consecutive days',
+    category: 'Consistency',
     requirements: [{
       type: 'ConsecutivePlayedDays',
       comparisonType: '>=',
@@ -556,6 +604,7 @@ const achievements = [
   {
     name: 'Grand Mahjonger',
     description: 'Played the most days consecutively',
+    category: 'Consistency',
     requirements: [{
       type: 'ConsecutivePlayedDays',
       comparisonType: '>=',
@@ -569,6 +618,7 @@ const achievements = [
   {
     name: 'Century Club',
     description: 'Reached 100,000 total points across all games',
+    category: 'AccumulatedScores',
     requirements: [{
       type: 'AccumulatedPoints',
       comparisonType: '>=',
@@ -579,6 +629,7 @@ const achievements = [
   {
     name: 'Millionaire',
     description: 'Reached 1,000,000 total points',
+    category: 'AccumulatedScores',
     requirements: [{
       type: 'AccumulatedPoints',
       comparisonType: '>=',
@@ -589,6 +640,7 @@ const achievements = [
   {
     name: 'Grand Wealth Horder',
     description: 'Accumulated the most points across all games',
+    category: 'AccumulatedScores',
     requirements: [{
       type: 'AccumulatedPoints',
       comparisonType: '>=',
@@ -602,6 +654,7 @@ const achievements = [
   {
     name: 'Marathon Session',
     description: 'Played 5 games in a single day',
+    category: 'TimeBased',
     requirements: [{
       type: 'GamesInADay',
       comparisonType: '>=',
@@ -612,6 +665,7 @@ const achievements = [
   {
     name: 'Speed Demon',
     description: 'Played 10 games in a single day',
+    category: 'TimeBased',
     requirements: [{
       type: 'GamesInADay',
       comparisonType: '>=',
@@ -622,6 +676,7 @@ const achievements = [
   {
     name: 'Grand Marathoner',
     description: 'Played the most games in a single day',
+    category: 'TimeBased',
     requirements: [{
       type: 'GamesInADay',
       comparisonType: '>=',
@@ -635,6 +690,7 @@ const achievements = [
   {
     name: 'First Tournament',
     description: 'Participated in your first tournament',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsPlayed',
       comparisonType: '>=',
@@ -645,6 +701,7 @@ const achievements = [
   {
     name: 'Tournament Regular',
     description: 'Participated in 5 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsPlayed',
       comparisonType: '>=',
@@ -655,6 +712,7 @@ const achievements = [
   {
     name: 'Tournament Veteran',
     description: 'Participated in 10 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsPlayed',
       comparisonType: '>=',
@@ -665,6 +723,7 @@ const achievements = [
   {
     name: 'Tournament Master',
     description: 'Participated in 25 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsPlayed',
       comparisonType: '>=',
@@ -675,6 +734,7 @@ const achievements = [
   {
     name: 'Grand Competitor',
     description: 'Participated in the most tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsPlayed',
       comparisonType: '>=',
@@ -686,6 +746,7 @@ const achievements = [
   {
     name: 'Champion',
     description: 'Won your first tournament',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsWon',
       comparisonType: '>=',
@@ -696,6 +757,7 @@ const achievements = [
   {
     name: 'Multi-Champion',
     description: 'Won 3 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsWon',
       comparisonType: '>=',
@@ -706,6 +768,7 @@ const achievements = [
   {
     name: 'Elite Champion',
     description: 'Won 5 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsWon',
       comparisonType: '>=',
@@ -716,6 +779,7 @@ const achievements = [
   {
     name: 'Legendary Champion',
     description: 'Won 10 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsWon',
       comparisonType: '>=',
@@ -726,6 +790,7 @@ const achievements = [
   {
     name: 'Grand Champion',
     description: 'Won the most tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsWon',
       comparisonType: '>=',
@@ -737,6 +802,7 @@ const achievements = [
   {
     name: 'Top Finisher',
     description: 'Finished in the top 4 of a tournament',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentTop4',
       comparisonType: '>=',
@@ -747,6 +813,7 @@ const achievements = [
   {
     name: 'Consistent Performer',
     description: 'Finished in the top 4 of 5 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentTop4',
       comparisonType: '>=',
@@ -757,6 +824,7 @@ const achievements = [
   {
     name: 'Elite Performer',
     description: 'Finished in the top 4 of 10 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentTop4',
       comparisonType: '>=',
@@ -767,6 +835,7 @@ const achievements = [
   {
     name: 'Grand Finalist',
     description: 'Finished in the top 4 the most times',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentTop4',
       comparisonType: '>=',
@@ -778,6 +847,7 @@ const achievements = [
   {
     name: 'Tournament Organizer',
     description: 'Created your first tournament',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsCreated',
       comparisonType: '>=',
@@ -788,6 +858,7 @@ const achievements = [
   {
     name: 'Event Coordinator',
     description: 'Created 5 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsCreated',
       comparisonType: '>=',
@@ -798,6 +869,7 @@ const achievements = [
   {
     name: 'Tournament Director',
     description: 'Created 10 tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsCreated',
       comparisonType: '>=',
@@ -808,6 +880,7 @@ const achievements = [
   {
     name: 'Grand Organizer',
     description: 'Created the most tournaments',
+    category: 'Tournaments',
     requirements: [{
       type: 'TournamentsCreated',
       comparisonType: '>=',
@@ -823,58 +896,34 @@ const seedAchievements = async () => {
   try {
     await connectDB();
     
-    // Check if we should clear existing data
-    const clearData = process.argv.includes('--clear') || process.argv.includes('-c');
+    // Always clear existing achievements
+    console.log('\n⚠ Clearing existing achievements...');
+    const deletedCount = await Achievement.deleteMany({});
+    console.log(`✓ Deleted ${deletedCount.deletedCount} existing achievements\n`);
     
-    if (clearData) {
-      console.log('\n⚠ Clearing existing achievements...');
-      await Achievement.deleteMany({});
-      console.log('✓ Existing achievements cleared\n');
-    }
-    
-    // Create or update achievements
-    console.log('Creating/updating achievements...');
+    // Create all achievements fresh
+    console.log('Creating achievements...');
     let achievementsCreated = 0;
-    let achievementsUpdated = 0;
+    let achievementsFailed = 0;
     
     for (const achievementData of achievements) {
       try {
-        // Check if achievement already exists (by name)
-        const existingAchievement = await Achievement.findOne({ name: achievementData.name });
-        
-        if (existingAchievement) {
-          // Update existing achievement
-          await Achievement.findOneAndUpdate(
-            { name: achievementData.name },
-            {
-              $set: {
-                description: achievementData.description,
-                requirements: achievementData.requirements,
-                icon: achievementData.icon
-              }
-            },
-            { runValidators: true }
-          );
-          console.log(`  ↻ Updated achievement: ${achievementData.icon} ${achievementData.name}`);
-          achievementsUpdated++;
-        } else {
-          // Create new achievement
-          await Achievement.create(achievementData);
-          console.log(`  ✓ Created achievement: ${achievementData.icon} ${achievementData.name}`);
-          achievementsCreated++;
-        }
+        await Achievement.create(achievementData);
+        console.log(`  ✓ Created achievement: ${achievementData.icon} ${achievementData.name}`);
+        achievementsCreated++;
       } catch (error) {
-        console.log(`  ⚠ Failed to process achievement "${achievementData.name}": ${error.message}`);
+        console.log(`  ⚠ Failed to create achievement "${achievementData.name}": ${error.message}`);
+        achievementsFailed++;
       }
-    }
-    
-    console.log(`\n✓ Created ${achievementsCreated} achievements`);
-    if (achievementsUpdated > 0) {
-      console.log(`  ↻ Updated ${achievementsUpdated} achievements`);
     }
     
     // Display summary
     const totalAchievements = await Achievement.countDocuments();
+    
+    console.log(`\n✓ Created ${achievementsCreated} achievements`);
+    if (achievementsFailed > 0) {
+      console.log(`  ⚠ Failed to create ${achievementsFailed} achievements`);
+    }
     
     console.log('\n═══════════════════════════════════════');
     console.log('  Achievement Seeding Complete!');

@@ -37,12 +37,19 @@ const achievementSchema = new mongoose.Schema({
     required: [true, 'Achievement icon is required'],
     trim: true
   },
+  category: {
+    type: String,
+    enum: ['GamesPlayed', 'Victories', 'WinStreaks', 'Scores', 'AccumulatedScores', 'Positions', 'Quizzes', 'Submissions', 'Verifications', 'Social', 'Consistency', 'TimeBased', 'Tournaments', 'Other'],
+    required: false, // Optional for backward compatibility
+    trim: true
+  }
 }, {
   timestamps: true
 });
 
-// Index for better query performance
+// Indexes for better query performance
 achievementSchema.index({ name: 1 });
+achievementSchema.index({ category: 1 });
 
 module.exports = mongoose.model('Achievement', achievementSchema);
 

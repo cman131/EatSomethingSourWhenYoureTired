@@ -300,6 +300,10 @@ async function getLeaderboardValues(requirementType, comparisonType = '>=') {
       case 'TournamentTop4':
         value = stats.tournamentTop4;
         break;
+      case 'Position':
+        // For Position leaderboard (used by Grand Caboose), count last place finishes (position 4)
+        value = stats.positionCounts[4] || 0;
+        break;
       default:
         value = 0;
     }
@@ -482,71 +486,771 @@ function evaluateRequirement(requirement, userStats, leaderboard, userId, allReq
 }
 
 /**
- * Resolve whether a user has earned a specific achievement
+ * Categorize an achievement based on its requirements or explicit category
+ * @param {Object} achievement - The achievement object
+ * @returns {string} The category name
+ */
+function getAchievementCategory(achievement) {
+  // If achievement has explicit category, use it
+  if (achievement.category) {
+    return achievement.category;
+  }
+
+  // Otherwise infer from requirements (backward compatibility)
+  if (!achievement.requirements || achievement.requirements.length === 0) {
+    return 'Other';
+  }
+
+  // Get the primary requirement type (first requirement, or grand requirement if present)
+  const grandRequirement = achievement.requirements.find(req => req.isGrand);
+  const primaryRequirement = grandRequirement || achievement.requirements[0];
+  const requirementType = primaryRequirement.type;
+
+  // Map requirement types to categories
+  const categoryMap = {
+    'PlayedGames': 'GamesPlayed',
+    'WonGames': 'Victories',
+    'WinStreak': 'WinStreaks',
+    'ScoredPoints': 'Scores',
+    'AccumulatedPoints': 'AccumulatedScores',
+    'Position': 'Positions',
+    'CompletedQuizzes': 'Quizzes',
+    'SubmittedGames': 'Submissions',
+    'VerifiedGames': 'Verifications',
+    'PlayersPlayedWith': 'Social',
+    'ConsecutivePlayedGames': 'Consistency',
+    'ConsecutivePlayedDays': 'Consistency',
+    'TimePlayedAt': 'TimeBased',
+    'GamesInADay': 'TimeBased',
+    'TournamentsPlayed': 'Tournaments',
+    'TournamentsWon': 'Tournaments',
+    'TournamentsCreated': 'Tournaments',
+    'TournamentTop4': 'Tournaments'
+  };
+
+  return categoryMap[requirementType] || 'Other';
+}
+
+/**
+ * Group achievements by category
+ * @param {Array} achievements - Array of achievement objects
+ * @returns {Object} Object with category names as keys and arrays of achievements as values
+ */
+function groupAchievementsByCategory(achievements) {
+  const grouped = {};
+
+  achievements.forEach(achievement => {
+    const category = getAchievementCategory(achievement);
+    if (!grouped[category]) {
+      grouped[category] = [];
+    }
+    grouped[category].push(achievement);
+  });
+
+  return grouped;
+}
+
+/**
+ * Filter achievements by category
+ * @param {Array} achievements - Array of achievement objects
+ * @param {string|Array<string>} categories - Category name(s) to filter by
+ * @returns {Array} Filtered achievements
+ */
+function filterAchievementsByCategory(achievements, categories) {
+  const categoryArray = Array.isArray(categories) ? categories : [categories];
+  const categorySet = new Set(categoryArray);
+
+  return achievements.filter(achievement => {
+    const category = getAchievementCategory(achievement);
+    return categorySet.has(category);
+  });
+}
+
+/**
+ * Evaluate a special achievement by name (for complex cases)
+ * @param {string} achievementName - The achievement name
+ * @param {Object} userStats - User statistics
+ * @param {Object} leaderboard - Leaderboard values (for grand achievements)
+ * @param {string} userId - User ID
+ * @param {Object} achievement - Full achievement object
+ * @returns {Object|null} Evaluation result or null if not a special case
+ */
+function evaluateSpecialAchievement(achievementName, userStats, leaderboard, userId, achievement) {
+  const userIdString = userId.toString();
+
+  switch (achievementName) {
+    case 'Close Call':
+      // Won a game with less than 30,000 points
+      const wonGameScores = userStats.userGameData
+        .filter(g => g.isWinner)
+        .map(g => g.score);
+      const hasLowScoreWin = wonGameScores.some(score => score < 30000);
+      return {
+        earned: hasLowScoreWin,
+        requirementResults: [
+          {
+            requirement: achievement.requirements[0],
+            met: userStats.gamesWon >= 1,
+            userValue: userStats.gamesWon,
+            targetValue: 1,
+            progress: Math.min(userStats.gamesWon / 1, 1)
+          },
+          {
+            requirement: achievement.requirements[1],
+            met: hasLowScoreWin,
+            userValue: hasLowScoreWin ? 1 : 0,
+            targetValue: 30000,
+            progress: hasLowScoreWin ? 1 : 0
+          }
+        ]
+      };
+
+    case 'Top Performer':
+      // Finished in 1st or 2nd place 20 times
+      const top2Count = userStats.userGameData.filter(g => g.position <= 2).length;
+      return {
+        earned: top2Count >= 20,
+        requirementResults: [
+          {
+            requirement: achievement.requirements[0],
+            met: userStats.gamesPlayed >= 20,
+            userValue: userStats.gamesPlayed,
+            targetValue: 20,
+            progress: Math.min(userStats.gamesPlayed / 20, 1)
+          },
+          {
+            requirement: achievement.requirements[1],
+            met: top2Count >= 20,
+            userValue: top2Count,
+            targetValue: 20,
+            progress: Math.min(top2Count / 20, 1)
+          }
+        ]
+      };
+
+    case 'Consistent':
+      // Finished in 1st or 2nd place 50 times
+      const top2Count50 = userStats.userGameData.filter(g => g.position <= 2).length;
+      return {
+        earned: top2Count50 >= 50,
+        requirementResults: [
+          {
+            requirement: achievement.requirements[0],
+            met: userStats.gamesPlayed >= 50,
+            userValue: userStats.gamesPlayed,
+            targetValue: 50,
+            progress: Math.min(userStats.gamesPlayed / 50, 1)
+          },
+          {
+            requirement: achievement.requirements[1],
+            met: top2Count50 >= 50,
+            userValue: top2Count50,
+            targetValue: 50,
+            progress: Math.min(top2Count50 / 50, 1)
+          }
+        ]
+      };
+
+    case 'Never Last':
+      // Avoided last place for 20 consecutive games
+      const consecutiveNonLast = userStats.consecutiveNonLastPlace;
+      return {
+        earned: consecutiveNonLast >= 20,
+        requirementResults: [
+          {
+            requirement: achievement.requirements[0],
+            met: consecutiveNonLast >= 20,
+            userValue: consecutiveNonLast,
+            targetValue: 20,
+            progress: Math.min(consecutiveNonLast / 20, 1)
+          },
+          {
+            requirement: achievement.requirements[1],
+            met: true, // Position <= 3 is inherent in consecutiveNonLastPlace calculation
+            userValue: 1,
+            targetValue: 3,
+            progress: 1
+          }
+        ]
+      };
+
+    case 'Grand Wall':
+      // Avoided last place for the most consecutive games (grand)
+      if (!leaderboard) return null;
+      const userConsecutive = userStats.consecutiveNonLastPlace;
+      const allConsecutive = Object.values(leaderboard).filter(v => v > 0);
+      if (allConsecutive.length === 0) {
+        return { earned: false, requirementResults: [] };
+      }
+      const maxConsecutive = Math.max(...allConsecutive);
+      const isLeader = userConsecutive === maxConsecutive && userConsecutive >= 3;
+      return {
+        earned: isLeader,
+        requirementResults: [
+          {
+            requirement: achievement.requirements[0],
+            met: isLeader,
+            userValue: userConsecutive,
+            targetValue: maxConsecutive,
+            progress: isLeader ? 1 : Math.min(userConsecutive / maxConsecutive, 1)
+          },
+          {
+            requirement: achievement.requirements[1],
+            met: true,
+            userValue: 1,
+            targetValue: 3,
+            progress: 1
+          }
+        ]
+      };
+
+    case 'Grand Caboose':
+      // Finished last place the most times (grand)
+      if (!leaderboard) return null;
+      const lastPlaceCount = userStats.positionCounts[4] || 0;
+      const allLastPlace = Object.values(leaderboard).filter(v => v > 0);
+      if (allLastPlace.length === 0) {
+        return { earned: false, requirementResults: [] };
+      }
+      const maxLastPlace = Math.max(...allLastPlace);
+      const isLastPlaceLeader = lastPlaceCount === maxLastPlace && lastPlaceCount >= 1 && userStats.gamesPlayed >= 8;
+      return {
+        earned: isLastPlaceLeader,
+        requirementResults: [
+          {
+            requirement: achievement.requirements[0],
+            met: userStats.gamesPlayed >= 8,
+            userValue: userStats.gamesPlayed,
+            targetValue: 8,
+            progress: Math.min(userStats.gamesPlayed / 8, 1)
+          },
+          {
+            requirement: achievement.requirements[1],
+            met: isLastPlaceLeader,
+            userValue: lastPlaceCount,
+            targetValue: maxLastPlace,
+            progress: isLastPlaceLeader ? 1 : Math.min(lastPlaceCount / maxLastPlace, 1)
+          }
+        ]
+      };
+
+    default:
+      return null; // Not a special case
+  }
+}
+
+/**
+ * Evaluate a single requirement individually
+ * @param {Object} requirement - The requirement object
+ * @param {Object} userStats - User statistics
+ * @param {Object} leaderboard - Leaderboard values (for grand achievements)
+ * @param {string} userId - User ID (for grand achievements)
+ * @param {Array} allRequirements - All requirements for context (for combined checks)
+ * @returns {Object} Evaluation result with met status and details
+ */
+function evaluateRequirementIndividually(requirement, userStats, leaderboard, userId, allRequirements = []) {
+  const met = evaluateRequirement(requirement, userStats, leaderboard, userId, allRequirements);
+  
+  // Get the user's value for this requirement
+  let userValue = 0;
+  const { type, comparisonType, requirementsValue } = requirement;
+  const userIdString = userId.toString();
+
+  // Handle grand achievements
+  if (requirement.isGrand && leaderboard) {
+    userValue = leaderboard[userIdString] || 0;
+  } else {
+    // Regular achievements - get user's value
+    switch (type) {
+      case 'PlayedGames':
+        userValue = userStats.gamesPlayed;
+        break;
+      case 'WonGames':
+        userValue = userStats.gamesWon;
+        break;
+      case 'WinStreak':
+        userValue = userStats.winStreak;
+        break;
+      case 'ScoredPoints':
+        const hasWonGamesRequirement = allRequirements.some(req => req.type === 'WonGames' && req !== requirement);
+        if (hasWonGamesRequirement && (comparisonType === '<' || comparisonType === '<=')) {
+          const wonGameScores = userStats.userGameData
+            .filter(g => g.isWinner)
+            .map(g => g.score);
+          userValue = wonGameScores.some(score => 
+            comparisonType === '<' ? score < requirementsValue : score <= requirementsValue
+          ) ? 1 : 0;
+        } else {
+          userValue = userStats.highestScore;
+        }
+        break;
+      case 'AccumulatedPoints':
+        userValue = userStats.totalScore;
+        break;
+      case 'CompletedQuizzes':
+        userValue = userStats.quizzesCompleted;
+        break;
+      case 'SubmittedGames':
+        userValue = userStats.gamesSubmitted;
+        break;
+      case 'VerifiedGames':
+        userValue = userStats.gamesVerified;
+        break;
+      case 'PlayersPlayedWith':
+        userValue = userStats.playersPlayedWithCount;
+        break;
+      case 'ConsecutivePlayedGames':
+        userValue = userStats.consecutiveNonLastPlace;
+        break;
+      case 'ConsecutivePlayedDays':
+        userValue = userStats.consecutiveDays;
+        break;
+      case 'GamesInADay':
+        userValue = userStats.maxGamesInADay;
+        break;
+      case 'TournamentsPlayed':
+        userValue = userStats.tournamentsPlayed;
+        break;
+      case 'TournamentsWon':
+        userValue = userStats.tournamentsWon;
+        break;
+      case 'TournamentsCreated':
+        userValue = userStats.tournamentsCreated;
+        break;
+      case 'TournamentTop4':
+        userValue = userStats.tournamentTop4;
+        break;
+      case 'Position':
+        if (comparisonType === '<=') {
+          userValue = 0;
+          userStats.userGameData.forEach(g => {
+            if (g.position <= requirementsValue) userValue++;
+          });
+        } else if (comparisonType === '=') {
+          userValue = userStats.positionCounts[requirementsValue] || 0;
+        }
+        break;
+      case 'TimePlayedAt':
+        if (comparisonType === '<') {
+          userValue = userStats.hoursPlayed.some(h => h > 6 && h < requirementsValue) ? 1 : 0;
+        } else if (comparisonType === '>=') {
+          userValue = userStats.hoursPlayed.some(h => h >= requirementsValue || h < 5) ? 1 : 0;
+        }
+        break;
+      default:
+        userValue = 0;
+    }
+  }
+
+  return {
+    requirement,
+    met,
+    userValue,
+    targetValue: requirementsValue,
+    progress: comparisonType === '>=' || comparisonType === '>' 
+      ? Math.min(userValue / requirementsValue, 1) 
+      : (comparisonType === '<=' || comparisonType === '<' 
+          ? (userValue <= requirementsValue ? 1 : 0)
+          : (userValue === requirementsValue ? 1 : 0))
+  };
+}
+
+/**
+ * Resolve achievements for a user, filtering by category first
  * @param {string|ObjectId} userId - The user ID
- * @param {Object} achievement - The achievement object (from database)
+ * @param {string|Array<string>} categories - Category name(s) to filter by (optional)
  * @param {Object} options - Optional configuration
  * @param {boolean} options.includeLeaderboard - Whether to calculate leaderboard for grand achievements (default: true)
- * @returns {Promise<Object>} Resolution result with earned status and details
+ * @param {boolean} options.evaluateIndividually - Whether to evaluate each requirement individually (default: true)
+ * @returns {Promise<Object>} Resolution result grouped by category
  */
-async function resolveAchievement(userId, achievement, options = {}) {
-  const { includeLeaderboard = true } = options;
+async function resolveAchievementsByCategory(userId, categories = null, options = {}) {
+  const { includeLeaderboard = true, evaluateIndividually = true } = options;
+  const Achievement = require('../models/Achievement');
 
   try {
+    // Get all achievements
+    let achievements = await Achievement.find({});
+
+    // Filter by category if specified
+    if (categories) {
+      achievements = filterAchievementsByCategory(achievements, categories);
+    }
+
+    // Group by category
+    const groupedAchievements = groupAchievementsByCategory(achievements);
+
+    // Calculate user statistics once
+    const userStats = await calculateUserStats(userId);
+
+    // Determine which categories need leaderboards (for grand achievements)
+    const categoriesNeedingLeaderboard = new Set();
+    achievements.forEach(achievement => {
+      const hasGrandRequirement = achievement.requirements.some(req => req.isGrand);
+      if (hasGrandRequirement) {
+        const category = getAchievementCategory(achievement);
+        categoriesNeedingLeaderboard.add(category);
+      }
+    });
+
+    // Pre-calculate leaderboards for categories that need them
+    const leaderboardsByCategory = {};
+    if (includeLeaderboard) {
+      for (const category of categoriesNeedingLeaderboard) {
+        // Find a grand achievement in this category to determine the requirement type
+        const categoryAchievements = groupedAchievements[category] || [];
+        const grandAchievement = categoryAchievements.find(a => 
+          a.requirements.some(req => req.isGrand)
+        );
+        
+        if (grandAchievement) {
+          const grandRequirement = grandAchievement.requirements.find(req => req.isGrand);
+          leaderboardsByCategory[category] = await getLeaderboardValues(
+            grandRequirement.type,
+            grandRequirement.comparisonType
+          );
+        }
+      }
+    }
+
+    // Special achievements that need custom leaderboards
+    const specialAchievementsNeedingLeaderboard = ['Grand Wall', 'Grand Caboose'];
+    for (const achievementName of specialAchievementsNeedingLeaderboard) {
+      const achievement = achievements.find(a => a.name === achievementName);
+      if (achievement) {
+        const category = getAchievementCategory(achievement);
+        if (!leaderboardsByCategory[category]) {
+          // Grand Wall uses ConsecutivePlayedGames, Grand Caboose uses Position
+          const requirementType = achievementName === 'Grand Wall' ? 'ConsecutivePlayedGames' : 'Position';
+          leaderboardsByCategory[category] = await getLeaderboardValues(requirementType, '>=');
+        }
+      }
+    }
+
+    // Evaluate achievements by category
+    const resultsByCategory = {};
+
+    for (const [category, categoryAchievements] of Object.entries(groupedAchievements)) {
+      const categoryResults = [];
+
+      for (const achievement of categoryAchievements) {
+        // Check if achievement has grand requirements
+        const hasGrandRequirement = achievement.requirements.some(req => req.isGrand);
+        const leaderboard = hasGrandRequirement ? leaderboardsByCategory[category] : null;
+
+        // Check if this is a special achievement that needs custom evaluation
+        const specialResult = evaluateSpecialAchievement(
+          achievement.name,
+          userStats,
+          leaderboard,
+          userId,
+          achievement
+        );
+
+        if (specialResult) {
+          // Use special evaluation
+          categoryResults.push({
+            earned: specialResult.earned,
+            achievement: {
+              _id: achievement._id,
+              name: achievement.name,
+              description: achievement.description,
+              icon: achievement.icon,
+              category: category,
+              requirements: achievement.requirements
+            },
+            requirementResults: specialResult.requirementResults,
+            userStats: {
+              gamesPlayed: userStats.gamesPlayed,
+              gamesWon: userStats.gamesWon,
+              winStreak: userStats.winStreak,
+              highestScore: userStats.highestScore,
+              totalScore: userStats.totalScore,
+              quizzesCompleted: userStats.quizzesCompleted,
+              gamesSubmitted: userStats.gamesSubmitted,
+              gamesVerified: userStats.gamesVerified,
+              tournamentsPlayed: userStats.tournamentsPlayed,
+              tournamentsWon: userStats.tournamentsWon,
+              tournamentsCreated: userStats.tournamentsCreated,
+              tournamentTop4: userStats.tournamentTop4
+            }
+          });
+        } else if (evaluateIndividually) {
+          // Evaluate each requirement individually (generic case)
+          const requirementResults = achievement.requirements.map(requirement => {
+            return evaluateRequirementIndividually(
+              requirement,
+              userStats,
+              leaderboard,
+              userId,
+              achievement.requirements
+            );
+          });
+
+          const allRequirementsMet = requirementResults.every(result => result.met);
+
+          categoryResults.push({
+            earned: allRequirementsMet,
+            achievement: {
+              _id: achievement._id,
+              name: achievement.name,
+              description: achievement.description,
+              icon: achievement.icon,
+              category: category,
+              requirements: achievement.requirements
+            },
+            requirementResults,
+            userStats: {
+              gamesPlayed: userStats.gamesPlayed,
+              gamesWon: userStats.gamesWon,
+              winStreak: userStats.winStreak,
+              highestScore: userStats.highestScore,
+              totalScore: userStats.totalScore,
+              quizzesCompleted: userStats.quizzesCompleted,
+              gamesSubmitted: userStats.gamesSubmitted,
+              gamesVerified: userStats.gamesVerified,
+              tournamentsPlayed: userStats.tournamentsPlayed,
+              tournamentsWon: userStats.tournamentsWon,
+              tournamentsCreated: userStats.tournamentsCreated,
+              tournamentTop4: userStats.tournamentTop4
+            }
+          });
+        } else {
+          // Evaluate all requirements together (original behavior)
+          const requirementResults = achievement.requirements.map(requirement => {
+            const met = evaluateRequirement(requirement, userStats, leaderboard, userId, achievement.requirements);
+            return { requirement, met };
+          });
+
+          const allRequirementsMet = requirementResults.every(result => result.met);
+
+          categoryResults.push({
+            earned: allRequirementsMet,
+            achievement: {
+              _id: achievement._id,
+              name: achievement.name,
+              description: achievement.description,
+              icon: achievement.icon,
+              category: category,
+              requirements: achievement.requirements
+            },
+            requirementResults,
+            userStats: {
+              gamesPlayed: userStats.gamesPlayed,
+              gamesWon: userStats.gamesWon,
+              winStreak: userStats.winStreak,
+              highestScore: userStats.highestScore,
+              totalScore: userStats.totalScore,
+              quizzesCompleted: userStats.quizzesCompleted,
+              gamesSubmitted: userStats.gamesSubmitted,
+              gamesVerified: userStats.gamesVerified,
+              tournamentsPlayed: userStats.tournamentsPlayed,
+              tournamentsWon: userStats.tournamentsWon,
+              tournamentsCreated: userStats.tournamentsCreated,
+              tournamentTop4: userStats.tournamentTop4
+            }
+          });
+        }
+      }
+
+      resultsByCategory[category] = categoryResults;
+    }
+
+    return {
+      userId: userId.toString(),
+      resultsByCategory,
+      summary: {
+        totalAchievements: achievements.length,
+        earnedCount: Object.values(resultsByCategory)
+          .flat()
+          .filter(r => r.earned).length,
+        byCategory: Object.entries(resultsByCategory).reduce((acc, [category, results]) => {
+          acc[category] = {
+            total: results.length,
+            earned: results.filter(r => r.earned).length
+          };
+          return acc;
+        }, {})
+      }
+    };
+  } catch (error) {
+    console.error('Error resolving achievements by category:', error);
+    throw error;
+  }
+}
+
+/**
+ * Resolve a single achievement with category filtering and individual requirement evaluation
+ * @param {string|ObjectId} userId - The user ID
+ * @param {Object|string} achievement - The achievement object or achievement ID/name
+ * @param {Object} options - Optional configuration
+ * @param {boolean} options.includeLeaderboard - Whether to calculate leaderboard for grand achievements (default: true)
+ * @param {boolean} options.evaluateIndividually - Whether to evaluate each requirement individually (default: true)
+ * @returns {Promise<Object>} Resolution result with earned status and details
+ */
+async function resolveAchievementV2(userId, achievement, options = {}) {
+  const { includeLeaderboard = true, evaluateIndividually = true } = options;
+  const Achievement = require('../models/Achievement');
+
+  try {
+    // If achievement is a string, try to find it by name or ID
+    let achievementDoc;
+    if (typeof achievement === 'string') {
+      achievementDoc = await Achievement.findOne({
+        $or: [
+          { name: achievement },
+          { _id: achievement }
+        ]
+      });
+    } else {
+      achievementDoc = achievement;
+    }
+
+    if (!achievementDoc) {
+      throw new Error('Achievement not found');
+    }
+
     // Calculate user statistics
     const userStats = await calculateUserStats(userId);
 
     // Check if achievement has grand requirements
-    const hasGrandRequirement = achievement.requirements.some(req => req.isGrand);
+    const hasGrandRequirement = achievementDoc.requirements.some(req => req.isGrand);
 
     // Get leaderboard if needed for grand achievements
     let leaderboard = null;
     if (hasGrandRequirement && includeLeaderboard) {
-      // For grand achievements, we need to determine which requirement type to compare
-      const grandRequirement = achievement.requirements.find(req => req.isGrand);
-      if (grandRequirement) {
-        leaderboard = await getLeaderboardValues(grandRequirement.type, grandRequirement.comparisonType);
+      // Special handling for achievements that need custom leaderboard types
+      if (achievementDoc.name === 'Grand Wall') {
+        leaderboard = await getLeaderboardValues('ConsecutivePlayedGames', '>=');
+      } else if (achievementDoc.name === 'Grand Caboose') {
+        leaderboard = await getLeaderboardValues('Position', '>=');
+      } else {
+        const grandRequirement = achievementDoc.requirements.find(req => req.isGrand);
+        if (grandRequirement) {
+          leaderboard = await getLeaderboardValues(grandRequirement.type, grandRequirement.comparisonType);
+        }
       }
     }
 
-    // Evaluate all requirements (all must be met)
-    const requirementResults = achievement.requirements.map(requirement => {
-      const met = evaluateRequirement(requirement, userStats, leaderboard, userId, achievement.requirements);
+    // Get category
+    const category = getAchievementCategory(achievementDoc);
+
+    // Check if this is a special achievement
+    const specialResult = evaluateSpecialAchievement(
+      achievementDoc.name,
+      userStats,
+      leaderboard,
+      userId,
+      achievementDoc
+    );
+
+    if (specialResult) {
       return {
-        requirement,
-        met
+        earned: specialResult.earned,
+        achievement: {
+          _id: achievementDoc._id,
+          name: achievementDoc.name,
+          description: achievementDoc.description,
+          icon: achievementDoc.icon,
+          category: category,
+          requirements: achievementDoc.requirements
+        },
+        requirementResults: specialResult.requirementResults,
+        userStats: {
+          gamesPlayed: userStats.gamesPlayed,
+          gamesWon: userStats.gamesWon,
+          winStreak: userStats.winStreak,
+          highestScore: userStats.highestScore,
+          totalScore: userStats.totalScore,
+          quizzesCompleted: userStats.quizzesCompleted,
+          gamesSubmitted: userStats.gamesSubmitted,
+          gamesVerified: userStats.gamesVerified,
+          tournamentsPlayed: userStats.tournamentsPlayed,
+          tournamentsWon: userStats.tournamentsWon,
+          tournamentsCreated: userStats.tournamentsCreated,
+          tournamentTop4: userStats.tournamentTop4
+        }
       };
-    });
+    }
 
-    const allRequirementsMet = requirementResults.every(result => result.met);
+    if (evaluateIndividually) {
+      // Evaluate each requirement individually
+      const requirementResults = achievementDoc.requirements.map(requirement => {
+        return evaluateRequirementIndividually(
+          requirement,
+          userStats,
+          leaderboard,
+          userId,
+          achievementDoc.requirements
+        );
+      });
 
-    return {
-      earned: allRequirementsMet,
-      achievement: {
-        _id: achievement._id,
-        name: achievement.name,
-        description: achievement.description,
-        icon: achievement.icon,
-        requirements: achievement.requirements
-      },
-      requirementResults,
-      userStats: {
-        gamesPlayed: userStats.gamesPlayed,
-        gamesWon: userStats.gamesWon,
-        winStreak: userStats.winStreak,
-        highestScore: userStats.highestScore,
-        totalScore: userStats.totalScore,
-        quizzesCompleted: userStats.quizzesCompleted,
-        gamesSubmitted: userStats.gamesSubmitted,
-        gamesVerified: userStats.gamesVerified,
-        tournamentsPlayed: userStats.tournamentsPlayed,
-        tournamentsWon: userStats.tournamentsWon,
-        tournamentsCreated: userStats.tournamentsCreated,
-        tournamentTop4: userStats.tournamentTop4
-      }
-    };
+      const allRequirementsMet = requirementResults.every(result => result.met);
+
+      return {
+        earned: allRequirementsMet,
+        achievement: {
+          _id: achievementDoc._id,
+          name: achievementDoc.name,
+          description: achievementDoc.description,
+          icon: achievementDoc.icon,
+          category: category,
+          requirements: achievementDoc.requirements
+        },
+        requirementResults,
+        userStats: {
+          gamesPlayed: userStats.gamesPlayed,
+          gamesWon: userStats.gamesWon,
+          winStreak: userStats.winStreak,
+          highestScore: userStats.highestScore,
+          totalScore: userStats.totalScore,
+          quizzesCompleted: userStats.quizzesCompleted,
+          gamesSubmitted: userStats.gamesSubmitted,
+          gamesVerified: userStats.gamesVerified,
+          tournamentsPlayed: userStats.tournamentsPlayed,
+          tournamentsWon: userStats.tournamentsWon,
+          tournamentsCreated: userStats.tournamentsCreated,
+          tournamentTop4: userStats.tournamentTop4
+        }
+      };
+    } else {
+      // Evaluate all requirements together (original behavior)
+      const requirementResults = achievementDoc.requirements.map(requirement => {
+        const met = evaluateRequirement(requirement, userStats, leaderboard, userId, achievementDoc.requirements);
+        return { requirement, met };
+      });
+
+      const allRequirementsMet = requirementResults.every(result => result.met);
+
+      return {
+        earned: allRequirementsMet,
+        achievement: {
+          _id: achievementDoc._id,
+          name: achievementDoc.name,
+          description: achievementDoc.description,
+          icon: achievementDoc.icon,
+          category: category,
+          requirements: achievementDoc.requirements
+        },
+        requirementResults,
+        userStats: {
+          gamesPlayed: userStats.gamesPlayed,
+          gamesWon: userStats.gamesWon,
+          winStreak: userStats.winStreak,
+          highestScore: userStats.highestScore,
+          totalScore: userStats.totalScore,
+          quizzesCompleted: userStats.quizzesCompleted,
+          gamesSubmitted: userStats.gamesSubmitted,
+          gamesVerified: userStats.gamesVerified,
+          tournamentsPlayed: userStats.tournamentsPlayed,
+          tournamentsWon: userStats.tournamentsWon,
+          tournamentsCreated: userStats.tournamentsCreated,
+          tournamentTop4: userStats.tournamentTop4
+        }
+      };
+    }
   } catch (error) {
-    console.error('Error resolving achievement:', error);
+    console.error('Error resolving achievement V2:', error);
     throw error;
   }
 }
@@ -555,6 +1259,8 @@ async function resolveAchievement(userId, achievement, options = {}) {
  * Resolve all achievements for a user
  * @param {string|ObjectId} userId - The user ID
  * @param {Object} options - Optional configuration
+ * @param {boolean} options.includeLeaderboard - Whether to calculate leaderboard for grand achievements (default: true)
+ * @param {boolean} options.evaluateIndividually - Whether to evaluate each requirement individually (default: true)
  * @returns {Promise<Array>} Array of resolution results for all achievements
  */
 async function resolveAllAchievements(userId, options = {}) {
@@ -562,7 +1268,7 @@ async function resolveAllAchievements(userId, options = {}) {
   const achievements = await Achievement.find({});
   
   const results = await Promise.all(
-    achievements.map(achievement => resolveAchievement(userId, achievement, options))
+    achievements.map(achievement => resolveAchievementV2(userId, achievement, options))
   );
 
   return results;
@@ -603,7 +1309,8 @@ async function getGrandAchievementHolder(achievement, options = {}) {
           _id: achievementDoc._id,
           name: achievementDoc.name,
           description: achievementDoc.description,
-          icon: achievementDoc.icon
+          icon: achievementDoc.icon,
+          category: getAchievementCategory(achievementDoc)
         },
         isGrand: false,
         users: [],
@@ -611,11 +1318,25 @@ async function getGrandAchievementHolder(achievement, options = {}) {
       };
     }
 
-    // Get leaderboard for the grand requirement type
-    const leaderboard = await getLeaderboardValues(
-      grandRequirement.type,
-      grandRequirement.comparisonType
-    );
+    // Handle special achievements that need custom leaderboard types
+    let leaderboard;
+    let requirementType = grandRequirement.type;
+    
+    if (achievementDoc.name === 'Grand Wall') {
+      // Grand Wall uses ConsecutivePlayedGames leaderboard
+      requirementType = 'ConsecutivePlayedGames';
+      leaderboard = await getLeaderboardValues(requirementType, '>=');
+    } else if (achievementDoc.name === 'Grand Caboose') {
+      // Grand Caboose uses Position leaderboard (for last place count)
+      requirementType = 'Position';
+      leaderboard = await getLeaderboardValues(requirementType, '>=');
+    } else {
+      // Standard grand achievement
+      leaderboard = await getLeaderboardValues(
+        grandRequirement.type,
+        grandRequirement.comparisonType
+      );
+    }
 
     const allValues = Object.values(leaderboard).filter(v => v > 0);
     
@@ -625,7 +1346,8 @@ async function getGrandAchievementHolder(achievement, options = {}) {
           _id: achievementDoc._id,
           name: achievementDoc.name,
           description: achievementDoc.description,
-          icon: achievementDoc.icon
+          icon: achievementDoc.icon,
+          category: getAchievementCategory(achievementDoc)
         },
         isGrand: true,
         users: [],
@@ -651,6 +1373,20 @@ async function getGrandAchievementHolder(achievement, options = {}) {
       return userValue === targetValue && meetsThreshold;
     });
 
+    // For special achievements, apply additional filters
+    if (achievementDoc.name === 'Grand Caboose') {
+      // Grand Caboose also requires at least 8 games played
+      const filteredUserIds = [];
+      for (const userId of holderUserIds) {
+        const stats = await calculateUserStats(userId);
+        if (stats.gamesPlayed >= 8) {
+          filteredUserIds.push(userId);
+        }
+      }
+      holderUserIds.length = 0;
+      holderUserIds.push(...filteredUserIds);
+    }
+
     // Get user details and their stats
     const users = await Promise.all(
       holderUserIds.map(async (userId) => {
@@ -659,10 +1395,10 @@ async function getGrandAchievementHolder(achievement, options = {}) {
         
         return {
           user: {
-                _id: user._id,
-                displayName: user.displayName,
-                email: user.email,
-                avatar: user.avatar
+            _id: user._id,
+            displayName: user.displayName,
+            email: user.email,
+            avatar: user.avatar
           },
           value: leaderboard[userId],
           stats: {
@@ -688,12 +1424,13 @@ async function getGrandAchievementHolder(achievement, options = {}) {
         _id: achievementDoc._id,
         name: achievementDoc.name,
         description: achievementDoc.description,
-        icon: achievementDoc.icon
+        icon: achievementDoc.icon,
+        category: getAchievementCategory(achievementDoc)
       },
       isGrand: true,
       users,
       targetValue,
-      requirementType: grandRequirement.type,
+      requirementType: requirementType,
       count: users.length
     };
   } catch (error) {
@@ -703,11 +1440,17 @@ async function getGrandAchievementHolder(achievement, options = {}) {
 }
 
 module.exports = {
-  resolveAchievement,
+  resolveAchievementsByCategory,
+  resolveAchievementV2,
   resolveAllAchievements,
   getGrandAchievementHolder,
+  getAchievementCategory,
+  groupAchievementsByCategory,
+  filterAchievementsByCategory,
+  evaluateRequirementIndividually,
+  evaluateSpecialAchievement,
+  // Core functions (ported from old service)
   calculateUserStats,
   getLeaderboardValues,
   evaluateRequirement
 };
-
