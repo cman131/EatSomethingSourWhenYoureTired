@@ -192,6 +192,11 @@ export interface TournamentAddress {
   zipCode: string;
 }
 
+export interface TournamentWaitlistEntry {
+  player: User | string;
+  addedAt?: string;
+}
+
 export interface Tournament {
   _id: string;
   name: string;
@@ -208,6 +213,8 @@ export interface Tournament {
   rounds?: any[];
   modifications?: string[];
   top4?: (string | { _id?: string })[];
+  maxPlayers?: number | null;
+  waitlist?: TournamentWaitlistEntry[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -598,6 +605,12 @@ export const tournamentsApi = {
 
   drop: async (tournamentId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/drop`, {
+      method: 'PUT',
+    });
+  },
+
+  dropFromWaitlist: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/waitlist/drop`, {
       method: 'PUT',
     });
   },

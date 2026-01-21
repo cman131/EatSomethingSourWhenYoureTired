@@ -173,7 +173,9 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
               ? 'Final Standings' 
               : 'Standings'}
             <span className="text-sm font-normal text-gray-500">
-              ({tournament.players.filter(p => !p.dropped).length})
+              {tournament.status === 'NotStarted' && tournament.maxPlayers
+                ? `(${tournament.players.filter(p => !p.dropped).length} / ${tournament.maxPlayers})`
+                : `(${tournament.players.filter(p => !p.dropped).length})`}
             </span>
             {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
               <span className="text-sm font-normal text-gray-500 ml-2">
@@ -200,7 +202,9 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
             ? 'Final Standings' 
             : 'Standings'}
           <span className="text-sm font-normal text-gray-500">
-            ({playerList.filter(p => !p.dropped).length})
+            {tournament.status === 'NotStarted' && tournament.maxPlayers
+              ? `(${playerList.filter(p => !p.dropped).length} / ${tournament.maxPlayers})`
+              : `(${playerList.filter(p => !p.dropped).length})`}
           </span>
           {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
             <span className="text-sm font-normal text-gray-500 ml-2">
@@ -214,9 +218,9 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
         {playerList.map((playerEntry) => {
           const isCurrentUser = currentUser && playerEntry.player._id === currentUser._id;
           const rankEmoji = tournament.status !== 'NotStarted' && (playerEntry.rank === 1 ? '🥇' : playerEntry.rank === 2 ? '🥈' : playerEntry.rank === 3 ? '🥉' : '');
-          return (
+          return (playerEntry.player._id &&
             <div
-              key={playerEntry.player._id}
+              key={'standings-player-' + playerEntry.player._id}
               className={`flex items-center gap-4 p-3 rounded-lg border-2 ${
                 isCurrentUser 
                   ? 'border-primary-500 bg-primary-50' 

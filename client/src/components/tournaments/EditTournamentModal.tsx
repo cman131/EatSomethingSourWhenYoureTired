@@ -16,6 +16,7 @@ interface EditTournamentModalProps {
     onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
+    maxPlayers?: number | null;
   }) => Promise<void>;
   tournament: Tournament | null;
 }
@@ -100,6 +101,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [modifications, setModifications] = useState<string[]>([]);
   const [newModification, setNewModification] = useState('');
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
+  const [maxPlayers, setMaxPlayers] = useState<string>('');
 
   // Initialize form when modal opens or tournament changes
   useEffect(() => {
@@ -132,6 +134,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setModifications(tournament.modifications ? [...tournament.modifications] : []);
       setNewModification('');
       setRuleset(tournament.ruleset || 'WRC2025');
+      setMaxPlayers(tournament.maxPlayers ? tournament.maxPlayers.toString() : '');
       setError(null);
     }
   }, [isOpen, tournament]);
@@ -222,6 +225,15 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       }
     }
 
+    // Validate maxPlayers if provided
+    if (maxPlayers.trim() !== '') {
+      const maxPlayersNum = parseInt(maxPlayers.trim(), 10);
+      if (isNaN(maxPlayersNum) || maxPlayersNum < 8) {
+        setError('Max players must be at least 8');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       const updateData: {
@@ -233,6 +245,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         onlineLocation?: string;
         modifications?: string[];
         ruleset?: 'WRC2025';
+        maxPlayers?: number | null;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -241,6 +254,13 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
       };
+
+      // Add maxPlayers if provided, otherwise set to null to clear it
+      if (maxPlayers.trim() !== '') {
+        updateData.maxPlayers = parseInt(maxPlayers.trim(), 10);
+      } else {
+        updateData.maxPlayers = null;
+      }
 
       if (isOnline) {
         updateData.onlineLocation = onlineLocation.trim();
@@ -541,6 +561,28 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   <option value="WRC2025">WRC 2025</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
+              </div>
+
+              <div>
+                <label htmlFor="maxPlayers" className="block text-sm font-medium text-gray-700 mb-2">
+                  Max Players (optional)
+                </label>
+                <input
+                  id="maxPlayers"
+                  type="number"
+                  value={maxPlayers}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string or valid numbers
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setMaxPlayers(value);
+                    }
+                  }}
+                  className="input-field"
+                  min={8}
+                  placeholder="Leave empty for no limit"
+                />
+                <p className="mt-1 text-xs text-gray-500">Maximum number of players allowed. Must be at least 8 if specified.</p>
               </div>
 
               <div>
