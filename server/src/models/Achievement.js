@@ -14,7 +14,7 @@ const achievementSchema = new mongoose.Schema({
   requirements: [{
     type: {
       type: String,
-      enum: ['PlayedGames', 'WonGames', 'WinStreak', 'ScoredPoints', 'Position', 'CompletedQuizzes', 'SubmittedGames', 'VerifiedGames', 'PlayersPlayedWith', 'ConsecutivePlayedGames', 'ConsecutivePlayedDays', 'AccumulatedPoints', 'TimePlayedAt', 'GamesInADay'],
+      enum: ['PlayedGames', 'WonGames', 'WinStreak', 'ScoredPoints', 'Position', 'CompletedQuizzes', 'SubmittedGames', 'VerifiedGames', 'PlayersPlayedWith', 'ConsecutivePlayedGames', 'ConsecutivePlayedDays', 'AccumulatedPoints', 'TimePlayedAt', 'GamesInADay', 'TournamentsPlayed', 'TournamentsWon', 'TournamentsCreated', 'TournamentTop4'],
       required: [true, 'Achievement requirements type is required']
     },
     comparisonType: {

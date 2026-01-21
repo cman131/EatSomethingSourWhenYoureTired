@@ -629,6 +629,192 @@ const achievements = [
       isGrand: true
     }],
     icon: '🏃‍♂️'
+  },
+
+  // Tournament Achievements
+  {
+    name: 'First Tournament',
+    description: 'Participated in your first tournament',
+    requirements: [{
+      type: 'TournamentsPlayed',
+      comparisonType: '>=',
+      requirementsValue: 1
+    }],
+    icon: '🎪'
+  },
+  {
+    name: 'Tournament Regular',
+    description: 'Participated in 5 tournaments',
+    requirements: [{
+      type: 'TournamentsPlayed',
+      comparisonType: '>=',
+      requirementsValue: 5
+    }],
+    icon: '🏟️'
+  },
+  {
+    name: 'Tournament Veteran',
+    description: 'Participated in 10 tournaments',
+    requirements: [{
+      type: 'TournamentsPlayed',
+      comparisonType: '>=',
+      requirementsValue: 10
+    }],
+    icon: '🎯'
+  },
+  {
+    name: 'Tournament Master',
+    description: 'Participated in 25 tournaments',
+    requirements: [{
+      type: 'TournamentsPlayed',
+      comparisonType: '>=',
+      requirementsValue: 25
+    }],
+    icon: '👑'
+  },
+  {
+    name: 'Grand Competitor',
+    description: 'Participated in the most tournaments',
+    requirements: [{
+      type: 'TournamentsPlayed',
+      comparisonType: '>=',
+      requirementsValue: 1,
+      isGrand: true
+    }],
+    icon: '🏅'
+  },
+  {
+    name: 'Champion',
+    description: 'Won your first tournament',
+    requirements: [{
+      type: 'TournamentsWon',
+      comparisonType: '>=',
+      requirementsValue: 1
+    }],
+    icon: '🥇'
+  },
+  {
+    name: 'Multi-Champion',
+    description: 'Won 3 tournaments',
+    requirements: [{
+      type: 'TournamentsWon',
+      comparisonType: '>=',
+      requirementsValue: 3
+    }],
+    icon: '🏆'
+  },
+  {
+    name: 'Elite Champion',
+    description: 'Won 5 tournaments',
+    requirements: [{
+      type: 'TournamentsWon',
+      comparisonType: '>=',
+      requirementsValue: 5
+    }],
+    icon: '💎'
+  },
+  {
+    name: 'Legendary Champion',
+    description: 'Won 10 tournaments',
+    requirements: [{
+      type: 'TournamentsWon',
+      comparisonType: '>=',
+      requirementsValue: 10
+    }],
+    icon: '🌟'
+  },
+  {
+    name: 'Grand Champion',
+    description: 'Won the most tournaments',
+    requirements: [{
+      type: 'TournamentsWon',
+      comparisonType: '>=',
+      requirementsValue: 1,
+      isGrand: true
+    }],
+    icon: '👑'
+  },
+  {
+    name: 'Top Finisher',
+    description: 'Finished in the top 4 of a tournament',
+    requirements: [{
+      type: 'TournamentTop4',
+      comparisonType: '>=',
+      requirementsValue: 1
+    }],
+    icon: '🎖️'
+  },
+  {
+    name: 'Consistent Performer',
+    description: 'Finished in the top 4 of 5 tournaments',
+    requirements: [{
+      type: 'TournamentTop4',
+      comparisonType: '>=',
+      requirementsValue: 5
+    }],
+    icon: '⭐'
+  },
+  {
+    name: 'Elite Performer',
+    description: 'Finished in the top 4 of 10 tournaments',
+    requirements: [{
+      type: 'TournamentTop4',
+      comparisonType: '>=',
+      requirementsValue: 10
+    }],
+    icon: '💫'
+  },
+  {
+    name: 'Grand Finalist',
+    description: 'Finished in the top 4 the most times',
+    requirements: [{
+      type: 'TournamentTop4',
+      comparisonType: '>=',
+      requirementsValue: 1,
+      isGrand: true
+    }],
+    icon: '🏅'
+  },
+  {
+    name: 'Tournament Organizer',
+    description: 'Created your first tournament',
+    requirements: [{
+      type: 'TournamentsCreated',
+      comparisonType: '>=',
+      requirementsValue: 1
+    }],
+    icon: '📋'
+  },
+  {
+    name: 'Event Coordinator',
+    description: 'Created 5 tournaments',
+    requirements: [{
+      type: 'TournamentsCreated',
+      comparisonType: '>=',
+      requirementsValue: 5
+    }],
+    icon: '📅'
+  },
+  {
+    name: 'Tournament Director',
+    description: 'Created 10 tournaments',
+    requirements: [{
+      type: 'TournamentsCreated',
+      comparisonType: '>=',
+      requirementsValue: 10
+    }],
+    icon: '🎬'
+  },
+  {
+    name: 'Grand Organizer',
+    description: 'Created the most tournaments',
+    requirements: [{
+      type: 'TournamentsCreated',
+      comparisonType: '>=',
+      requirementsValue: 1,
+      isGrand: true
+    }],
+    icon: '🎪'
   }
 ];
 
@@ -646,10 +832,10 @@ const seedAchievements = async () => {
       console.log('✓ Existing achievements cleared\n');
     }
     
-    // Create achievements
-    console.log('Creating achievements...');
+    // Create or update achievements
+    console.log('Creating/updating achievements...');
     let achievementsCreated = 0;
-    let achievementsSkipped = 0;
+    let achievementsUpdated = 0;
     
     for (const achievementData of achievements) {
       try {
@@ -657,21 +843,34 @@ const seedAchievements = async () => {
         const existingAchievement = await Achievement.findOne({ name: achievementData.name });
         
         if (existingAchievement) {
-          console.log(`  - Achievement "${achievementData.name}" already exists, skipping...`);
-          achievementsSkipped++;
+          // Update existing achievement
+          await Achievement.findOneAndUpdate(
+            { name: achievementData.name },
+            {
+              $set: {
+                description: achievementData.description,
+                requirements: achievementData.requirements,
+                icon: achievementData.icon
+              }
+            },
+            { runValidators: true }
+          );
+          console.log(`  ↻ Updated achievement: ${achievementData.icon} ${achievementData.name}`);
+          achievementsUpdated++;
         } else {
+          // Create new achievement
           await Achievement.create(achievementData);
           console.log(`  ✓ Created achievement: ${achievementData.icon} ${achievementData.name}`);
           achievementsCreated++;
         }
       } catch (error) {
-        console.log(`  ⚠ Failed to create achievement "${achievementData.name}": ${error.message}`);
+        console.log(`  ⚠ Failed to process achievement "${achievementData.name}": ${error.message}`);
       }
     }
     
     console.log(`\n✓ Created ${achievementsCreated} achievements`);
-    if (achievementsSkipped > 0) {
-      console.log(`  (${achievementsSkipped} achievements already existed)`);
+    if (achievementsUpdated > 0) {
+      console.log(`  ↻ Updated ${achievementsUpdated} achievements`);
     }
     
     // Display summary

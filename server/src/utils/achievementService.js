@@ -1,6 +1,7 @@
 const Game = require('../models/Game');
 const DiscardQuiz = require('../models/DiscardQuiz');
 const User = require('../models/User');
+const Tournament = require('../models/Tournament');
 
 /**
  * Calculate user statistics needed for achievement resolution
@@ -167,6 +168,47 @@ async function calculateUserStats(userId) {
     });
   });
 
+  // Tournament statistics
+  // Count tournaments where user is a player and hasn't dropped
+  const allTournaments = await Tournament.find({
+    'players.player': userId
+  }).select('players');
+  
+  let tournamentsPlayed = 0;
+  allTournaments.forEach(tournament => {
+    const userPlayer = tournament.players.find(
+      p => p.player.toString() === userIdString && !p.dropped
+    );
+    if (userPlayer) {
+      tournamentsPlayed++;
+    }
+  });
+
+  // Count tournaments won (user is first in top4 array)
+  const completedTournaments = await Tournament.find({
+    status: 'Completed',
+    top4: { $exists: true, $ne: [] }
+  }).select('top4');
+  
+  let tournamentsWon = 0;
+  completedTournaments.forEach(tournament => {
+    if (tournament.top4 && tournament.top4.length > 0) {
+      const winnerId = tournament.top4[0].toString();
+      if (winnerId === userIdString) {
+        tournamentsWon++;
+      }
+    }
+  });
+
+  const tournamentsCreated = await Tournament.countDocuments({
+    createdBy: userId
+  });
+
+  const tournamentTop4 = await Tournament.countDocuments({
+    status: 'Completed',
+    top4: userId
+  });
+
   return {
     gamesPlayed,
     gamesWon,
@@ -183,6 +225,10 @@ async function calculateUserStats(userId) {
     hoursPlayed,
     quizzesCompleted,
     playersPlayedWithCount: playersPlayedWith.size,
+    tournamentsPlayed,
+    tournamentsWon,
+    tournamentsCreated,
+    tournamentTop4,
     userGameData // Keep for additional calculations if needed
   };
 }
@@ -241,6 +287,18 @@ async function getLeaderboardValues(requirementType, comparisonType = '>=') {
         break;
       case 'GamesInADay':
         value = stats.maxGamesInADay;
+        break;
+      case 'TournamentsPlayed':
+        value = stats.tournamentsPlayed;
+        break;
+      case 'TournamentsWon':
+        value = stats.tournamentsWon;
+        break;
+      case 'TournamentsCreated':
+        value = stats.tournamentsCreated;
+        break;
+      case 'TournamentTop4':
+        value = stats.tournamentTop4;
         break;
       default:
         value = 0;
@@ -356,6 +414,18 @@ function evaluateRequirement(requirement, userStats, leaderboard, userId, allReq
     case 'GamesInADay':
       userValue = userStats.maxGamesInADay;
       break;
+    case 'TournamentsPlayed':
+      userValue = userStats.tournamentsPlayed;
+      break;
+    case 'TournamentsWon':
+      userValue = userStats.tournamentsWon;
+      break;
+    case 'TournamentsCreated':
+      userValue = userStats.tournamentsCreated;
+      break;
+    case 'TournamentTop4':
+      userValue = userStats.tournamentTop4;
+      break;
     case 'Position':
       // Position requirements need special handling - check if user has games with this position
       // For <= 2, check if user has enough games in positions 1 or 2
@@ -468,7 +538,11 @@ async function resolveAchievement(userId, achievement, options = {}) {
         totalScore: userStats.totalScore,
         quizzesCompleted: userStats.quizzesCompleted,
         gamesSubmitted: userStats.gamesSubmitted,
-        gamesVerified: userStats.gamesVerified
+        gamesVerified: userStats.gamesVerified,
+        tournamentsPlayed: userStats.tournamentsPlayed,
+        tournamentsWon: userStats.tournamentsWon,
+        tournamentsCreated: userStats.tournamentsCreated,
+        tournamentTop4: userStats.tournamentTop4
       }
     };
   } catch (error) {
@@ -599,7 +673,11 @@ async function getGrandAchievementHolder(achievement, options = {}) {
             totalScore: stats.totalScore,
             quizzesCompleted: stats.quizzesCompleted,
             gamesSubmitted: stats.gamesSubmitted,
-            gamesVerified: stats.gamesVerified
+            gamesVerified: stats.gamesVerified,
+            tournamentsPlayed: stats.tournamentsPlayed,
+            tournamentsWon: stats.tournamentsWon,
+            tournamentsCreated: stats.tournamentsCreated,
+            tournamentTop4: stats.tournamentTop4
           }
         };
       })
