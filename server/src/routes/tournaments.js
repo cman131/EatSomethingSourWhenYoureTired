@@ -643,10 +643,10 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
 
     if (ruleset !== undefined) {
       // Validate ruleset is a valid enum value
-      if (ruleset !== 'WRC2025') {
+      if (ruleset !== 'WRC2025' && ruleset !== 'MahjongSoul') {
         return res.status(400).json({
           success: false,
-          message: 'Invalid ruleset. Must be WRC2025'
+          message: 'Invalid ruleset. Must be WRC2025 or MahjongSoul'
         });
       }
       tournament.ruleset = ruleset;
