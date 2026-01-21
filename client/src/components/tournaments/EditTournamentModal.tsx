@@ -632,6 +632,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   required
                 >
                   <option value="WRC2025">WRC 2025</option>
+                  <option value="MahjongSoul">Mahjong Soul</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
               </div>
