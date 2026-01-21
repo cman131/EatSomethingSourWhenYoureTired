@@ -59,7 +59,7 @@ const tournamentSchema = new mongoose.Schema({
   },
   ruleset: {
     type: String,
-    enum: ['WRC2025'],
+    enum: ['WRC2025', 'MahjongSoul'],
     required: [true, 'Ruleset is required'],
     default: 'WRC2025'
   },

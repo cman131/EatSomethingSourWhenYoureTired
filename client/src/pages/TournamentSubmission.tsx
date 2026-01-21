@@ -84,6 +84,7 @@ const TournamentSubmission: React.FC = () => {
   const [modifications, setModifications] = useState<string[]>([]);
   const [newModification, setNewModification] = useState('');
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
+  const [maxPlayers, setMaxPlayers] = useState('');
 
   const { mutate: createTournament, loading, error } = useMutation(
     (tournamentData: {
@@ -94,7 +95,8 @@ const TournamentSubmission: React.FC = () => {
       location?: TournamentAddress;
       onlineLocation?: string;
       modifications?: string[];
-      ruleset?: 'WRC2025';
+      ruleset?: 'WRC2025' | 'MahjongSoul';
+      maxPlayers?: number;
     }) => tournamentsApi.createTournament(tournamentData)
   );
 
@@ -210,6 +212,15 @@ const TournamentSubmission: React.FC = () => {
       }
     }
 
+    // Validate maxPlayers if provided
+    if (maxPlayers.trim() !== '') {
+      const maxPlayersNum = parseInt(maxPlayers.trim(), 10);
+      if (isNaN(maxPlayersNum) || maxPlayersNum < 8) {
+        alert('Max players must be at least 8 if specified');
+        return;
+      }
+    }
+
     try {
       const tournamentData: {
         name: string;
@@ -220,6 +231,7 @@ const TournamentSubmission: React.FC = () => {
         onlineLocation?: string;
         modifications?: string[];
         ruleset?: 'WRC2025';
+        maxPlayers?: number;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -228,6 +240,11 @@ const TournamentSubmission: React.FC = () => {
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
       };
+
+      // Add maxPlayers if provided
+      if (maxPlayers.trim() !== '') {
+        tournamentData.maxPlayers = parseInt(maxPlayers.trim(), 10);
+      }
 
       if (isOnline) {
         tournamentData.onlineLocation = onlineLocation.trim();
@@ -479,6 +496,28 @@ const TournamentSubmission: React.FC = () => {
           </div>
 
           <div>
+            <label htmlFor="maxPlayers" className="block text-sm font-medium text-gray-700 mb-2">
+              Max Players (optional)
+            </label>
+            <input
+              id="maxPlayers"
+              type="number"
+              value={maxPlayers}
+              onChange={(e) => {
+                const value = e.target.value;
+                // Allow empty string or valid numbers
+                if (value === '' || /^\d+$/.test(value)) {
+                  setMaxPlayers(value);
+                }
+              }}
+              className="input-field"
+              min={8}
+              placeholder="Leave empty for no limit"
+            />
+            <p className="mt-1 text-xs text-gray-500">Maximum number of players allowed. Must be at least 8 if specified.</p>
+          </div>
+
+          <div>
             <label htmlFor="ruleset" className="block text-sm font-medium text-gray-700 mb-2">
               Ruleset <span className="text-red-500">*</span>
             </label>
@@ -490,6 +529,7 @@ const TournamentSubmission: React.FC = () => {
               required
             >
               <option value="WRC2025">WRC 2025</option>
+              <option value="MahjongSoul">Mahjong Soul</option>
             </select>
             <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
           </div>

@@ -573,7 +573,8 @@ export const tournamentsApi = {
     location?: TournamentAddress;
     onlineLocation?: string;
     modifications?: string[];
-    ruleset?: 'WRC2025';
+    ruleset?: 'WRC2025' | 'MahjongSoul';
+    maxPlayers?: number;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments', {
       method: 'POST',

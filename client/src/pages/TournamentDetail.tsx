@@ -528,7 +528,7 @@ const TournamentDetail: React.FC = () => {
         />
       )}
 
-      {tournament.waitlist && tournament.waitlist.length > 0 && (
+      {tournament.status === 'NotStarted' && tournament.waitlist && tournament.waitlist.length > 0 && (
         <div className="card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

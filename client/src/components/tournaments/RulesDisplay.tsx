@@ -6,12 +6,17 @@ interface RulesDisplayProps {
   modifications?: string[];
 }
 
-const getRulesetInfo = (ruleset: 'WRC2025') => {
+const getRulesetInfo = (ruleset: 'WRC2025' | 'MahjongSoul') => {
   switch (ruleset) {
     case 'WRC2025':
       return {
         url: 'https://www.worldriichi.org/s/WRC-Rules-2025-42fx.pdf',
         displayName: 'WRC 2025'
+      };
+    case 'MahjongSoul':
+      return {
+        url: 'https://mahjongsoul.yo-star.com/faq',
+        displayName: 'Mahjong Soul'
       };
     default:
       return {
