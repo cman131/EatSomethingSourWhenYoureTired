@@ -255,6 +255,8 @@ const TournamentDetail: React.FC = () => {
     onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
+    maxPlayers?: number | null;
+    roundDurationMinutes?: number | null;
   }) => {
     if (!id) return;
     await tournamentsApi.updateTournament(id, data);

@@ -447,7 +447,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -504,6 +504,11 @@ router.post('/', authenticateToken, async (req, res) => {
       tournamentData.maxPlayers = maxPlayers;
     }
 
+    // Add roundDurationMinutes if provided (only for in-person tournaments)
+    if (roundDurationMinutes !== undefined && !isOnlineTournament) {
+      tournamentData.roundDurationMinutes = roundDurationMinutes;
+    }
+
     if (isOnlineTournament) {
       tournamentData.onlineLocation = onlineLocation.trim();
     } else {
@@ -555,7 +560,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -662,6 +667,16 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
 
     if (maxPlayers !== undefined) {
       tournament.maxPlayers = maxPlayers;
+    }
+
+    // Handle roundDurationMinutes (only for in-person tournaments)
+    if (roundDurationMinutes !== undefined) {
+      if (isOnlineTournament) {
+        // Clear roundDurationMinutes if tournament is online
+        tournament.roundDurationMinutes = null;
+      } else {
+        tournament.roundDurationMinutes = roundDurationMinutes;
+      }
     }
 
     await tournament.save();

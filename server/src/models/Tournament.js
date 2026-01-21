@@ -93,6 +93,22 @@ const tournamentSchema = new mongoose.Schema({
       message: 'Max players must be at least 8'
     }
   },
+  roundDurationMinutes: {
+    type: Number,
+    default: null,
+    validate: {
+      validator: function(value) {
+        // For in-person tournaments (isOnline is false), roundDurationMinutes is required
+        if (this.isOnline === false) {
+          // Must be provided and must be a positive number
+          return value != null && value > 0;
+        }
+        // For online tournaments, it's optional (can be null)
+        return true;
+      },
+      message: 'Round duration is required for in-person tournaments and must be a positive number'
+    }
+  },
   players: [{
     player: {
       type: mongoose.Schema.Types.ObjectId,

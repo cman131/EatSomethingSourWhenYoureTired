@@ -214,6 +214,7 @@ export interface Tournament {
   modifications?: string[];
   top4?: (string | { _id?: string })[];
   maxPlayers?: number | null;
+  roundDurationMinutes?: number | null;
   waitlist?: TournamentWaitlistEntry[];
   createdAt?: string;
   updatedAt?: string;
@@ -575,6 +576,7 @@ export const tournamentsApi = {
     modifications?: string[];
     ruleset?: 'WRC2025' | 'MahjongSoul';
     maxPlayers?: number;
+    roundDurationMinutes?: number;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments', {
       method: 'POST',
@@ -591,6 +593,8 @@ export const tournamentsApi = {
     onlineLocation?: string;
     modifications?: string[];
     ruleset?: 'WRC2025';
+    maxPlayers?: number | null;
+    roundDurationMinutes?: number | null;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`, {
       method: 'PUT',

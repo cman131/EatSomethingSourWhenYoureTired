@@ -17,6 +17,7 @@ interface EditTournamentModalProps {
     modifications?: string[];
     ruleset?: 'WRC2025';
     maxPlayers?: number | null;
+    roundDurationMinutes?: number | null;
   }) => Promise<void>;
   tournament: Tournament | null;
 }
@@ -102,6 +103,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [newModification, setNewModification] = useState('');
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
   const [maxPlayers, setMaxPlayers] = useState<string>('');
+  const [roundDurationMinutes, setRoundDurationMinutes] = useState<string>('90');
 
   // Initialize form when modal opens or tournament changes
   useEffect(() => {
@@ -135,6 +137,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setNewModification('');
       setRuleset(tournament.ruleset || 'WRC2025');
       setMaxPlayers(tournament.maxPlayers ? tournament.maxPlayers.toString() : '');
+      setRoundDurationMinutes(tournament.roundDurationMinutes ? tournament.roundDurationMinutes.toString() : '');
       setError(null);
     }
   }, [isOpen, tournament]);
@@ -234,6 +237,19 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       }
     }
 
+    // Validate roundDurationMinutes (required for in-person tournaments)
+    if (!isOnline) {
+      if (roundDurationMinutes.trim() === '') {
+        setError('Round duration is required for in-person tournaments');
+        return;
+      }
+      const roundDurationNum = parseInt(roundDurationMinutes.trim(), 10);
+      if (isNaN(roundDurationNum) || roundDurationNum <= 0) {
+        setError('Round duration must be a positive number');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       const updateData: {
@@ -246,6 +262,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         modifications?: string[];
         ruleset?: 'WRC2025';
         maxPlayers?: number | null;
+        roundDurationMinutes?: number | null;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -260,6 +277,15 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         updateData.maxPlayers = parseInt(maxPlayers.trim(), 10);
       } else {
         updateData.maxPlayers = null;
+      }
+
+      // Handle roundDurationMinutes (required for in-person tournaments)
+      if (isOnline) {
+        // Clear roundDurationMinutes if tournament is online
+        updateData.roundDurationMinutes = null;
+      } else {
+        // roundDurationMinutes is required for in-person tournaments
+        updateData.roundDurationMinutes = parseInt(roundDurationMinutes.trim(), 10);
       }
 
       if (isOnline) {
@@ -547,21 +573,30 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                 )}
               </div>
 
-              <div>
-                <label htmlFor="ruleset" className="block text-sm font-medium text-gray-700 mb-2">
-                  Ruleset <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="ruleset"
-                  value={ruleset}
-                  onChange={(e) => setRuleset(e.target.value as 'WRC2025')}
-                  className="input-field"
-                  required
-                >
-                  <option value="WRC2025">WRC 2025</option>
-                </select>
-                <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
-              </div>
+              {!isOnline && (
+                <div>
+                  <label htmlFor="roundDurationMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                    Round Duration (minutes) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="roundDurationMinutes"
+                    type="number"
+                    value={roundDurationMinutes}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow empty string or valid numbers
+                      if (value === '' || /^\d+$/.test(value)) {
+                        setRoundDurationMinutes(value);
+                      }
+                    }}
+                    className="input-field"
+                    required
+                    min={1}
+                    placeholder="Enter round duration in minutes"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Duration of each round in minutes. Required for in-person tournaments.</p>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="maxPlayers" className="block text-sm font-medium text-gray-700 mb-2">
@@ -583,6 +618,22 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   placeholder="Leave empty for no limit"
                 />
                 <p className="mt-1 text-xs text-gray-500">Maximum number of players allowed. Must be at least 8 if specified.</p>
+              </div>
+
+              <div>
+                <label htmlFor="ruleset" className="block text-sm font-medium text-gray-700 mb-2">
+                  Ruleset <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="ruleset"
+                  value={ruleset}
+                  onChange={(e) => setRuleset(e.target.value as 'WRC2025')}
+                  className="input-field"
+                  required
+                >
+                  <option value="WRC2025">WRC 2025</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
               </div>
 
               <div>

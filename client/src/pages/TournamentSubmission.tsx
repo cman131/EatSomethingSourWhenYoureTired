@@ -85,6 +85,7 @@ const TournamentSubmission: React.FC = () => {
   const [newModification, setNewModification] = useState('');
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
   const [maxPlayers, setMaxPlayers] = useState('');
+  const [roundDurationMinutes, setRoundDurationMinutes] = useState('90');
 
   const { mutate: createTournament, loading, error } = useMutation(
     (tournamentData: {
@@ -97,6 +98,7 @@ const TournamentSubmission: React.FC = () => {
       modifications?: string[];
       ruleset?: 'WRC2025' | 'MahjongSoul';
       maxPlayers?: number;
+      roundDurationMinutes?: number;
     }) => tournamentsApi.createTournament(tournamentData)
   );
 
@@ -221,6 +223,19 @@ const TournamentSubmission: React.FC = () => {
       }
     }
 
+    // Validate roundDurationMinutes (required for in-person tournaments)
+    if (!isOnline) {
+      if (roundDurationMinutes.trim() === '') {
+        alert('Round duration is required for in-person tournaments');
+        return;
+      }
+      const roundDurationNum = parseInt(roundDurationMinutes.trim(), 10);
+      if (isNaN(roundDurationNum) || roundDurationNum <= 0) {
+        alert('Round duration must be a positive number');
+        return;
+      }
+    }
+
     try {
       const tournamentData: {
         name: string;
@@ -232,6 +247,7 @@ const TournamentSubmission: React.FC = () => {
         modifications?: string[];
         ruleset?: 'WRC2025';
         maxPlayers?: number;
+        roundDurationMinutes?: number;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -244,6 +260,11 @@ const TournamentSubmission: React.FC = () => {
       // Add maxPlayers if provided
       if (maxPlayers.trim() !== '') {
         tournamentData.maxPlayers = parseInt(maxPlayers.trim(), 10);
+      }
+
+      // Add roundDurationMinutes (required for in-person tournaments)
+      if (!isOnline) {
+        tournamentData.roundDurationMinutes = parseInt(roundDurationMinutes.trim(), 10);
       }
 
       if (isOnline) {
@@ -492,6 +513,31 @@ const TournamentSubmission: React.FC = () => {
                 <p className="mt-1 text-xs text-gray-500">Format: 12345 or 12345-6789</p>
               </div>
             </div>
+            )}
+
+            {!isOnline && (
+              <div className="mt-4">
+                <label htmlFor="roundDurationMinutes" className="block text-sm font-medium text-gray-700 mb-2">
+                  Round Duration (minutes) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="roundDurationMinutes"
+                  type="number"
+                  value={roundDurationMinutes}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string or valid numbers
+                    if (value === '' || /^\d+$/.test(value)) {
+                      setRoundDurationMinutes(value);
+                    }
+                  }}
+                  className="input-field"
+                  required
+                  min={60}
+                  placeholder="Enter round duration in minutes"
+                />
+                <p className="mt-1 text-xs text-gray-500">Duration of each round in minutes. Required for in-person tournaments.</p>
+              </div>
             )}
           </div>
 

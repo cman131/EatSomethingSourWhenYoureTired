@@ -56,10 +56,15 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
 
   // Calculate time remaining in round
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
-  const ROUND_DURATION_MINUTES = 90;
 
   useEffect(() => {
     if (!currentPairing) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    // Don't calculate remaining time for online tournaments
+    if (tournament.isOnline) {
       setTimeRemaining(null);
       return;
     }
@@ -74,7 +79,7 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
 
     // Calculate the projected end time (startDate + 90 minutes)
     const roundStart = new Date((round as any).startDate);
-    const projectedEnd = new Date(roundStart.getTime() + ROUND_DURATION_MINUTES * 60 * 1000);
+    const projectedEnd = new Date(roundStart.getTime() + tournament.roundDurationMinutes! * 60 * 1000);
     
     // Check if pairing has a game (round is complete)
     const game = currentPairing.pairing.game;
@@ -159,7 +164,7 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <span className="font-medium">Round {currentPairing.round}</span>
           <span className="font-medium">Table {currentPairing.pairing.tableNumber}</span>
-          {timeRemaining !== null && (
+          {!tournament.isOnline && timeRemaining !== null && (
             <span className={`font-medium ${timeRemaining < 0 ? 'text-red-600' : ''}`}>
               Time: {formatTimeRemaining(timeRemaining)}
             </span>
