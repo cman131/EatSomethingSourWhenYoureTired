@@ -18,7 +18,7 @@ async function calculateUserStats(userId) {
       { submittedBy: userId },
       { 'players.player': userId }
     ]
-  }).sort({ gameDate: 1, createdAt: 1 }); // Sort chronologically
+  }).sort({ gameDate: 1 }); // Sort chronologically
 
   // Basic counts
   const gamesSubmitted = allGames.filter(g => g.submittedBy.toString() === userIdString).length;
@@ -40,7 +40,7 @@ async function calculateUserStats(userId) {
       userGameData.push({
         gameDate: game.gameDate,
         score: userPlayer.score,
-        position: userPlayer.position,
+        rank: userPlayer.rank,
         isWinner,
         game
       });
@@ -65,17 +65,17 @@ async function calculateUserStats(userId) {
   const lowestScore = allScores.length > 0 ? Math.min(...allScores) : 0;
   const totalScore = allScores.reduce((sum, score) => sum + score, 0);
 
-  // Position counts
-  const positionCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  // Rank counts
+  const rankCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
   userGameData.forEach(g => {
-    positionCounts[g.position] = (positionCounts[g.position] || 0) + 1;
+    rankCounts[g.rank] = (rankCounts[g.rank] || 0) + 1;
   });
 
   // Consecutive games without last place
   let consecutiveNonLastPlace = 0;
   let maxConsecutiveNonLastPlace = 0;
   for (let i = userGameData.length - 1; i >= 0; i--) {
-    if (userGameData[i].position <= 3) {
+    if (userGameData[i].rank <= 3) {
       consecutiveNonLastPlace++;
       maxConsecutiveNonLastPlace = Math.max(maxConsecutiveNonLastPlace, consecutiveNonLastPlace);
     } else {
@@ -208,7 +208,7 @@ async function calculateUserStats(userId) {
     highestScore,
     lowestScore,
     totalScore,
-    positionCounts,
+    rankCounts,
     consecutiveNonLastPlace: maxConsecutiveNonLastPlace,
     consecutiveDays,
     maxGamesInADay,
@@ -291,8 +291,8 @@ async function getLeaderboardValues(requirementType, comparisonType = '>=') {
         value = stats.tournamentTop4;
         break;
       case 'Position':
-        // For Position leaderboard (used by Grand Caboose), count last place finishes (position 4)
-        value = stats.positionCounts[4] || 0;
+        // For Rank leaderboard (used by Grand Caboose), count last place finishes (rank 4)
+        value = stats.rankCounts[4] || 0;
         break;
       default:
         value = 0;
@@ -421,17 +421,17 @@ function evaluateRequirement(requirement, userStats, leaderboard, userId, allReq
       userValue = userStats.tournamentTop4;
       break;
     case 'Position':
-      // Position requirements need special handling - check if user has games with this position
-      // For <= 2, check if user has enough games in positions 1 or 2
+      // Rank requirements need special handling - check if user has games with this rank
+      // For <= 2, check if user has enough games in ranks 1 or 2
       if (comparisonType === '<=') {
-        // Count games where user finished in position <= requirementsValue
+        // Count games where user finished in rank <= requirementsValue
         userValue = 0;
         userStats.userGameData.forEach(g => {
-          if (g.position <= requirementsValue) userValue++;
+          if (g.rank <= requirementsValue) userValue++;
         });
       } else if (comparisonType === '=') {
-        // Count games in specific position (usually 4 for last place)
-        userValue = userStats.positionCounts[requirementsValue] || 0;
+        // Count games in specific rank (usually 4 for last place)
+        userValue = userStats.rankCounts[requirementsValue] || 0;
       } else {
         userValue = 0;
       }
@@ -597,7 +597,7 @@ function evaluateSpecialAchievement(achievementName, userStats, leaderboard, use
 
     case 'Top Performer':
       // Finished in 1st or 2nd place 20 times
-      const top2Count = userStats.userGameData.filter(g => g.position <= 2).length;
+      const top2Count = userStats.userGameData.filter(g => g.rank <= 2).length;
       return {
         earned: top2Count >= 20,
         requirementResults: [
@@ -620,7 +620,7 @@ function evaluateSpecialAchievement(achievementName, userStats, leaderboard, use
 
     case 'Consistent':
       // Finished in 1st or 2nd place 50 times
-      const top2Count50 = userStats.userGameData.filter(g => g.position <= 2).length;
+      const top2Count50 = userStats.userGameData.filter(g => g.rank <= 2).length;
       return {
         earned: top2Count50 >= 50,
         requirementResults: [
@@ -656,7 +656,7 @@ function evaluateSpecialAchievement(achievementName, userStats, leaderboard, use
           },
           {
             requirement: achievement.requirements[1],
-            met: true, // Position <= 3 is inherent in consecutiveNonLastPlace calculation
+            met: true, // rank <= 3 is inherent in consecutiveNonLastPlace calculation
             userValue: 1,
             targetValue: 3,
             progress: 1
@@ -674,6 +674,7 @@ function evaluateSpecialAchievement(achievementName, userStats, leaderboard, use
       }
       const maxConsecutive = Math.max(...allConsecutive);
       const isLeader = userConsecutive === maxConsecutive && userConsecutive >= 3;
+
       return {
         earned: isLeader,
         requirementResults: [
@@ -697,7 +698,7 @@ function evaluateSpecialAchievement(achievementName, userStats, leaderboard, use
     case 'Grand Caboose':
       // Finished last place the most times (grand)
       if (!leaderboard) return null;
-      const lastPlaceCount = userStats.positionCounts[4] || 0;
+      const lastPlaceCount = userStats.rankCounts[4] || 0;
       const allLastPlace = Object.values(leaderboard).filter(v => v > 0);
       if (allLastPlace.length === 0) {
         return { earned: false, requirementResults: [] };
@@ -814,10 +815,10 @@ function evaluateRequirementIndividually(requirement, userStats, leaderboard, us
         if (comparisonType === '<=') {
           userValue = 0;
           userStats.userGameData.forEach(g => {
-            if (g.position <= requirementsValue) userValue++;
+            if (g.rank <= requirementsValue) userValue++;
           });
         } else if (comparisonType === '=') {
-          userValue = userStats.positionCounts[requirementsValue] || 0;
+          userValue = userStats.rankCounts[requirementsValue] || 0;
         }
         break;
       case 'TimePlayedAt':
@@ -910,8 +911,8 @@ async function resolveAchievementsByCategory(userId, categories = null, options 
       if (achievement) {
         const category = getAchievementCategory(achievement);
         if (!leaderboardsByCategory[category]) {
-          // Grand Wall uses ConsecutivePlayedGames, Grand Caboose uses Position
-          const requirementType = achievementName === 'Grand Wall' ? 'ConsecutivePlayedGames' : 'Position';
+          // Grand Wall uses ConsecutivePlayedGames, Grand Caboose uses Rank
+          const requirementType = achievementName === 'Grand Wall' ? 'ConsecutivePlayedGames' : 'Rank';
           leaderboardsByCategory[category] = await getLeaderboardValues(requirementType, '>=');
         }
       }
@@ -1317,7 +1318,7 @@ async function getGrandAchievementHolder(achievement, options = {}) {
       requirementType = 'ConsecutivePlayedGames';
       leaderboard = await getLeaderboardValues(requirementType, '>=');
     } else if (achievementDoc.name === 'Grand Caboose') {
-      // Grand Caboose uses Position leaderboard (for last place count)
+      // Grand Caboose uses Rank leaderboard (for last place count)
       requirementType = 'Position';
       leaderboard = await getLeaderboardValues(requirementType, '>=');
     } else {
