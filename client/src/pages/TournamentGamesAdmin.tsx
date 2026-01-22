@@ -225,23 +225,6 @@ const TournamentGamesAdmin: React.FC = () => {
     });
   }, [user]);
 
-  if (!isTournamentPlayer && !canManageTournament) {
-    return (
-      <div className="space-y-6">
-        <Link
-          to={`/tournaments/${id}`}
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ArrowLeftIcon className="h-4 w-4 mr-2" />
-          Back to Tournament
-        </Link>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-sm text-red-600">Access denied. You must be a tournament player to view this page.</p>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="space-y-6">

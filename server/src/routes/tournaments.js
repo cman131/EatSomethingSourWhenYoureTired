@@ -132,20 +132,34 @@ const replacePlayerInPairingsWithFiller = async (tournament, playerId) => {
   if (!tournament.rounds || tournament.rounds.length === 0) {
     return; // No rounds to check
   }
+  let fillerNumber = 1;
+  let fillerUser = null;
 
-  // Find or create a filler user
-  let fillerUser = await User.findOne({ 
-    displayName: 'Filler 1',
-    isGuest: true 
-  });
-  
-  if (!fillerUser) {
-    fillerUser = new User({
-      displayName: 'Filler 1',
-      isGuest: true,
-      email: 'filler.1@guest.local'
+  // Find or create a filler user that is not already in the tournament
+  while (!fillerUser) {
+    let candidateUser = await User.findOne({ 
+      displayName: `Filler ${fillerNumber}`,
+      isGuest: true 
     });
-    await fillerUser.save();
+    
+    if (!candidateUser) {
+      candidateUser = new User({
+        displayName: `Filler ${fillerNumber}`,
+        isGuest: true,
+        email: `filler.${fillerNumber}@guest.local`
+      });
+      await candidateUser.save();
+    }
+
+    // Check if this filler user is already in the tournament
+    const alreadyInTournament = tournament.rounds.flatMap(r => r.pairings).flatMap(p => p.players).map(p => p.player.toString()).includes(candidateUser._id.toString());
+
+    if (!alreadyInTournament) {
+      fillerUser = candidateUser;
+    } else {
+      // Try next filler number
+      fillerNumber++;
+    }
   }
 
   let pairingsModified = false;
@@ -1126,11 +1140,19 @@ router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId(
 router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req, res) => {
   try {
     const tournament = await Tournament.findById(req.params.id);
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     if (!tournament) {
       return res.status(404).json({
         success: false,
         message: 'Tournament not found'
+      });
+    }
+
+    if (tournament.status !== 'NotStarted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot sign up for a tournament that has already started'
       });
     }
 
@@ -1407,6 +1429,10 @@ router.put('/:id/players/:playerId/kick', authenticateToken, validateMongoId('id
       });
     }
 
+    if (tournament.status === 'NotStarted') {
+      tournament.players = tournament.players.filter(p => p.player.toString() !== req.params.playerId);
+    }
+
     // Mark player as dropped
     playerEntry.dropped = true;
     tournament.markModified('players');
@@ -1472,6 +1498,10 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
         success: false,
         message: 'You have already dropped from this tournament'
       });
+    }
+
+    if (tournament.status === 'NotStarted') {
+      tournament.players = tournament.players.filter(p => p.player.toString() !== req.user._id.toString());
     }
 
     // Mark player as dropped

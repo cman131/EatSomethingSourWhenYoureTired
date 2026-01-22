@@ -390,14 +390,6 @@ const TournamentDetail: React.FC = () => {
                 >
                   Login to Register
                 </Link>
-              ) : isSignedUp ? (
-                <button
-                  onClick={handleDrop}
-                  disabled={actionLoading}
-                  className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-                >
-                  {actionLoading ? 'Dropping...' : 'Drop from Tournament'}
-                </button>
               ) : isOnWaitlist ? (
                 <button
                   onClick={handleDropFromWaitlist}
@@ -406,7 +398,7 @@ const TournamentDetail: React.FC = () => {
                 >
                   {actionLoading ? 'Removing...' : 'Leave Waitlist'}
                 </button>
-              ) : (
+              ) : !isSignedUp ? (
                 <button
                   onClick={handleSignup}
                   disabled={actionLoading}
@@ -416,8 +408,17 @@ const TournamentDetail: React.FC = () => {
                     ? (isTournamentFull ? 'Joining waitlist...' : 'Signing up...') 
                     : (isTournamentFull ? 'Join Waitlist' : 'Sign Up for Tournament')}
                 </button>
-              )}
+              ) : null}
             </>
+          )}
+          {(tournament.status === 'NotStarted' || tournament.status === 'InProgress') && isAuthenticated && isSignedUp && (
+            <button
+              onClick={handleDrop}
+              disabled={actionLoading}
+              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+            >
+              {actionLoading ? 'Dropping...' : 'Drop from Tournament'}
+            </button>
           )}
 
           {tournament.status !== 'NotStarted' && !isAuthenticated && (
@@ -428,7 +429,7 @@ const TournamentDetail: React.FC = () => {
               Login to View
             </Link>
           )}
-          {isAuthenticated && (isSignedUp || canManageTournament) && tournament.status !== 'NotStarted' && (
+          {isAuthenticated && tournament.status !== 'NotStarted' && (
             <button
               onClick={() => navigate(`/tournaments/${id}/games`)}
               className="btn-secondary flex items-center justify-center w-full sm:w-auto"

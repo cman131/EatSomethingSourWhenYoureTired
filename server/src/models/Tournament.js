@@ -254,6 +254,7 @@ tournamentSchema.pre('save', function(next) {
       }
       
       if (new Set(playerIds).size !== 4) {
+        console.log('All players in a pairing must be unique', playerIds);
         return next(new Error('All players in a pairing must be unique'));
       }
       

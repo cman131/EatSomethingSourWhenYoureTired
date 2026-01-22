@@ -366,21 +366,32 @@ router.put('/:id/response', async (req, res) => {
 
     // Get or initialize the responses array for this tile
     const userId = req.user._id;
-    const currentResponses = quiz.responses.get(tileId) || [];
-    
-    // Check if user already submitted a response for this tile
     const userIdString = userId.toString();
-    var users = [...quiz.responses.values()].flat();
-    var alreadyResponded = users.some(id => id.toString() == userIdString);
-
-    if (alreadyResponded) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already submitted a response for this tile'
-      });
+    
+    // Check if user already submitted a response for any tile
+    let previousTileId = null;
+    for (const [tile, userIds] of quiz.responses.entries()) {
+      if (userIds.some(id => id.toString() === userIdString)) {
+        previousTileId = tile;
+        break;
+      }
     }
 
-    // Create a new array with the user ID added (don't mutate the existing array)
+    // If user has already responded, remove their previous response
+    if (previousTileId) {
+      const previousResponses = quiz.responses.get(previousTileId) || [];
+      const filteredResponses = previousResponses.filter(id => id.toString() !== userIdString);
+      
+      if (filteredResponses.length === 0) {
+        // Remove the tile entry if no responses remain
+        quiz.responses.delete(previousTileId);
+      } else {
+        quiz.responses.set(previousTileId, filteredResponses);
+      }
+    }
+
+    // Add the new response
+    const currentResponses = quiz.responses.get(tileId) || [];
     const updatedResponses = [...currentResponses, userId];
     quiz.responses.set(tileId, updatedResponses);
     

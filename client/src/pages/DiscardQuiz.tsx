@@ -132,7 +132,7 @@ const DiscardQuizPage: React.FC = () => {
   };
 
   const handleTileClick = async (tileId: string) => {
-    if (!quiz || submitting || hasResponded) return;
+    if (!quiz || submitting) return;
 
     try {
       setSubmitting(true);
@@ -341,7 +341,7 @@ const DiscardQuizPage: React.FC = () => {
         {/* Hand Tiles */}
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            {hasResponded ? 'Hand (Click to see your selection)' : 'Select a tile to discard'}
+            {hasResponded ? 'Select a tile to discard (you can change your response)' : 'Select a tile to discard'}
           </h2>
           <div className="grid grid-cols-5 md:grid-cols-9 gap-3">
             {sortedHand.map((tile, index) => {
@@ -357,15 +357,13 @@ const DiscardQuizPage: React.FC = () => {
               return (
                 <button
                   key={`${tile.id}-${index}`}
-                  onClick={() => !hasResponded && handleTileClick(tile.id)}
-                  disabled={submitting || hasResponded}
+                  onClick={() => handleTileClick(tile.id)}
+                  disabled={submitting}
                   title={tile.name}
                   className={`
                     relative p-2 rounded-lg border-2 transition-all duration-200 flex flex-col items-center justify-center w-fit mx-auto
                     ${isSelected
                       ? 'bg-primary-100 border-primary-500 ring-2 ring-primary-300'
-                      : hasResponded
-                      ? 'bg-gray-50 border-gray-300 cursor-default'
                       : 'bg-white border-gray-300 hover:border-primary-400 hover:bg-primary-50 cursor-pointer'
                     }
                     ${submitting ? 'opacity-50 cursor-not-allowed' : ''}
@@ -401,7 +399,7 @@ const DiscardQuizPage: React.FC = () => {
         {hasResponded && (
           <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-green-800 font-medium">
-              ✓ Response submitted! You selected: <strong>{quiz.hand.find(t => t.id === selectedTile)?.name || selectedTile}</strong>
+              ✓ Response submitted! You selected: <strong>{quiz.hand.find(t => t.id === selectedTile)?.name || selectedTile}</strong>. You can click another tile to change your response.
             </p>
           </div>
         )}
