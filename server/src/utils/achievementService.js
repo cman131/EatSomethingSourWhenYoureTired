@@ -94,29 +94,18 @@ async function calculateUserStats(userId) {
   const sortedDays = Array.from(uniqueDays)
     .map(day => new Date(day))
     .sort((a, b) => b - a);
-  
+
+  // Consecutive days played
+  let currentDaysPlayed = 0;
   let consecutiveDays = 0;
-  if (sortedDays.length > 0) {
-    consecutiveDays = 1;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    for (let i = 0; i < sortedDays.length; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(checkDate.getDate() - i);
-      checkDate.setHours(0, 0, 0, 0);
-      
-      const hasGame = sortedDays.some(day => {
-        const dayStr = day.toDateString();
-        const checkStr = checkDate.toDateString();
-        return dayStr === checkStr;
-      });
-      
-      if (hasGame) {
-        consecutiveDays = i + 1;
-      } else {
-        break;
-      }
+  previousDay = null;
+  for (let i = 0; i < sortedDays.length; i++) {
+    previousDay = previousDay ? previousDay.setDate(previousDay.getDate() + 1) : null;
+    if (previousDay && sortedDays[i].getDate() == previousDay.getDate()) {
+      currentDaysPlayed++;
+      consecutiveDays = Math.max(consecutiveDays, currentDaysPlayed);
+    } else {
+      currentDaysPlayed = 0;
     }
   }
 
@@ -171,7 +160,8 @@ async function calculateUserStats(userId) {
   // Tournament statistics
   // Count tournaments where user is a player and hasn't dropped
   const allTournaments = await Tournament.find({
-    'players.player': userId
+    'players.player': userId,
+    status: 'Completed'
   }).select('players');
   
   let tournamentsPlayed = 0;
