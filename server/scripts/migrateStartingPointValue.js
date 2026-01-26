@@ -61,7 +61,7 @@ const migrateStartingPointValue = async () => {
         }
       );
       
-      console.log(`\n✓ Updated ${result.modifiedCount} tournaments with startingPointValue: 30000`);
+      console.log(`\n✓ Updated ${result.modifiedCount} tournaments with startingPointValue: 25000`);
     } else {
       console.log('✓ All tournaments already have startingPointValue set');
     }
@@ -80,7 +80,7 @@ const migrateStartingPointValue = async () => {
     let totalPlayersRecalculated = 0;
     
     for (const tournament of allTournaments) {
-      const startingPoint = tournament.startingPointValue || 25000;
+      const startingPoint = 25000;
       let tournamentModified = false;
       let playersRecalculated = 0;
       
