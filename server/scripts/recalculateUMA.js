@@ -29,12 +29,17 @@ const migrateStartingPointValue = async () => {
     
     console.log('\n🔄 Starting UMA recalculation for completed tournament rounds...\n');
     
-    // Find all tournaments that have rounds with games
+    // Find all tournaments that have rounds (InProgress or Completed status)
+    // We'll process all rounds and skip incomplete ones in the code
     const allTournaments = await Tournament.find({
-      'rounds.pairings.game': { $exists: true, $ne: null }
+      $or: [
+        { status: 'InProgress' },
+        { status: 'Completed' }
+      ],
+      rounds: { $exists: true, $ne: [] }
     }).populate('rounds.pairings.game');
     
-    console.log(`Found ${allTournaments.length} tournaments with games\n`);
+    console.log(`Found ${allTournaments.length} tournaments with rounds\n`);
     
     let tournamentsRecalculated = 0;
     let totalRoundsRecalculated = 0;
