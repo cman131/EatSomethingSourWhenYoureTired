@@ -461,7 +461,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -523,6 +523,11 @@ router.post('/', authenticateToken, async (req, res) => {
       tournamentData.roundDurationMinutes = roundDurationMinutes;
     }
 
+    // Add startingPointValue if provided, otherwise use default (30000)
+    if (startingPointValue !== undefined) {
+      tournamentData.startingPointValue = startingPointValue;
+    }
+
     if (isOnlineTournament) {
       tournamentData.onlineLocation = onlineLocation.trim();
     } else {
@@ -574,7 +579,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -691,6 +696,17 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
       } else {
         tournament.roundDurationMinutes = roundDurationMinutes;
       }
+    }
+
+    if (startingPointValue !== undefined) {
+      // Validate startingPointValue is a valid enum value
+      if (startingPointValue !== 25000 && startingPointValue !== 30000) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid startingPointValue. Must be 25000 or 30000'
+        });
+      }
+      tournament.startingPointValue = startingPointValue;
     }
 
     await tournament.save();
@@ -945,9 +961,10 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
             );
             
             if (tournamentPlayer) {
-              // Calculate uma: (score - 30000) / 1000
-              // This is a standard calculation, but may need adjustment based on tournament rules
-              const umaBase = (gamePlayer.score - 30000) / 1000;
+              // Calculate uma: (score - startingPointValue) / 1000
+              // This uses the tournament's configured starting point value
+              const startingPoint = tournament.startingPointValue || 30000; // Fallback to 30000 for backwards compatibility
+              const umaBase = (gamePlayer.score - startingPoint) / 1000;
               // Rank uma adjustment: 1st = 30, 2nd = 10, 3rd = -10, 4th = -30
               const rankUmaAdjustment = {
                 1: 30,

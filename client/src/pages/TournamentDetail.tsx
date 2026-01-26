@@ -257,6 +257,7 @@ const TournamentDetail: React.FC = () => {
     ruleset?: 'WRC2025';
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
+    startingPointValue?: 25000 | 30000;
   }) => {
     if (!id) return;
     await tournamentsApi.updateTournament(id, data);
@@ -521,7 +522,7 @@ const TournamentDetail: React.FC = () => {
 
       {!tournament.isOnline && <EtiquetteDisplay/> }
 
-      {!tournament.isOnline && <RulesDisplay ruleset={tournament.ruleset} modifications={tournament.modifications} />}
+      {!tournament.isOnline && <RulesDisplay ruleset={tournament.ruleset} modifications={tournament.modifications} startingPointValue={tournament.startingPointValue} />}
 
       {isAuthenticated && (
         <Standings 

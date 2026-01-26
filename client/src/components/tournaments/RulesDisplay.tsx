@@ -4,6 +4,7 @@ import CollapsibleSection from './CollapsibleSection';
 interface RulesDisplayProps {
   ruleset: 'WRC2025';
   modifications?: string[];
+  startingPointValue?: 25000 | 30000;
 }
 
 const getRulesetInfo = (ruleset: 'WRC2025' | 'MahjongSoul') => {
@@ -26,7 +27,7 @@ const getRulesetInfo = (ruleset: 'WRC2025' | 'MahjongSoul') => {
   }
 };
 
-const RulesDisplay: React.FC<RulesDisplayProps> = ({ ruleset, modifications = [] }) => {
+const RulesDisplay: React.FC<RulesDisplayProps> = ({ ruleset, modifications = [], startingPointValue }) => {
   const rulesetInfo = getRulesetInfo(ruleset);
 
   return (
@@ -45,6 +46,12 @@ const RulesDisplay: React.FC<RulesDisplayProps> = ({ ruleset, modifications = []
             {rulesetInfo.displayName}
           </a>
         </div>
+        {startingPointValue && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Starting Point Value:</h3>
+            <p className="text-gray-700">{startingPointValue.toLocaleString()}</p>
+          </div>
+        )}
         {modifications.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Tournament Modifications:</h3>

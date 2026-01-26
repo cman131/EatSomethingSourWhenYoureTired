@@ -18,6 +18,7 @@ interface EditTournamentModalProps {
     ruleset?: 'WRC2025';
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
+    startingPointValue?: 25000 | 30000;
   }) => Promise<void>;
   tournament: Tournament | null;
 }
@@ -104,6 +105,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
   const [maxPlayers, setMaxPlayers] = useState<string>('');
   const [roundDurationMinutes, setRoundDurationMinutes] = useState<string>('90');
+  const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(30000);
 
   // Initialize form when modal opens or tournament changes
   useEffect(() => {
@@ -138,6 +140,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setRuleset(tournament.ruleset || 'WRC2025');
       setMaxPlayers(tournament.maxPlayers ? tournament.maxPlayers.toString() : '');
       setRoundDurationMinutes(tournament.roundDurationMinutes ? tournament.roundDurationMinutes.toString() : '');
+      setStartingPointValue(tournament.startingPointValue || 30000);
       setError(null);
     }
   }, [isOpen, tournament]);
@@ -263,6 +266,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         ruleset?: 'WRC2025';
         maxPlayers?: number | null;
         roundDurationMinutes?: number | null;
+        startingPointValue?: 25000 | 30000;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -270,6 +274,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         isOnline: isOnline,
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
+        startingPointValue: startingPointValue,
       };
 
       // Add maxPlayers if provided, otherwise set to null to clear it
@@ -635,6 +640,23 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   <option value="MahjongSoul">Mahjong Soul</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
+              </div>
+
+              <div>
+                <label htmlFor="startingPointValue" className="block text-sm font-medium text-gray-700 mb-2">
+                  Starting Point Value <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="startingPointValue"
+                  value={startingPointValue}
+                  onChange={(e) => setStartingPointValue(Number(e.target.value) as 25000 | 30000)}
+                  className="input-field"
+                  required
+                >
+                  <option value={25000}>25,000</option>
+                  <option value={30000}>30,000</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">The starting point value used for UMA calculations</p>
               </div>
 
               <div>

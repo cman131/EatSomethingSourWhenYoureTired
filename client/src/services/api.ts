@@ -70,6 +70,8 @@ export interface Game {
   comments?: GameComment[];
   createdAt: string;
   updatedAt: string;
+  tournament?: { _id: string; name: string } | null;
+  playerUma?: Array<{ playerId: string; uma: number }> | null;
 }
 
 export interface ApiResponse<T> {
@@ -215,6 +217,7 @@ export interface Tournament {
   top4?: (string | { _id?: string })[];
   maxPlayers?: number | null;
   roundDurationMinutes?: number | null;
+  startingPointValue?: 25000 | 30000;
   waitlist?: TournamentWaitlistEntry[];
   createdAt?: string;
   updatedAt?: string;
@@ -577,6 +580,7 @@ export const tournamentsApi = {
     ruleset?: 'WRC2025' | 'MahjongSoul';
     maxPlayers?: number;
     roundDurationMinutes?: number;
+    startingPointValue?: 25000 | 30000;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments', {
       method: 'POST',
@@ -595,6 +599,7 @@ export const tournamentsApi = {
     ruleset?: 'WRC2025';
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
+    startingPointValue?: 25000 | 30000;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`, {
       method: 'PUT',

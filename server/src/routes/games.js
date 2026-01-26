@@ -144,10 +144,50 @@ router.get('/:id', validateMongoId('id'), async (req, res) => {
       });
     }
 
+    // Find tournament containing this game
+    const tournament = await Tournament.findOne({
+      'rounds.pairings.game': game._id
+    }).select('_id name startingPointValue');
+
+    let tournamentInfo = null;
+    let playerUma = null;
+
+    if (tournament) {
+      tournamentInfo = {
+        _id: tournament._id.toString(),
+        name: tournament.name
+      };
+
+      // Calculate UMA for each player in the game
+      const startingPoint = tournament.startingPointValue || 30000; // Fallback to 30000 for backwards compatibility
+      playerUma = game.players.map(gamePlayer => {
+        // Calculate uma: (score - startingPointValue) / 1000
+        const umaBase = (gamePlayer.score - startingPoint) / 1000;
+        // Rank uma adjustment: 1st = 30, 2nd = 10, 3rd = -10, 4th = -30
+        const rankUmaAdjustment = {
+          1: 30,
+          2: 10,
+          3: -10,
+          4: -30
+        }[gamePlayer.rank] || 0;
+        const uma = umaBase + rankUmaAdjustment;
+
+        return {
+          playerId: gamePlayer.player._id.toString(),
+          uma: uma
+        };
+      });
+    }
+
+    // Convert game to object and add tournament info
+    const gameObject = game.toObject ? game.toObject() : game;
+    gameObject.tournament = tournamentInfo;
+    gameObject.playerUma = playerUma;
+
     res.json({
       success: true,
       data: {
-        game
+        game: gameObject
       }
     });
   } catch (error) {

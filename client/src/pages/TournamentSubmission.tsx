@@ -86,6 +86,7 @@ const TournamentSubmission: React.FC = () => {
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
   const [maxPlayers, setMaxPlayers] = useState('');
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('90');
+  const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(25000);
 
   const { mutate: createTournament, loading, error } = useMutation(
     (tournamentData: {
@@ -99,6 +100,7 @@ const TournamentSubmission: React.FC = () => {
       ruleset?: 'WRC2025' | 'MahjongSoul';
       maxPlayers?: number;
       roundDurationMinutes?: number;
+      startingPointValue?: 25000 | 30000;
     }) => tournamentsApi.createTournament(tournamentData)
   );
 
@@ -248,6 +250,7 @@ const TournamentSubmission: React.FC = () => {
         ruleset?: 'WRC2025';
         maxPlayers?: number;
         roundDurationMinutes?: number;
+        startingPointValue?: 25000 | 30000;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -255,6 +258,7 @@ const TournamentSubmission: React.FC = () => {
         isOnline,
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
+        startingPointValue: startingPointValue,
       };
 
       // Add maxPlayers if provided
@@ -578,6 +582,23 @@ const TournamentSubmission: React.FC = () => {
               <option value="MahjongSoul">Mahjong Soul</option>
             </select>
             <p className="mt-1 text-xs text-gray-500">The ruleset that will be used for this tournament</p>
+          </div>
+
+          <div>
+            <label htmlFor="startingPointValue" className="block text-sm font-medium text-gray-700 mb-2">
+              Starting Point Value <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="startingPointValue"
+              value={startingPointValue}
+              onChange={(e) => setStartingPointValue(Number(e.target.value) as 25000 | 30000)}
+              className="input-field"
+              required
+            >
+              <option value={25000}>25,000</option>
+              <option value={30000}>30,000</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">The starting point value used for UMA calculations</p>
           </div>
 
           <div>

@@ -151,6 +151,15 @@ const GameDetail: React.FC = () => {
             Back to Games
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Game Details</h1>
+          {game.tournament && (
+            <Link
+              to={`/tournaments/${game.tournament._id}`}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium hover:bg-yellow-200 transition-colors"
+            >
+              <TrophyIcon className="h-4 w-4" />
+              {game.tournament.name}
+            </Link>
+          )}
         </div>
         <ShareButton title="Share this game" />
       </div>
@@ -257,42 +266,58 @@ const GameDetail: React.FC = () => {
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Players</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sortedPlayers.map((player, index) => (
-              <div
-                key={player.player._id}
-                className={`bg-gray-50 rounded-lg p-4 border-2 ${
-                  index === 0 || index === 1
-                    ? 'border-yellow-400 bg-yellow-50'
-                    : 'border-gray-200 bg-gray-50'
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    {index === 0 && (
-                      <TrophyIcon className="h-6 w-6 text-yellow-600" />
-                    )}
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">
-                        {PlayerSeats[player.position - 1]} • {getOrdinalPlace(index)} place
+            {sortedPlayers.map((player, index) => {
+              // Find UMA for this player if game is part of a tournament
+              const playerUmaEntry = game.playerUma?.find(uma => uma.playerId === player.player._id);
+              const uma = playerUmaEntry?.uma;
+
+              return (
+                <div
+                  key={player.player._id}
+                  className={`bg-gray-50 rounded-lg p-4 border-2 ${
+                    index === 0 || index === 1
+                      ? 'border-yellow-400 bg-yellow-50'
+                      : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {index === 0 && (
+                        <TrophyIcon className="h-6 w-6 text-yellow-600" />
+                      )}
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">
+                          {PlayerSeats[player.position - 1]} • {getOrdinalPlace(index)} place
+                        </div>
+                        <UserDisplay
+                          user={player.player}
+                          size="md"
+                          nameClassName="font-semibold text-lg"
+                        />
                       </div>
-                      <UserDisplay
-                        user={player.player}
-                        size="md"
-                        nameClassName="font-semibold text-lg"
-                      />
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">Score</div>
-                    <div className={`text-2xl font-bold ${
-                      player.score >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {player.score.toLocaleString()}
+                    <div className="text-right">
+                      <div className="text-sm text-gray-500">Score</div>
+                      <div className={`text-2xl font-bold ${
+                        player.score >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {player.score.toLocaleString()}
+                      </div>
+                      {uma !== undefined && uma !== null && (
+                        <div className="mt-1">
+                          <div className="text-xs text-gray-500">UMA</div>
+                          <div className={`text-lg font-semibold ${
+                            uma >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {uma > 0 ? '+' : ''}{uma.toFixed(1)}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

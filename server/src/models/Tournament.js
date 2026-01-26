@@ -109,6 +109,12 @@ const tournamentSchema = new mongoose.Schema({
       message: 'Round duration is required for in-person tournaments and must be a positive number'
     }
   },
+  startingPointValue: {
+    type: Number,
+    enum: [25000, 30000],
+    default: 30000,
+    required: [true, 'Starting point value is required']
+  },
   players: [{
     player: {
       type: mongoose.Schema.Types.ObjectId,
