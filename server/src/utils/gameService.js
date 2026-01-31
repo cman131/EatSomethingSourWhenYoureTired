@@ -57,7 +57,7 @@ async function createGame(gameData, submitterId) {
   // Send notifications to players who aren't the submitter
   const submitterIdString = submitterId.toString();
   const submitterDisplayName = game.submittedBy.displayName;
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const gameUrl = `${frontendUrl}/games/${game._id}`;
 
   // Get all players who aren't the submitter and aren't guest users

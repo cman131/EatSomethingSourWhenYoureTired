@@ -328,7 +328,7 @@ router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
     await game.populate('comments.commenter', PLAYER_POPULATE_FIELDS);
 
     // Send notifications to relevant users
-    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const gameUrl = `${frontendUrl}/games/${game._id}`;
     const commenterDisplayName = req.user.displayName;
 

@@ -76,7 +76,7 @@ const requireTournamentOwnerOrAdmin = async (req, res, next) => {
 
 // Helper function to send new tournament notifications to all users
 const sendNewTournamentNotifications = async (tournament) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const tournamentUrl = `${frontendUrl}/tournaments/${tournament._id}`;
   
   // Get all users in the system
@@ -207,7 +207,7 @@ const promoteWaitlistPlayers = async (tournament) => {
     return; // No spots available or no one on waitlist
   }
 
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const tournamentUrl = `${frontendUrl}/tournaments/${tournament._id}`;
 
   // Promote players from waitlist (FIFO - first in, first out)
@@ -286,7 +286,7 @@ const promoteWaitlistPlayers = async (tournament) => {
 
 // Helper function to send round pairing notifications to all active tournament players
 const sendRoundPairingNotifications = async (tournament, roundNumber) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const tournamentUrl = `${frontendUrl}/tournaments/${tournament._id}`;
   
   // Get all active (non-dropped) players

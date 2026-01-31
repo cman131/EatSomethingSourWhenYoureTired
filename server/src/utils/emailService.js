@@ -70,7 +70,7 @@ You can manage your email notification preferences by visiting your profile sett
 
 // Send password reset email
 const sendPasswordResetEmail = async (email, resetToken) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
   const signature = getEmailSignature(frontendUrl);
 
@@ -167,7 +167,7 @@ const sendPasswordResetEmail = async (email, resetToken) => {
 
 // Send password reset confirmation email
 const sendPasswordResetConfirmationEmail = async (email, displayName) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const loginUrl = `${frontendUrl}/login`;
   const signature = getEmailSignature(frontendUrl);
 
@@ -268,7 +268,7 @@ const sendPasswordResetConfirmationEmail = async (email, displayName) => {
 
 // Send new game notification email
 const sendNewGameNotificationEmail = async (email, displayName, gameId, submittedByDisplayName) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const gameUrl = `${frontendUrl}/games/${gameId}`;
   const signature = getEmailSignature(frontendUrl);
 
@@ -372,7 +372,7 @@ const sendNewGameNotificationEmail = async (email, displayName, gameId, submitte
 
 // Send new comment notification email
 const sendNewCommentNotificationEmail = async (email, displayName, gameId, commenterDisplayName, commentText) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const gameUrl = `${frontendUrl}/games/${gameId}`;
   const signature = getEmailSignature(frontendUrl);
 
@@ -473,7 +473,7 @@ const sendNewCommentNotificationEmail = async (email, displayName, gameId, comme
 
 // Send round pairing notification email
 const sendRoundPairingNotificationEmail = async (email, displayName, tournamentId, tournamentName, roundNumber) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const tournamentUrl = `${frontendUrl}/tournaments/${tournamentId}`;
   const signature = getEmailSignature(frontendUrl);
 
@@ -577,7 +577,7 @@ const sendRoundPairingNotificationEmail = async (email, displayName, tournamentI
 
 // Send new tournament notification email
 const sendNewTournamentNotificationEmail = async (email, displayName, tournamentId, tournamentName, tournamentDate) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const tournamentUrl = `${frontendUrl}/tournaments/${tournamentId}`;
   const signature = getEmailSignature(frontendUrl);
   
@@ -732,7 +732,7 @@ const sendEmail = async (transporter, mailOptions) => {
 
 // Send waitlist promotion notification email
 const sendWaitlistPromotionNotificationEmail = async (email, displayName, tournamentId, tournamentName) => {
-  const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const tournamentUrl = `${frontendUrl}/tournaments/${tournamentId}`;
   const signature = getEmailSignature(frontendUrl);
 

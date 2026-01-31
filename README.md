@@ -48,7 +48,6 @@ NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/mahjong-club
 JWT_SECRET=your-super-secret-jwt-key-here
 JWT_EXPIRE=7d
-CLIENT_URL=http://localhost:3000
 ```
 
 5. Start the server:
