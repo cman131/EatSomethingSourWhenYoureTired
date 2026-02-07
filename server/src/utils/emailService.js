@@ -586,7 +586,8 @@ const sendNewTournamentNotificationEmail = async (email, displayName, tournament
     month: 'long',
     day: 'numeric',
     hour: 'numeric',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/New_York'
   });
 
   const mailOptions = {
@@ -741,7 +742,8 @@ const sendTournamentUpdateNotificationEmail = async (email, displayName, tournam
     month: 'long',
     day: 'numeric',
     hour: 'numeric',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'America/New_York'
   });
 
   const mailOptions = {
