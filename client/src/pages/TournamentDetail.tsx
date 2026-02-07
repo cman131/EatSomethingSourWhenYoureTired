@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { tournamentsApi, gamesApi, Tournament } from '../services/api';
+import { tournamentsApi, gamesApi, Tournament, getRoundLabel } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ShareButton from '../components/ShareButton';
 import AddressDisplay from '../components/AddressDisplay';
@@ -230,7 +230,8 @@ const TournamentDetail: React.FC = () => {
   const handleEndRound = async () => {
     if (!id || !currentRoundToEnd.roundNumber) return;
 
-    if (!window.confirm(`Are you sure you want to end Round ${currentRoundToEnd.roundNumber}? This will calculate UMA scores and generate the next round if applicable.`)) {
+    const roundLabel = tournament ? getRoundLabel(currentRoundToEnd.roundNumber, tournament) : `Round ${currentRoundToEnd.roundNumber}`;
+    if (!window.confirm(`Are you sure you want to end ${roundLabel}? This will calculate UMA scores and generate the next round if applicable.`)) {
       return;
     }
 
@@ -258,6 +259,7 @@ const TournamentDetail: React.FC = () => {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
+    numberOfFinalsMatches?: number;
   }) => {
     if (!id) return;
     await tournamentsApi.updateTournament(id, data);
@@ -491,7 +493,7 @@ const TournamentDetail: React.FC = () => {
                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                 title={!allRoundsHaveGames ? 'All games must be verified before ending the round' : ''}
               >
-                {actionLoading ? 'Ending Round...' : `End Round ${currentRoundToEnd?.roundNumber}`}
+                {actionLoading ? 'Ending...' : (tournament && currentRoundToEnd ? `End ${getRoundLabel(currentRoundToEnd.roundNumber, tournament)}` : 'End Round')}
               </button>
             )}
           </div>

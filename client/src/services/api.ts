@@ -218,9 +218,24 @@ export interface Tournament {
   maxPlayers?: number | null;
   roundDurationMinutes?: number | null;
   startingPointValue?: 25000 | 30000;
+  numberOfFinalsMatches?: number;
   waitlist?: TournamentWaitlistEntry[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+/**
+ * Returns display label for a round (e.g. "Round 3" or "Finals 1 of 2").
+ */
+export function getRoundLabel(roundNumber: number, tournament: Tournament): string {
+  const activeCount = tournament.players?.filter((p) => !p.dropped).length ?? 0;
+  const maxRounds = Math.ceil(((activeCount - 4) / 12) + 1);
+  const numberOfFinals = tournament.numberOfFinalsMatches ?? 2;
+  if (roundNumber > maxRounds) {
+    const finalsIndex = roundNumber - maxRounds;
+    return `Finals ${finalsIndex} of ${numberOfFinals}`;
+  }
+  return `Round ${roundNumber}`;
 }
 
 // Yaku list matching server-side enum
@@ -581,6 +596,7 @@ export const tournamentsApi = {
     maxPlayers?: number;
     roundDurationMinutes?: number;
     startingPointValue?: 25000 | 30000;
+    numberOfFinalsMatches?: number;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments', {
       method: 'POST',
@@ -600,6 +616,7 @@ export const tournamentsApi = {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
+    numberOfFinalsMatches?: number;
     notifyParticipants?: boolean;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`, {

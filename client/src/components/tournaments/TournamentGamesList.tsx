@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Tournament, User, Game } from '../../services/api';
+import { Tournament, User, Game, getRoundLabel } from '../../services/api';
 import { CalendarIcon } from '@heroicons/react/24/outline';
 
 interface TournamentGamesListProps {
@@ -139,7 +139,7 @@ const TournamentGamesList: React.FC<TournamentGamesListProps> = ({ tournament, c
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="font-semibold text-gray-900">
-                      Round {gameEntry.roundNumber}
+                      {getRoundLabel(gameEntry.roundNumber, tournament)}
                     </span>
                     <span className="text-sm text-gray-600">
                       Table {gameEntry.tableNumber} • {gameEntry.seat}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TrophyIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { Tournament, User, tournamentsApi } from '../../services/api';
+import { Tournament, User, tournamentsApi, getRoundLabel } from '../../services/api';
 import UserDisplay from '../user/UserDisplay';
 
 interface StandingsProps {
@@ -179,7 +179,7 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
             </span>
             {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
               <span className="text-sm font-normal text-gray-500 ml-2">
-                (After Round {lastCompletedRound})
+                (After {getRoundLabel(lastCompletedRound, tournament)})
               </span>
             )}
           </h2>
@@ -208,7 +208,7 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
           </span>
           {lastCompletedRound && !isCompleted && tournament.status !== 'NotStarted' && (
             <span className="text-sm font-normal text-gray-500 ml-2">
-              (After Round {lastCompletedRound})
+              (After {getRoundLabel(lastCompletedRound, tournament)})
             </span>
           )}
         </h2>

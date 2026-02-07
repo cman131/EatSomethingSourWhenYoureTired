@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TableCellsIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { Tournament, User } from '../../services/api';
+import { Tournament, User, getRoundLabel } from '../../services/api';
 import UserDisplay from '../user/UserDisplay';
 
 interface CurrentRoundPairingProps {
@@ -162,7 +162,7 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
       </div>
       <div className="space-y-3">
         <div className="flex items-center gap-4 text-sm text-gray-600">
-          <span className="font-medium">Round {currentPairing.round}</span>
+          <span className="font-medium">{getRoundLabel(currentPairing.round, tournament)}</span>
           <span className="font-medium">Table {currentPairing.pairing.tableNumber}</span>
           {!tournament.isOnline && timeRemaining !== null && (
             <span className={`font-medium ${timeRemaining < 0 ? 'text-red-600' : ''}`}>

@@ -87,6 +87,7 @@ const TournamentSubmission: React.FC = () => {
   const [maxPlayers, setMaxPlayers] = useState('');
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('90');
   const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(25000);
+  const [numberOfFinalsMatches, setNumberOfFinalsMatches] = useState<1 | 2>(2);
 
   const { mutate: createTournament, loading, error } = useMutation(
     (tournamentData: {
@@ -101,6 +102,7 @@ const TournamentSubmission: React.FC = () => {
       maxPlayers?: number;
       roundDurationMinutes?: number;
       startingPointValue?: 25000 | 30000;
+      numberOfFinalsMatches?: number;
     }) => tournamentsApi.createTournament(tournamentData)
   );
 
@@ -251,6 +253,7 @@ const TournamentSubmission: React.FC = () => {
         maxPlayers?: number;
         roundDurationMinutes?: number;
         startingPointValue?: 25000 | 30000;
+        numberOfFinalsMatches?: number;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -259,6 +262,7 @@ const TournamentSubmission: React.FC = () => {
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
         startingPointValue: startingPointValue,
+        numberOfFinalsMatches: numberOfFinalsMatches,
       };
 
       // Add maxPlayers if provided
@@ -599,6 +603,22 @@ const TournamentSubmission: React.FC = () => {
               <option value={30000}>30,000</option>
             </select>
             <p className="mt-1 text-xs text-gray-500">The starting point value used for UMA calculations</p>
+          </div>
+
+          <div>
+            <label htmlFor="numberOfFinalsMatches" className="block text-sm font-medium text-gray-700 mb-2">
+              Number of finals matches
+            </label>
+            <select
+              id="numberOfFinalsMatches"
+              value={numberOfFinalsMatches}
+              onChange={(e) => setNumberOfFinalsMatches(Number(e.target.value) as 1 | 2)}
+              className="input-field"
+            >
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">How many finals games the top 4 will play (UMA resets to 0 before the first)</p>
           </div>
 
           <div>

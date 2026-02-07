@@ -115,6 +115,12 @@ const tournamentSchema = new mongoose.Schema({
     default: 30000,
     required: [true, 'Starting point value is required']
   },
+  numberOfFinalsMatches: {
+    type: Number,
+    default: 2,
+    min: 1,
+    max: 2
+  },
   players: [{
     player: {
       type: mongoose.Schema.Types.ObjectId,

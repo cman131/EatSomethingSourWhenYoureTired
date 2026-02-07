@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { tournamentsApi, gamesApi, Tournament, Game } from '../services/api';
+import { tournamentsApi, gamesApi, Tournament, Game, getRoundLabel } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { ArrowLeftIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -185,17 +185,6 @@ const TournamentGamesAdmin: React.FC = () => {
     }
   };
 
-  // Check if user is in the tournament
-  const isTournamentPlayer = React.useMemo(() => {
-    if (!user || !tournament) return false;
-    return tournament.players.some(
-      p => {
-        const playerId = typeof p.player === 'string' ? p.player : p.player?._id;
-        return playerId === user._id && !p.dropped;
-      }
-    );
-  }, [user, tournament]);
-
   // Check if user can manage tournament (admin or creator)
   const canManageTournament = React.useMemo(() => {
     if (!user || !tournament) return false;
@@ -285,7 +274,7 @@ const TournamentGamesAdmin: React.FC = () => {
           <div key={round.roundNumber} className="card">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Round {round.roundNumber}
+              {tournament ? getRoundLabel(round.roundNumber, tournament) : `Round ${round.roundNumber}`}
             </h2>
             <div className="space-y-6">
               {round.tables.map((tableData) => (

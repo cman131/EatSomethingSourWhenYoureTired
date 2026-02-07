@@ -522,7 +522,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, numberOfFinalsMatches } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -589,6 +589,18 @@ router.post('/', authenticateToken, async (req, res) => {
       tournamentData.startingPointValue = startingPointValue;
     }
 
+    // Add numberOfFinalsMatches if provided (1-2, schema default is 2)
+    if (numberOfFinalsMatches !== undefined) {
+      const num = parseInt(numberOfFinalsMatches, 10);
+      if (isNaN(num) || num < 1 || num > 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'numberOfFinalsMatches must be 1 or 2'
+        });
+      }
+      tournamentData.numberOfFinalsMatches = num;
+    }
+
     if (isOnlineTournament) {
       tournamentData.onlineLocation = onlineLocation.trim();
     } else {
@@ -640,7 +652,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, notifyParticipants } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, numberOfFinalsMatches, notifyParticipants } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -779,6 +791,17 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
         });
       }
       tournament.startingPointValue = startingPointValue;
+    }
+
+    if (numberOfFinalsMatches !== undefined) {
+      const num = parseInt(numberOfFinalsMatches, 10);
+      if (isNaN(num) || num < 1 || num > 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'numberOfFinalsMatches must be 1 or 2'
+        });
+      }
+      tournament.numberOfFinalsMatches = num;
     }
 
     await tournament.save();
@@ -1015,66 +1038,54 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       });
     }
     
-    // Check if this is the final 4 round
-    const isFinalRound = roundNumber === tournament.maxRounds + 1;
-    
-    if (isFinalRound) {
-      // For the final round, don't update UMA - just populate top4 array
-      // The final round should have exactly one pairing with one game
-      const finalPairing = round.pairings.find(p => p.game);
-      
-      if (finalPairing && finalPairing.game && finalPairing.game.players) {
-        // Sort players by rank (1st, 2nd, 3rd, 4th)
-        const sortedPlayers = [...finalPairing.game.players].sort((a, b) => a.rank - b.rank);
-        
-        // Populate top4 array with player IDs in order (1st to 4th)
-        tournament.top4 = sortedPlayers.map(gamePlayer => {
-          const playerId = gamePlayer.player;
-          // Handle both ObjectId and populated object cases
-          if (typeof playerId === 'string') {
-            return new mongoose.Types.ObjectId(playerId);
-          } else if (playerId && playerId._id) {
-            // Populated object
-            return typeof playerId._id === 'string' 
-              ? new mongoose.Types.ObjectId(playerId._id)
-              : playerId._id;
-          } else {
-            // Already an ObjectId
-            return playerId;
-          }
-        });
-        
-        tournament.markModified('top4');
-      }
-    } else {
-      // For regular rounds, update UMA as normal
-      for (const pairing of round.pairings) {
-        if (pairing.game && pairing.game.players) {
-          // Calculate uma for each player in this game
-          // Uma is typically calculated as: (player's score - 30,000) / 1000
-          // But this can vary by tournament rules
-          for (const gamePlayer of pairing.game.players) {
-            const playerId = gamePlayer.player.toString();
-            const tournamentPlayer = tournament.players.find(
-              p => p.player.toString() === playerId
-            );
-            
-            if (tournamentPlayer) {
-              // Calculate uma: (score - startingPointValue) / 1000
-              // This uses the tournament's configured starting point value
-              const startingPoint = tournament.startingPointValue || 30000; // Fallback to 30000 for backwards compatibility
-              const umaBase = (gamePlayer.score - startingPoint) / 1000;
-              // Rank uma adjustment: 1st = 30, 2nd = 10, 3rd = -10, 4th = -30
-              const rankUmaAdjustment = {
-                1: 30,
-                2: 10,
-                3: -10,
-                4: -30
-              }[gamePlayer.rank];
-              tournamentPlayer.uma = (tournamentPlayer.uma || 0) + umaBase + rankUmaAdjustment;
-            }
+    // For all rounds (including finals), update UMA from game results
+    for (const pairing of round.pairings) {
+      if (pairing.game && pairing.game.players) {
+        for (const gamePlayer of pairing.game.players) {
+          const playerId = gamePlayer.player.toString();
+          const tournamentPlayer = tournament.players.find(
+            p => p.player.toString() === playerId
+          );
+
+          if (tournamentPlayer) {
+            const startingPoint = tournament.startingPointValue || 30000;
+            const umaBase = (gamePlayer.score - startingPoint) / 1000;
+            const rankUmaAdjustment = {
+              1: 30,
+              2: 10,
+              3: -10,
+              4: -30
+            }[gamePlayer.rank];
+            tournamentPlayer.uma = (tournamentPlayer.uma || 0) + umaBase + rankUmaAdjustment;
           }
         }
+      }
+    }
+
+    // For finals rounds: set top4 only when this is the last finals match
+    const isFinalsRound = roundNumber > tournament.maxRounds;
+    const numberOfFinalsMatches = tournament.numberOfFinalsMatches ?? 2;
+    const finalsRoundsCompleted = roundNumber - tournament.maxRounds;
+
+    if (isFinalsRound && finalsRoundsCompleted >= numberOfFinalsMatches) {
+      const finalPairing = round.pairings.find(p => p.game);
+      if (finalPairing && finalPairing.game && finalPairing.game.players) {
+        // Determine top 4 by highest UMA among the 4 finals players (after all finals games)
+        const playerIdsWithUma = finalPairing.game.players.map(gamePlayer => {
+          const playerId = gamePlayer.player;
+          const idStr = typeof playerId === 'string' ? playerId : (playerId && playerId._id ? playerId._id.toString() : null);
+          const tournamentPlayer = idStr ? tournament.players.find(p => p.player.toString() === idStr) : null;
+          const uma = tournamentPlayer ? (tournamentPlayer.uma || 0) : 0;
+          const objectId = typeof playerId === 'string'
+            ? new mongoose.Types.ObjectId(playerId)
+            : (playerId && playerId._id
+              ? (typeof playerId._id === 'string' ? new mongoose.Types.ObjectId(playerId._id) : playerId._id)
+              : playerId);
+          return { objectId, uma };
+        });
+        const sortedByUma = playerIdsWithUma.sort((a, b) => b.uma - a.uma);
+        tournament.top4 = sortedByUma.map(entry => entry.objectId);
+        tournament.markModified('top4');
       }
     }
 
@@ -1132,15 +1143,24 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
           .filter(p => !p.dropped)
           .sort((a, b) => (b.uma || 0) - (a.uma || 0))
           .slice(0, 4);
-        
+
         if (activePlayers.length < 4) {
           // Not enough players for final 4 round, just end the tournament
           tournament.status = 'Completed';
         } else {
+          // Reset UMA to 0 for the 4 finalists before their first finals game
+          const finalistIds = new Set(activePlayers.map(p => p.player.toString()));
+          for (const tp of tournament.players) {
+            if (finalistIds.has(tp.player.toString())) {
+              tp.uma = 0;
+            }
+          }
+          tournament.markModified('players');
+
           // Create final 4 round with single pairing
           const seats = ['East', 'South', 'West', 'North'];
           const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
-          
+
           const finalPairing = {
             tableNumber: 1,
             players: activePlayers.map((playerEntry, index) => ({
@@ -1162,13 +1182,40 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
           sendRoundPairingNotifications(tournament, finalRoundNumber);
         }
       }
-      // If final round already exists, don't create it again - tournament will be completed when final round ends
-    } else if (roundNumber === tournament.maxRounds + 1) {
-      // This is the final 4 round, end the tournament
-      tournament.status = 'Completed';
-    } else {
-      // Round number is beyond final round (shouldn't happen), end the tournament
-      tournament.status = 'Completed';
+    } else if (roundNumber > tournament.maxRounds) {
+      // A finals round just ended
+      const numberOfFinalsMatchesVal = tournament.numberOfFinalsMatches ?? 2;
+      const finalsRoundsCompletedVal = roundNumber - tournament.maxRounds;
+
+      if (finalsRoundsCompletedVal < numberOfFinalsMatchesVal) {
+        // More finals matches to play: create next finals round with same 4 players
+        const firstFinalsRound = tournament.rounds.find(r => r.roundNumber === tournament.maxRounds + 1);
+        const firstFinalsPairing = firstFinalsRound && firstFinalsRound.pairings && firstFinalsRound.pairings[0];
+        if (firstFinalsPairing && firstFinalsPairing.players && firstFinalsPairing.players.length === 4) {
+          const nextFinalsRoundNumber = tournament.maxRounds + finalsRoundsCompletedVal + 1;
+          const seats = ['East', 'South', 'West', 'North'];
+          const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
+          const nextFinalsPairing = {
+            tableNumber: 1,
+            players: firstFinalsPairing.players.map((playerEntry, index) => ({
+              player: playerEntry.player,
+              seat: shuffledSeats[index]
+            })),
+            game: null
+          };
+          tournament.rounds.push({
+            roundNumber: nextFinalsRoundNumber,
+            startDate: new Date(),
+            pairings: [nextFinalsPairing]
+          });
+          tournament.markModified('rounds');
+          sendRoundPairingNotifications(tournament, nextFinalsRoundNumber);
+        } else {
+          tournament.status = 'Completed';
+        }
+      } else {
+        tournament.status = 'Completed';
+      }
     }
 
     // Round is complete
