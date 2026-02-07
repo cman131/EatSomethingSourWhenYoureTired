@@ -655,6 +655,12 @@ export const tournamentsApi = {
     });
   },
 
+  reconcileActiveRound: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/reconcile-active-round`, {
+      method: 'PUT',
+    });
+  },
+
   addPlayer: async (tournamentId: string, playerId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/players`, {
       method: 'POST',

@@ -247,6 +247,24 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleReconcileActiveRound = async () => {
+    if (!id) return;
+    if (!user?.isAdmin) {
+      setActionError('Only admins can reconcile the active round');
+      return;
+    }
+    try {
+      setActionLoading(true);
+      setActionError(null);
+      const response = await tournamentsApi.reconcileActiveRound(id);
+      setTournament(response.data.tournament);
+    } catch (err: any) {
+      setActionError(err?.message || 'Failed to reconcile active round');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleUpdateTournament = async (data: {
     name?: string;
     description?: string;
@@ -487,14 +505,26 @@ const TournamentDetail: React.FC = () => {
               </>
             )}
             {tournament.status === 'InProgress' && (
-              <button
-                onClick={handleEndRound}
-                disabled={actionLoading || !allRoundsHaveGames}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                title={!allRoundsHaveGames ? 'All games must be verified before ending the round' : ''}
-              >
-                {actionLoading ? 'Ending...' : (tournament && currentRoundToEnd ? `End ${getRoundLabel(currentRoundToEnd.roundNumber, tournament)}` : 'End Round')}
-              </button>
+              <>
+                {user?.isAdmin && currentRoundToEnd && (
+                  <button
+                    onClick={handleReconcileActiveRound}
+                    disabled={actionLoading}
+                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Replace dropped players with filler users in the current round's matchups"
+                  >
+                    {actionLoading ? 'Reconciling...' : 'Reconcile active round'}
+                  </button>
+                )}
+                <button
+                  onClick={handleEndRound}
+                  disabled={actionLoading || !allRoundsHaveGames}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!allRoundsHaveGames ? 'All games must be verified before ending the round' : ''}
+                >
+                  {actionLoading ? 'Ending...' : (tournament && currentRoundToEnd ? `End ${getRoundLabel(currentRoundToEnd.roundNumber, tournament)}` : 'End Round')}
+                </button>
+              </>
             )}
           </div>
         </div>

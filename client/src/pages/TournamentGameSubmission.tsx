@@ -91,7 +91,7 @@ const TournamentGameSubmission: React.FC = () => {
           return {
             player: playerId || '',
             playerName: displayName,
-            score: 25000,
+            score: tournament.startingPointValue ?? 30000,
             position: seatToPosition[playerEntry.seat] || 1,
             seat: playerEntry.seat,
           };

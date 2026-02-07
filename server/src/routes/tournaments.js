@@ -194,6 +194,63 @@ const replacePlayerInPairingsWithFiller = async (tournament, playerId) => {
   }
 };
 
+// Helper function to replace a player in a single round's pairings with a filler player
+const replacePlayerInRoundWithFiller = async (tournament, round, playerId) => {
+  if (!round.pairings || round.pairings.length === 0) {
+    return;
+  }
+  let fillerNumber = 1;
+  let fillerUser = null;
+
+  // Find or create a filler user that is not already in the tournament
+  while (!fillerUser) {
+    let candidateUser = await User.findOne({
+      displayName: `Filler ${fillerNumber}`,
+      isGuest: true
+    });
+
+    if (!candidateUser) {
+      candidateUser = new User({
+        displayName: `Filler ${fillerNumber}`,
+        isGuest: true,
+        email: `filler.${fillerNumber}@guest.local`
+      });
+      await candidateUser.save();
+    }
+
+    const alreadyInTournament = tournament.rounds.flatMap(r => r.pairings).flatMap(p => p.players).map(p => p.player.toString()).includes(candidateUser._id.toString());
+
+    if (!alreadyInTournament) {
+      fillerUser = candidateUser;
+    } else {
+      fillerNumber++;
+    }
+  }
+
+  let pairingsModified = false;
+
+  for (const pairing of round.pairings) {
+    if (pairing.game) continue;
+
+    const playerIndex = pairing.players.findIndex(p =>
+      p.player.toString() === playerId.toString()
+    );
+
+    if (playerIndex !== -1) {
+      const seat = pairing.players[playerIndex].seat;
+      pairing.players[playerIndex] = {
+        player: fillerUser._id,
+        seat: seat
+      };
+      pairingsModified = true;
+    }
+  }
+
+  if (pairingsModified) {
+    tournament.markModified('rounds');
+  }
+};
+
 // Helper function to promote waitlist players when spots open up
 const promoteWaitlistPlayers = async (tournament) => {
   if (!tournament.maxPlayers || tournament.status !== 'NotStarted') {
@@ -1293,6 +1350,64 @@ router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId(
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to reset round pairings'
+    });
+  }
+});
+
+// @route   PUT /api/tournaments/:id/reconcile-active-round
+// @desc    Replace dropped players with filler users in the active round's matchups (Admin only)
+// @access  Private (Admin only)
+router.put('/:id/reconcile-active-round', authenticateToken, validateMongoId('id'), requireAdmin, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    const roundsWithPairings = (tournament.rounds || [])
+      .filter(r => r.pairings && r.pairings.length > 0)
+      .sort((a, b) => b.roundNumber - a.roundNumber);
+
+    const activeRound = roundsWithPairings[0];
+
+    if (!activeRound) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active round with pairings'
+      });
+    }
+
+    const droppedPlayerIds = (tournament.players || [])
+      .filter(p => p.dropped)
+      .map(p => (p.player && p.player.toString ? p.player.toString() : String(p.player)));
+
+    for (const playerId of droppedPlayerIds) {
+      await replacePlayerInRoundWithFiller(tournament, activeRound, playerId);
+    }
+
+    await tournament.save();
+
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
+
+    res.json({
+      success: true,
+      message: 'Active round reconciled successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Reconcile active round error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to reconcile active round'
     });
   }
 });
