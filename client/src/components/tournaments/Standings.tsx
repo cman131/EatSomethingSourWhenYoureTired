@@ -243,7 +243,7 @@ const Standings: React.FC<StandingsProps> = ({ tournament, currentUser, onUpdate
                 />
               </div>
               <div className="flex items-center gap-3">
-                {tournament.status !== 'NotStarted' && (
+                {tournament.status !== 'NotStarted' && (tournament.status !== 'Completed' || playerEntry.rank <= 4) && (
                   <div className="text-right">
                     <div className="text-lg font-bold text-gray-900">
                       {playerEntry.uma > 0 ? '+' : ''}{playerEntry.uma.toFixed(1)}
