@@ -600,6 +600,7 @@ export const tournamentsApi = {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
+    notifyParticipants?: boolean;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`, {
       method: 'PUT',

@@ -19,6 +19,7 @@ interface EditTournamentModalProps {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
+    notifyParticipants?: boolean;
   }) => Promise<void>;
   tournament: Tournament | null;
 }
@@ -106,6 +107,8 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [maxPlayers, setMaxPlayers] = useState<string>('');
   const [roundDurationMinutes, setRoundDurationMinutes] = useState<string>('90');
   const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(30000);
+  const [notifyParticipants, setNotifyParticipants] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'settings'>('details');
 
   // Initialize form when modal opens or tournament changes
   useEffect(() => {
@@ -141,9 +144,31 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setMaxPlayers(tournament.maxPlayers ? tournament.maxPlayers.toString() : '');
       setRoundDurationMinutes(tournament.roundDurationMinutes ? tournament.roundDurationMinutes.toString() : '');
       setStartingPointValue(tournament.startingPointValue || 30000);
+      setNotifyParticipants(false);
+      setActiveTab('details');
       setError(null);
     }
   }, [isOpen, tournament]);
+
+  // Detect if address or scheduled date changed (for optional notify checkbox)
+  const addressOrDateChanged = React.useMemo(() => {
+    if (!tournament) return false;
+    const prevDateMs = tournament.date ? new Date(tournament.date).getTime() : null;
+    const currDateMs = date ? date.getTime() : null;
+    const dateChanged = prevDateMs !== currDateMs;
+    const addressChanged = isOnline
+      ? (tournament.onlineLocation || '').trim() !== (onlineLocation || '').trim()
+      : (() => {
+          const loc = tournament.location;
+          if (!loc) return !!(address.streetAddress?.trim() || address.city?.trim() || address.state?.trim() || address.zipCode?.trim());
+          return (loc.streetAddress || '').trim() !== (address.streetAddress || '').trim()
+            || (loc.addressLine2 || '').trim() !== (address.addressLine2 || '').trim()
+            || (loc.city || '').trim() !== (address.city || '').trim()
+            || (loc.state || '').trim() !== (address.state || '').trim()
+            || (loc.zipCode || '').trim() !== (address.zipCode || '').trim();
+        })();
+    return dateChanged || addressChanged;
+  }, [tournament, date, isOnline, onlineLocation, address]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -267,6 +292,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         maxPlayers?: number | null;
         roundDurationMinutes?: number | null;
         startingPointValue?: 25000 | 30000;
+        notifyParticipants?: boolean;
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -303,6 +329,10 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
           state: address.state.trim().toUpperCase(),
           zipCode: address.zipCode.trim()
         };
+      }
+
+      if (addressOrDateChanged && notifyParticipants) {
+        updateData.notifyParticipants = true;
       }
 
       await onSave(updateData);
@@ -348,7 +378,36 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
               </div>
             )}
 
+            <div className="border-b border-gray-200 mb-4">
+              <nav className="-mb-px flex gap-6" aria-label="Tabs">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('details')}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    activeTab === 'details'
+                      ? 'border-primary-500 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('settings')}
+                  className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    activeTab === 'settings'
+                      ? 'border-primary-500 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Rules & Settings
+                </button>
+              </nav>
+            </div>
+
             <div className="space-y-4">
+              {activeTab === 'details' && (
+                <>
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                   Tournament Name <span className="text-red-500">*</span>
@@ -578,6 +637,24 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                 )}
               </div>
 
+              {addressOrDateChanged && (
+                <div className="mb-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={notifyParticipants}
+                      onChange={(e) => setNotifyParticipants(e.target.checked)}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                    <span className="text-sm text-gray-700">Notify all participants of the address or date change</span>
+                  </label>
+                </div>
+              )}
+                </>
+              )}
+
+              {activeTab === 'settings' && (
+                <>
               {!isOnline && (
                 <div>
                   <label htmlFor="roundDurationMinutes" className="block text-sm font-medium text-gray-700 mb-2">
@@ -726,6 +803,8 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
 

@@ -8,7 +8,7 @@ const { validateMongoId, validateGameCreation } = require('../middleware/validat
 const { authenticateToken } = require('../middleware/auth');
 const { generateRoundPairings } = require('../utils/roundGenerationService');
 const { createGame } = require('../utils/gameService');
-const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail } = require('../utils/emailService');
+const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -340,6 +340,67 @@ const sendRoundPairingNotifications = async (tournament, roundNumber) => {
   });
 };
 
+// Helper to send tournament update (date/location changed) notifications to all participants
+const sendTournamentUpdateNotifications = async (tournament) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const tournamentUrl = `${frontendUrl}/tournaments/${tournament._id}`;
+
+  const locationSummary = tournament.isOnline
+    ? `Online: ${tournament.onlineLocation || ''}`
+    : tournament.location
+      ? [tournament.location.streetAddress, tournament.location.addressLine2, tournament.location.city, tournament.location.state, tournament.location.zipCode].filter(Boolean).join(', ')
+      : '';
+
+  const participantIds = [
+    ...tournament.players.filter(p => !p.dropped).map(p => p.player),
+    ...(tournament.waitlist || []).map(w => w.player)
+  ];
+
+  if (participantIds.length === 0) return;
+
+  Promise.all(
+    participantIds.map(async (playerId) => {
+      try {
+        const player = await User.findById(playerId);
+        if (!player) return;
+
+        const prefs = player.notificationPreferences || {};
+        const emailEnabled = prefs.emailNotificationsEnabled !== false;
+        const newTournamentNotificationsEnabled = prefs.emailNotificationsForNewTournaments !== false;
+
+        if (emailEnabled && newTournamentNotificationsEnabled) {
+          try {
+            await sendTournamentUpdateNotificationEmail(
+              player.email,
+              player.displayName,
+              tournament._id.toString(),
+              tournament.name,
+              tournament.date,
+              locationSummary
+            );
+          } catch (emailError) {
+            console.error(`Failed to send tournament update email to ${player.email}:`, emailError);
+          }
+        }
+
+        player.notifications = player.notifications || [];
+        player.notifications.push({
+          name: 'Tournament Update',
+          description: `The date or location for "${tournament.name}" has been updated.`,
+          type: 'Other',
+          url: tournamentUrl
+        });
+
+        await player.save();
+      } catch (playerError) {
+        console.error(`Failed to process tournament update notification for player ${playerId}:`, playerError);
+      }
+    })
+  ).catch(error => {
+    console.error('Error processing tournament update notifications:', error);
+  });
+};
+
 // @route   GET /api/tournaments
 // @desc    Get all tournaments with pagination
 // @access  Public
@@ -579,7 +640,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, notifyParticipants } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -589,6 +650,17 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
         message: 'Tournament not found'
       });
     }
+
+    // Capture previous date and address (before updates) for optional participant notifications
+    const prevDateMs = tournament.date ? new Date(tournament.date).getTime() : null;
+    const prevOnlineLocation = tournament.isOnline ? (tournament.onlineLocation || '') : null;
+    const prevLocation = !tournament.isOnline && tournament.location ? {
+      streetAddress: tournament.location.streetAddress || '',
+      addressLine2: tournament.location.addressLine2 || '',
+      city: tournament.location.city || '',
+      state: tournament.location.state || '',
+      zipCode: tournament.location.zipCode || ''
+    } : null;
 
     // Update fields if provided
     if (name !== undefined) {
@@ -710,6 +782,33 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
     }
 
     await tournament.save();
+
+    // Send update notifications only if user opted in and address or scheduled date/time actually changed
+    if (notifyParticipants === true) {
+      const newDateMs = tournament.date ? new Date(tournament.date).getTime() : null;
+      const dateChanged = prevDateMs !== newDateMs;
+      let addressChanged = false;
+      if (tournament.isOnline) {
+        addressChanged = (prevOnlineLocation || '') !== (tournament.onlineLocation || '').trim();
+      } else if (tournament.location) {
+        const loc = tournament.location;
+        if (!prevLocation) {
+          addressChanged = !!(loc.streetAddress || loc.city || loc.state || loc.zipCode);
+        } else {
+          addressChanged =
+            (prevLocation.streetAddress || '') !== (loc.streetAddress || '') ||
+            (prevLocation.addressLine2 || '') !== (loc.addressLine2 || '') ||
+            (prevLocation.city || '') !== (loc.city || '') ||
+            (prevLocation.state || '') !== (loc.state || '') ||
+            (prevLocation.zipCode || '') !== (loc.zipCode || '');
+        }
+      } else if (prevLocation) {
+        addressChanged = true;
+      }
+      if (dateChanged || addressChanged) {
+        sendTournamentUpdateNotifications(tournament);
+      }
+    }
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
