@@ -1,4 +1,40 @@
 const mongoose = require('mongoose');
+const { computePlayerUmaMap } = require('../utils/tournamentUma');
+
+const playerEntrySchema = new mongoose.Schema({
+  player: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  dropped: {
+    type: Boolean,
+    default: false
+  }
+}, { _id: false });
+
+playerEntrySchema.virtual('uma').get(function() {
+  const tournament = this.parent();
+  if (!tournament) return 0;
+  const raw = this.player;
+  const playerId = raw == null ? null : (typeof raw === 'string' ? raw : (raw._id != null ? raw._id.toString() : raw.toString()));
+  if (!playerId) return 0;
+  if (!tournament._cachedUmaMap) {
+    tournament._cachedUmaMap = computePlayerUmaMap(tournament);
+  }
+  return tournament._cachedUmaMap.get(playerId) ?? 0;
+});
+playerEntrySchema.virtual('finalsUma').get(function() {
+  const tournament = this.parent();
+  if (!tournament) return 0;
+  const raw = this.player;
+  const playerId = raw == null ? null : (typeof raw === 'string' ? raw : (raw._id != null ? raw._id.toString() : raw.toString()));
+  if (!playerId) return 0;
+  if (!tournament._cachedFinalsUmaMap) {
+    tournament._cachedFinalsUmaMap = computePlayerUmaMap(tournament, { finalsOnly: true });
+  }
+  return tournament._cachedFinalsUmaMap.get(playerId) ?? 0;
+});
 
 const tournamentSchema = new mongoose.Schema({
   name: {
@@ -121,21 +157,7 @@ const tournamentSchema = new mongoose.Schema({
     min: 1,
     max: 2
   },
-  players: [{
-    player: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    uma: {
-      type: Number,
-      default: 0
-    },
-    dropped: {
-      type: Boolean,
-      default: false
-    }
-  }],
+  players: [playerEntrySchema],
   waitlist: [{
     player: {
       type: mongoose.Schema.Types.ObjectId,
@@ -185,6 +207,22 @@ const tournamentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  umaPenalties: [{
+    amount: {
+      type: Number,
+      required: true
+    },
+    player: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: ''
+    }
+  }]
 }, {
   timestamps: true
 });
@@ -305,21 +343,22 @@ tournamentSchema.pre('save', function(next) {
   next();
 });
 
-// Ensure populated User fields go through their toJSON method
+// Ensure populated User fields go through their toJSON method; include virtuals (e.g. players[].uma)
 tournamentSchema.methods.toJSON = function() {
-  const tournamentObject = this.toObject();
-  
+  const tournamentObject = this.toObject({ virtuals: true });
+  delete tournamentObject._cachedUmaMap;
+  delete tournamentObject._cachedFinalsUmaMap;
+  delete tournamentObject._cachedFinalsUmaMap;
+
   // Handle players array - check if player fields are populated
   if (this.players && Array.isArray(this.players)) {
     tournamentObject.players = this.players.map((player, index) => {
       const playerObj = tournamentObject.players[index];
+      const out = { ...playerObj };
       if (player.player && player.player.toJSON && typeof player.player.toJSON === 'function') {
-        return {
-          ...playerObj,
-          player: player.player.toJSON()
-        };
+        out.player = player.player.toJSON();
       }
-      return playerObj;
+      return out;
     });
   }
   

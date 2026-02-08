@@ -183,6 +183,7 @@ export interface Tile {
 export interface TournamentPlayer {
   player: User;
   uma: number;
+  finalsUma?: number;
   dropped: boolean;
 }
 
@@ -220,6 +221,7 @@ export interface Tournament {
   startingPointValue?: 25000 | 30000;
   numberOfFinalsMatches?: number;
   waitlist?: TournamentWaitlistEntry[];
+  umaPenalties?: { amount: number; player: string; description: string }[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -478,6 +480,16 @@ export const gamesApi = {
     });
   },
 
+  updateGameScores: async (
+    gameId: string,
+    players: Array<{ player: string; score: number; position: number }>
+  ) => {
+    return apiRequest<ApiResponse<{ game: Game }>>(`/games/${gameId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ players }),
+    });
+  },
+
   deleteGame: async (gameId: string) => {
     return apiRequest<ApiResponse<null>>(`/games/${gameId}`, {
       method: 'DELETE',
@@ -672,6 +684,20 @@ export const tournamentsApi = {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/players/${playerId}/kick`, {
       method: 'PUT',
     });
+  },
+
+  applyUmaPenalty: async (
+    tournamentId: string,
+    playerId: string,
+    payload: { amount: number; description?: string }
+  ) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(
+      `/tournaments/${tournamentId}/players/${playerId}/uma-penalty`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
   },
 
   submitTournamentGame: async (

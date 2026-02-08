@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import UserDisplay from '../components/user/UserDisplay';
 import ShareButton from '../components/ShareButton';
-import { ArrowLeftIcon, TrophyIcon, CheckCircleIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, TrophyIcon, CheckCircleIcon, ChatBubbleLeftIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import EditGameScoresModal from '../components/EditGameScoresModal';
 
 const GameDetail: React.FC = () => {
   useRequireAuth();
@@ -19,6 +20,7 @@ const GameDetail: React.FC = () => {
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [isEditScoresModalOpen, setIsEditScoresModalOpen] = useState(false);
   const PlayerSeats = ['East', 'South', 'West', 'North'];
 
   const getOrdinalPlace = (index: number): string => {
@@ -179,6 +181,16 @@ const GameDetail: React.FC = () => {
               })}
             </h2>
             <div className="flex items-center gap-3">
+              {user?.isAdmin === true && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditScoresModalOpen(true)}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <PencilSquareIcon className="h-5 w-5" />
+                  Edit
+                </button>
+              )}
               {canVerify && (
                 <div className="flex flex-col items-end gap-2">
                   <button
@@ -459,6 +471,16 @@ const GameDetail: React.FC = () => {
           )}
         </div>
       </div>
+
+      <EditGameScoresModal
+        isOpen={isEditScoresModalOpen}
+        onClose={() => setIsEditScoresModalOpen(false)}
+        game={game}
+        onSave={(updatedGame) => {
+          setGame(updatedGame);
+          setIsEditScoresModalOpen(false);
+        }}
+      />
     </div>
   );
 };

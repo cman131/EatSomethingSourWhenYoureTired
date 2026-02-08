@@ -420,6 +420,109 @@ router.post('/:id/comments', validateMongoId('id'), async (req, res) => {
   }
 });
 
+// @route   PATCH /api/games/:id
+// @desc    Update game scores (admin only)
+// @access  Private (Admin)
+router.patch('/:id', validateMongoId('id'), async (req, res) => {
+  try {
+    if (!req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admins can edit game scores'
+      });
+    }
+
+    const game = await Game.findById(req.params.id);
+
+    if (!game) {
+      return res.status(404).json({
+        success: false,
+        message: 'Game not found'
+      });
+    }
+
+    const { players: playersBody } = req.body;
+
+    if (!Array.isArray(playersBody) || playersBody.length !== 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'Request must include exactly 4 players'
+      });
+    }
+
+    const existingPlayerIds = new Set(
+      game.players.map(p => p.player.toString())
+    );
+    const bodyPlayerIds = new Set(
+      playersBody.map(p => (p.player && p.player.toString ? p.player.toString() : String(p.player)))
+    );
+
+    if (existingPlayerIds.size !== 4 || bodyPlayerIds.size !== 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid players array'
+      });
+    }
+
+    for (const id of bodyPlayerIds) {
+      if (!existingPlayerIds.has(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Player IDs must match the existing game players'
+        });
+      }
+    }
+
+    const validPositions = new Set([1, 2, 3, 4]);
+    for (const p of playersBody) {
+      if (typeof p.score !== 'number' || !Number.isFinite(p.score)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Each player must have a valid numeric score'
+        });
+      }
+      if (!validPositions.has(Number(p.position))) {
+        return res.status(400).json({
+          success: false,
+          message: 'Each player must have position 1, 2, 3, or 4'
+        });
+      }
+    }
+
+    for (const reqPlayer of playersBody) {
+      const playerId = reqPlayer.player.toString ? reqPlayer.player.toString() : String(reqPlayer.player);
+      const gamePlayer = game.players.find(
+        p => p.player.toString() === playerId
+      );
+      if (gamePlayer) {
+        gamePlayer.score = reqPlayer.score;
+        gamePlayer.position = reqPlayer.position;
+      }
+    }
+    game.markModified('players');
+
+    await game.save();
+
+    await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
+    await game.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await game.populate('verifiedBy', PLAYER_POPULATE_FIELDS);
+
+    res.json({
+      success: true,
+      message: 'Game scores updated successfully',
+      data: {
+        game
+      }
+    });
+  } catch (error) {
+    console.error('Update game scores error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update game scores'
+    });
+  }
+});
+
 // @route   DELETE /api/games/:id
 // @desc    Delete a game (only by submitter or admin)
 // @access  Private

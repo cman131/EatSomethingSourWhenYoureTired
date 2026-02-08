@@ -10,6 +10,15 @@ const { generateRoundPairings } = require('../utils/roundGenerationService');
 const { createGame } = require('../utils/gameService');
 const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
 
+/** Populate rounds.pairings.game when tournament has rounds so player.uma virtual can compute from games. */
+async function prepareTournamentForResponse(tournament) {
+  if (!tournament) return tournament;
+  if (tournament.status !== 'NotStarted' && tournament.rounds && tournament.rounds.length > 0) {
+    await tournament.populate('rounds.pairings.game');
+  }
+  return tournament;
+}
+
 const router = express.Router();
 
 // Admin middleware - requires user to have isAdmin = true
@@ -559,6 +568,8 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
     // Always populate createdBy
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       data: {
@@ -687,6 +698,8 @@ router.post('/', authenticateToken, async (req, res) => {
     if (daysUntilTournament >= 7) {
       sendNewTournamentNotifications(tournament);
     }
+
+    await prepareTournamentForResponse(tournament);
 
     res.status(201).json({
       success: true,
@@ -894,6 +907,8 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.status(200).json({
       success: true,
       message: 'Tournament updated successfully',
@@ -989,6 +1004,8 @@ router.put('/:id/start', authenticateToken, validateMongoId('id'), requireTourna
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       message: 'Tournament started successfully',
@@ -1074,52 +1091,26 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       });
     }
 
-    // Update player uma scores based on game results
-    // Populate games to get scores
+    // Populate games to check verification and for UMA computation
     await tournament.populate('rounds.pairings.game');
-    
+
     // Check if all games are verified
     const unverifiedPairings = round.pairings.filter(p => {
       if (!p.game) return true;
-      // Check if game is verified (handle both populated object and ObjectId)
       if (typeof p.game === 'object' && p.game !== null) {
         return !p.game.verified;
       }
-      return true; // If game is not populated, consider it unverified
+      return true;
     });
-    
+
     if (unverifiedPairings.length > 0) {
       return res.status(400).json({
         success: false,
         message: `Cannot end round: ${unverifiedPairings.length} game(s) are not verified`
       });
     }
-    
-    // For all rounds (including finals), update UMA from game results
-    for (const pairing of round.pairings) {
-      if (pairing.game && pairing.game.players) {
-        for (const gamePlayer of pairing.game.players) {
-          const playerId = gamePlayer.player.toString();
-          const tournamentPlayer = tournament.players.find(
-            p => p.player.toString() === playerId
-          );
 
-          if (tournamentPlayer) {
-            const startingPoint = tournament.startingPointValue || 30000;
-            const umaBase = (gamePlayer.score - startingPoint) / 1000;
-            const rankUmaAdjustment = {
-              1: 30,
-              2: 10,
-              3: -10,
-              4: -30
-            }[gamePlayer.rank];
-            tournamentPlayer.uma = (tournamentPlayer.uma || 0) + umaBase + rankUmaAdjustment;
-          }
-        }
-      }
-    }
-
-    // For finals rounds: set top4 only when this is the last finals match
+    // For finals rounds: set top4 only when this is the last finals match (order by finals-only UMA)
     const isFinalsRound = roundNumber > tournament.maxRounds;
     const numberOfFinalsMatches = tournament.numberOfFinalsMatches ?? 2;
     const finalsRoundsCompleted = roundNumber - tournament.maxRounds;
@@ -1127,17 +1118,15 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
     if (isFinalsRound && finalsRoundsCompleted >= numberOfFinalsMatches) {
       const finalPairing = round.pairings.find(p => p.game);
       if (finalPairing && finalPairing.game && finalPairing.game.players) {
-        // Determine top 4 by highest UMA among the 4 finals players (after all finals games)
         const playerIdsWithUma = finalPairing.game.players.map(gamePlayer => {
           const playerId = gamePlayer.player;
-          const idStr = typeof playerId === 'string' ? playerId : (playerId && playerId._id ? playerId._id.toString() : null);
-          const tournamentPlayer = idStr ? tournament.players.find(p => p.player.toString() === idStr) : null;
-          const uma = tournamentPlayer ? (tournamentPlayer.uma || 0) : 0;
-          const objectId = typeof playerId === 'string'
-            ? new mongoose.Types.ObjectId(playerId)
-            : (playerId && playerId._id
-              ? (typeof playerId._id === 'string' ? new mongoose.Types.ObjectId(playerId._id) : playerId._id)
-              : playerId);
+          const idStr = typeof playerId === 'string' ? playerId : (playerId && playerId._id ? playerId._id.toString() : playerId && playerId.toString && playerId.toString());
+          const tournamentPlayer = idStr ? tournament.players.find(p => (p.player && p.player.toString ? p.player.toString() : String(p.player)) === idStr) : null;
+          if (!tournamentPlayer) {
+            console.error(`Player ${idStr} not found in tournament ${tournament._id}`);
+          }
+          const uma = tournamentPlayer ? tournamentPlayer.finalsUma : 0;
+          const objectId = new mongoose.Types.ObjectId(idStr);
           return { objectId, uma };
         });
         const sortedByUma = playerIdsWithUma.sort((a, b) => b.uma - a.uma);
@@ -1193,27 +1182,18 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       // This is the last regular round - create the final 4 round
       const finalRoundNumber = tournament.maxRounds + 1;
       const finalRoundExists = tournament.rounds.some(r => r.roundNumber === finalRoundNumber);
-      
+
       if (!finalRoundExists) {
-        // Get top 4 players by UMA (non-dropped only)
+        // Get top 4 players by UMA (non-dropped only), using each player's uma virtual
         const activePlayers = tournament.players
           .filter(p => !p.dropped)
-          .sort((a, b) => (b.uma || 0) - (a.uma || 0))
+          .sort((a, b) => (b.uma ?? 0) - (a.uma ?? 0))
           .slice(0, 4);
 
         if (activePlayers.length < 4) {
           // Not enough players for final 4 round, just end the tournament
           tournament.status = 'Completed';
         } else {
-          // Reset UMA to 0 for the 4 finalists before their first finals game
-          const finalistIds = new Set(activePlayers.map(p => p.player.toString()));
-          for (const tp of tournament.players) {
-            if (finalistIds.has(tp.player.toString())) {
-              tp.uma = 0;
-            }
-          }
-          tournament.markModified('players');
-
           // Create final 4 round with single pairing
           const seats = ['East', 'South', 'West', 'North'];
           const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
@@ -1338,6 +1318,8 @@ router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId(
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       message: `Round ${roundNumber} pairings reset successfully`,
@@ -1396,6 +1378,8 @@ router.put('/:id/reconcile-active-round', authenticateToken, validateMongoId('id
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       message: 'Active round reconciled successfully',
@@ -1446,7 +1430,9 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
         await tournament.save();
         
         await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
-        
+
+        await prepareTournamentForResponse(tournament);
+
         return res.json({
           success: true,
           message: 'Re-joined tournament successfully',
@@ -1455,7 +1441,7 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
           }
         });
       }
-      
+
       return res.status(400).json({
         success: false,
         message: 'You are already signed up for this tournament'
@@ -1489,6 +1475,8 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
 
       await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
 
+      await prepareTournamentForResponse(tournament);
+
       return res.status(201).json({
         success: true,
         message: 'Tournament is full. You have been added to the waitlist.',
@@ -1502,13 +1490,14 @@ router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req,
     // Add player to tournament
     tournament.players.push({
       player: req.user._id,
-      uma: 0,
       dropped: false
     });
 
     await tournament.save();
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
 
     res.status(201).json({
       success: true,
@@ -1586,7 +1575,9 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
         
         await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
         await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
-        
+
+        await prepareTournamentForResponse(tournament);
+
         return res.json({
           success: true,
           message: 'Player re-added to tournament successfully',
@@ -1595,7 +1586,7 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
           }
         });
       }
-      
+
       return res.status(400).json({
         success: false,
         message: 'Player is already in the tournament'
@@ -1628,6 +1619,8 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
       await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
       await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
 
+      await prepareTournamentForResponse(tournament);
+
       return res.status(201).json({
         success: true,
         message: 'Tournament is full. Player has been added to the waitlist.',
@@ -1641,7 +1634,6 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
     // Add player to tournament
     tournament.players.push({
       player: playerId,
-      uma: 0,
       dropped: false
     });
 
@@ -1649,6 +1641,8 @@ router.post('/:id/players', authenticateToken, validateMongoId('id'), requireAdm
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
 
     res.status(201).json({
       success: true,
@@ -1729,6 +1723,8 @@ router.put('/:id/players/:playerId/kick', authenticateToken, validateMongoId('id
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       message: 'Player removed from tournament successfully',
@@ -1741,6 +1737,73 @@ router.put('/:id/players/:playerId/kick', authenticateToken, validateMongoId('id
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to remove player from tournament'
+    });
+  }
+});
+
+// @route   POST /api/tournaments/:id/players/:playerId/uma-penalty
+// @desc    Apply UMA penalty to a player (Creator or Admin only)
+// @access  Private (Creator or Admin)
+router.post('/:id/players/:playerId/uma-penalty', authenticateToken, validateMongoId('id'), validateMongoId('playerId'), requireTournamentOwnerOrAdmin, async (req, res) => {
+  try {
+    const { amount, description } = req.body;
+
+    if (typeof amount !== 'number' || Number.isNaN(amount)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Penalty amount must be a number'
+      });
+    }
+
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    const playerEntry = tournament.players.find(
+      p => p.player.toString() === req.params.playerId
+    );
+
+    if (!playerEntry) {
+      return res.status(404).json({
+        success: false,
+        message: 'Player not found in tournament'
+      });
+    }
+
+    if (!tournament.umaPenalties) {
+      tournament.umaPenalties = [];
+    }
+    tournament.umaPenalties.push({
+      amount,
+      player: req.params.playerId,
+      description: typeof description === 'string' ? description.trim() : ''
+    });
+    tournament.markModified('umaPenalties');
+    await tournament.save();
+
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
+
+    res.json({
+      success: true,
+      message: 'UMA penalty applied successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Apply UMA penalty error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to apply UMA penalty'
     });
   }
 });
@@ -1800,6 +1863,8 @@ router.put('/:id/drop', authenticateToken, validateMongoId('id'), async (req, re
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
 
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       message: 'Dropped from tournament successfully',
@@ -1851,6 +1916,8 @@ router.put('/:id/waitlist/drop', authenticateToken, validateMongoId('id'), async
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
 
     res.json({
       success: true,
@@ -2031,8 +2098,11 @@ router.post('/:id/games', authenticateToken, validateMongoId('id'), validateGame
     await tournament.save();
 
     // Populate tournament before sending response (game is already populated by createGame)
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
 
     res.status(201).json({
       success: true,
