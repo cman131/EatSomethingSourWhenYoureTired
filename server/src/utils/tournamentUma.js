@@ -15,7 +15,7 @@ function computePlayerUmaMap(tournament, finalsOnly = false) {
   }
 
   for (const round of tournament.rounds) {
-    if (finalsOnly && round.roundNumber <= maxRounds) continue;
+    if ((finalsOnly && round.roundNumber <= maxRounds) || (!finalsOnly && round.roundNumber > maxRounds)) continue;
     if (!round.pairings || !Array.isArray(round.pairings)) continue;
 
     for (const pairing of round.pairings) {

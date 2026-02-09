@@ -24,34 +24,32 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
       return null;
     }
 
-    // Find rounds with pairings, sorted by round number (latest first)
+    // Only consider the latest round (by round number)
     const roundsWithPairings = tournament.rounds
       .filter(r => r.pairings && r.pairings.length > 0)
       .sort((a, b) => b.roundNumber - a.roundNumber);
 
-    if (roundsWithPairings.length === 0) {
+    const latestRound = roundsWithPairings.length > 0 ? roundsWithPairings[0] : null;
+    if (!latestRound) {
       return null;
     }
 
-    // Find pairing in the latest round
-    for (const round of roundsWithPairings) {
-      const pairing = round.pairings.find((p: any) =>
-        p.players.some((playerEntry: any) => 
-          playerEntry.player && (typeof playerEntry.player === 'string' 
-            ? playerEntry.player === currentUser._id 
-            : playerEntry.player._id === currentUser._id)
-        )
-      );
+    const pairing = latestRound.pairings.find((p: any) =>
+      p.players.some((playerEntry: any) =>
+        playerEntry.player && (typeof playerEntry.player === 'string'
+          ? playerEntry.player === currentUser._id
+          : playerEntry.player._id === currentUser._id)
+      )
+    );
 
-      if (pairing) {
-        return {
-          pairing,
-          round: round.roundNumber
-        };
-      }
+    if (!pairing) {
+      return null;
     }
 
-    return null;
+    return {
+      pairing,
+      round: latestRound.roundNumber
+    };
   }, [currentUser, tournament]);
 
   // Calculate time remaining in round
