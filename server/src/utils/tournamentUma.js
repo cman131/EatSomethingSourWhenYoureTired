@@ -44,7 +44,7 @@ function computePlayerUmaMap(tournament, finalsOnly = false) {
     const playerId = p.player && (typeof p.player === 'string' ? p.player : p.player.toString && p.player.toString());
     if (!playerId) continue;
     const amount = Number(p.amount) || 0;
-    map.set(playerId, (map.get(playerId) ?? 0) - amount);
+    map.set(playerId, (map.get(playerId) ?? 0) + amount);
   }
 
   return map;
