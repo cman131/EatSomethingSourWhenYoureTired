@@ -151,11 +151,10 @@ const tournamentSchema = new mongoose.Schema({
     default: 30000,
     required: [true, 'Starting point value is required']
   },
-  numberOfFinalsMatches: {
-    type: Number,
-    default: 2,
-    min: 1,
-    max: 2
+  roundStrategy: {
+    type: String,
+    enum: ['Scramble', 'TieredPointsOnly', 'TieredPointsTop4'],
+    default: 'Scramble'
   },
   players: [playerEntrySchema],
   waitlist: [{

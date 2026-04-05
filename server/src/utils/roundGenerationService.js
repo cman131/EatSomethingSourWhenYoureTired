@@ -5,6 +5,27 @@
  */
 
 /**
+ * Hardcoded config: roundStrategy enum -> { numberOfFinalsMatches }.
+ * Used for finals round count when deciding if finals are complete.
+ */
+const ROUND_STRATEGY_CONFIG = {
+  Scramble: { numberOfFinalsMatches: 2 },
+  TieredPointsOnly: { numberOfFinalsMatches: 0 },
+  TieredPointsTop4: { numberOfFinalsMatches: 2 }
+};
+
+/**
+ * Get the number of finals matches for a tournament based on its roundStrategy.
+ * @param {Object} tournament - Tournament doc (or { roundStrategy }).
+ * @returns {number} numberOfFinalsMatches for the strategy (default 2 for unknown/legacy).
+ */
+function getFinalsMatchCount(tournament) {
+  const strategy = tournament.roundStrategy || 'Scramble';
+  const config = ROUND_STRATEGY_CONFIG[strategy];
+  return config ? config.numberOfFinalsMatches : 2;
+}
+
+/**
  * Build a map of how many times each pair of players has played together
  * @param {Array} rounds - Array of completed rounds with pairings
  * @returns {Map} Map with key "playerId1:playerId2" (sorted) and value as count
@@ -221,6 +242,110 @@ function assignSeats(pairing) {
 }
 
 /**
+ * Add filler users to a player ID list until its length is divisible by 4.
+ * @param {Array<string>} playerIds - Array of player IDs
+ * @param {Object} User - User model
+ * @param {number} nameOffset - Offset for filler names (e.g. 100 for "Filler 101", "Filler 102")
+ * @returns {Promise<Array<string>>} Extended array of player IDs
+ */
+async function addFillersToPlayerList(playerIds, User, nameOffset = 0) {
+  const need = (4 - (playerIds.length % 4)) % 4;
+  if (need === 0) return [...playerIds];
+  const result = [...playerIds];
+  for (let i = 0; i < need; i++) {
+    const fillerName = `Filler ${nameOffset + i + 1}`;
+    let fillerUser = await User.findOne({ displayName: fillerName, isGuest: true });
+    if (!fillerUser) {
+      fillerUser = new User({
+        displayName: fillerName,
+        isGuest: true,
+        email: `filler.${nameOffset + i + 1}@guest.local`
+      });
+      await fillerUser.save();
+    }
+    result.push(fillerUser._id.toString());
+  }
+  return result;
+}
+
+/**
+ * TieredPointsOnly: round 1 = scramble all; round 2 = top/bottom by UMA, scramble per group; round 3+ = numGroups by UMA, scramble per group.
+ * Lowest-UMA group may be any size; add fillers to it only so it is pair-able.
+ */
+async function generateRoundPairingsTieredPointsOnly(tournament, roundNumber, activePlayerIds, completedRounds, User) {
+  const { computePlayerUmaMap } = require('../utils/tournamentUma');
+  const opponentHistory = buildOpponentHistory(completedRounds);
+  const N = activePlayerIds.length;
+
+  if (roundNumber === 1) {
+    const pairings = await generatePairingsOptimized(activePlayerIds, opponentHistory);
+    return pairings.map(assignSeats);
+  }
+
+  // Round 2+: need UMA — populate games then compute
+  if (tournament.rounds && tournament.rounds.length > 0) {
+    await tournament.populate('rounds.pairings.game');
+  }
+  const umaMap = computePlayerUmaMap(tournament, false);
+
+  const sortedByUma = [...activePlayerIds].sort((a, b) => (umaMap.get(b) ?? 0) - (umaMap.get(a) ?? 0));
+
+  if (roundNumber === 2) {
+    let topSize = Math.floor(N / 2);
+    topSize = 4 * Math.floor(topSize / 4);
+    if (topSize === 0) topSize = 4;
+    const topHalf = sortedByUma.slice(0, topSize);
+    const bottomHalf = sortedByUma.slice(topSize);
+    let bottomWithFillers = bottomHalf;
+    if (bottomHalf.length % 4 !== 0) {
+      bottomWithFillers = await addFillersToPlayerList(bottomHalf, User, 100);
+    }
+    const pairingsA = await generatePairingsOptimized(topHalf, opponentHistory);
+    const pairingsB = await generatePairingsOptimized(bottomWithFillers, opponentHistory);
+    const tableOffset = pairingsA.length;
+    pairingsB.forEach(p => { p.tableNumber += tableOffset; });
+    const pairings = [...pairingsA, ...pairingsB];
+    return pairings.map(assignSeats);
+  }
+
+  // Round 3+
+  const maxGroups = Math.floor(N / 8) || 1;
+  const numGroups = Math.min(Math.pow(2, roundNumber - 1), maxGroups);
+  const numGroupsClamped = Math.max(1, numGroups);
+
+  const sizes = [];
+  if (numGroupsClamped === 1) {
+    sizes.push(N);
+  } else {
+    const sizePerNonLast = 4 * Math.floor((N / numGroupsClamped) / 4);
+    for (let g = 0; g < numGroupsClamped - 1; g++) {
+      sizes.push(sizePerNonLast);
+    }
+    sizes.push(N - (numGroupsClamped - 1) * sizePerNonLast);
+  }
+
+  let playerOffset = 0;
+  let tableOffset = 0;
+  const allPairings = [];
+  for (let g = 0; g < numGroupsClamped; g++) {
+    const size = sizes[g];
+    let groupIds = sortedByUma.slice(playerOffset, playerOffset + size);
+    playerOffset += size;
+    const isLastGroup = g === numGroupsClamped - 1;
+    if (isLastGroup && groupIds.length % 4 !== 0) {
+      groupIds = await addFillersToPlayerList(groupIds, User, 200 + g * 10);
+    }
+    const subPairings = await generatePairingsOptimized(groupIds, opponentHistory);
+    subPairings.forEach(p => { p.tableNumber += tableOffset; });
+    tableOffset += subPairings.length;
+    allPairings.push(subPairings);
+  }
+
+  const pairings = allPairings.flat();
+  return pairings.map(assignSeats);
+}
+
+/**
  * Main function to generate pairings for a round
  * @param {Object} tournament - Tournament document
  * @param {number} roundNumber - Round number to generate (1-indexed)
@@ -267,10 +392,14 @@ async function generateRoundPairings(tournament, roundNumber) {
     .filter(r => r.roundNumber < roundNumber && r.pairings && r.pairings.length > 0)
     .sort((a, b) => a.roundNumber - b.roundNumber);
 
-  // Build opponent history
-  const opponentHistory = buildOpponentHistory(completedRounds);
+  const strategy = tournament.roundStrategy || 'Scramble';
+  if (strategy === 'TieredPointsOnly' || strategy === 'TieredPointsTop4') {
+    const pairings = await generateRoundPairingsTieredPointsOnly(tournament, roundNumber, activePlayerIds, completedRounds, User);
+    return pairings;
+  }
 
-  // Determine which method to use
+  // Scramble (or legacy)
+  const opponentHistory = buildOpponentHistory(completedRounds);
   const numActivePlayers = activePlayerIds.length;
   const threshold = (12 * (roundNumber - 1)) + 4;
   
@@ -278,22 +407,20 @@ async function generateRoundPairings(tournament, roundNumber) {
   
   if (numActivePlayers > threshold && roundNumber > 1) {
     // Use wheel system for large tournaments
-    // Get first round pairings to reconstruct lists
     const firstRound = tournament.rounds.find(r => r.roundNumber === 1);
     const firstRoundPairings = firstRound ? firstRound.pairings : null;
     pairings = await generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings);
   } else {
-    // Use optimization algorithm
     pairings = await generatePairingsOptimized(activePlayerIds, opponentHistory);
   }
 
-  // Assign seats to each pairing
   pairings = pairings.map(assignSeats);
-
   return pairings;
 }
 
 module.exports = {
+  ROUND_STRATEGY_CONFIG,
+  getFinalsMatchCount,
   generateRoundPairings,
   buildOpponentHistory,
   calculatePairingScore,

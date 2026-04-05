@@ -19,7 +19,7 @@ interface EditTournamentModalProps {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
-    numberOfFinalsMatches?: number;
+    roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
     notifyParticipants?: boolean;
   }) => Promise<void>;
   tournament: Tournament | null;
@@ -108,7 +108,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   const [maxPlayers, setMaxPlayers] = useState<string>('');
   const [roundDurationMinutes, setRoundDurationMinutes] = useState<string>('90');
   const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(30000);
-  const [numberOfFinalsMatches, setNumberOfFinalsMatches] = useState<1 | 2>(2);
+  const [roundStrategy, setRoundStrategy] = useState<'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4'>('Scramble');
   const [notifyParticipants, setNotifyParticipants] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'settings'>('details');
 
@@ -146,9 +146,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setMaxPlayers(tournament.maxPlayers ? tournament.maxPlayers.toString() : '');
       setRoundDurationMinutes(tournament.roundDurationMinutes ? tournament.roundDurationMinutes.toString() : '');
       setStartingPointValue(tournament.startingPointValue || 30000);
-      setNumberOfFinalsMatches(
-        tournament.numberOfFinalsMatches === 1 ? 1 : 2
-      );
+      setRoundStrategy((tournament.roundStrategy || 'Scramble') as 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4');
       setNotifyParticipants(false);
       setActiveTab('details');
       setError(null);
@@ -297,7 +295,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         maxPlayers?: number | null;
         roundDurationMinutes?: number | null;
         startingPointValue?: 25000 | 30000;
-        numberOfFinalsMatches?: number;
+        roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
         notifyParticipants?: boolean;
       } = {
         name: name.trim(),
@@ -307,7 +305,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
         startingPointValue: startingPointValue,
-        numberOfFinalsMatches: numberOfFinalsMatches,
+        roundStrategy: roundStrategy,
       };
 
       // Add maxPlayers if provided, otherwise set to null to clear it
@@ -744,19 +742,25 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
               </div>
 
               <div>
-                <label htmlFor="numberOfFinalsMatches" className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of finals matches
+                <label htmlFor="roundStrategy" className="block text-sm font-medium text-gray-700 mb-2">
+                  Round strategy
                 </label>
                 <select
-                  id="numberOfFinalsMatches"
-                  value={numberOfFinalsMatches}
-                  onChange={(e) => setNumberOfFinalsMatches(Number(e.target.value) as 1 | 2)}
+                  id="roundStrategy"
+                  value={roundStrategy}
+                  onChange={(e) => setRoundStrategy(e.target.value as 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4')}
                   className="input-field"
+                  disabled={tournament?.status !== 'NotStarted'}
                 >
-                  <option value={1}>1</option>
-                  <option value={2}>2</option>
+                  <option value="Scramble">Scramble</option>
+                  <option value="TieredPointsOnly">Tiered (points only, no finals)</option>
+                  <option value="TieredPointsTop4">Tiered (top 4 finals)</option>
                 </select>
-                <p className="mt-1 text-xs text-gray-500">How many finals games the top 4 will play (UMA resets to 0 before the first)</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {tournament?.status !== 'NotStarted'
+                    ? 'Round strategy cannot be changed after the tournament has started.'
+                    : 'Shuffle pairings to minimize repeat opponents; 2 finals games for top 4'}
+                </p>
               </div>
 
               <div>

@@ -98,9 +98,9 @@ const TournamentDetail: React.FC = () => {
       return null;
     }
 
-    // Find rounds with pairings, sorted by round number (latest first)
+    // Find rounds with pairings that have been started, sorted by round number (latest first)
     const roundsWithPairings = tournament.rounds
-      .filter(r => r.pairings && r.pairings.length > 0)
+      .filter(r => r.pairings && r.pairings.length > 0 && r.startDate != null)
       .sort((a, b) => b.roundNumber - a.roundNumber);
 
     if (roundsWithPairings.length === 0) {
@@ -110,6 +110,12 @@ const TournamentDetail: React.FC = () => {
     // Check the latest round - if all pairings have games, it can be ended
     const latestRound = roundsWithPairings[0];
     return latestRound;
+  }, [tournament]);
+
+  // Find a round that has been generated but not yet started (startDate is null)
+  const roundToStart = React.useMemo(() => {
+    if (!tournament?.rounds || tournament.status !== 'InProgress') return null;
+    return tournament.rounds.find((r: any) => r.pairings?.length > 0 && !r.startDate) ?? null;
   }, [tournament]);
 
   // Check if all pairings have verified games
@@ -247,6 +253,20 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleStartRound = async () => {
+    if (!id || !roundToStart) return;
+    try {
+      setActionLoading(true);
+      setActionError(null);
+      const response = await tournamentsApi.startRound(id, roundToStart.roundNumber);
+      setTournament(response.data.tournament);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to start round');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleReconcileActiveRound = async () => {
     if (!id) return;
     if (!user?.isAdmin) {
@@ -277,7 +297,7 @@ const TournamentDetail: React.FC = () => {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
-    numberOfFinalsMatches?: number;
+    roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
   }) => {
     if (!id) return;
     await tournamentsApi.updateTournament(id, data);
@@ -516,14 +536,25 @@ const TournamentDetail: React.FC = () => {
                     {actionLoading ? 'Reconciling...' : 'Reconcile active round'}
                   </button>
                 )}
-                <button
-                  onClick={handleEndRound}
-                  disabled={actionLoading || !allRoundsHaveGames}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={!allRoundsHaveGames ? 'All games must be verified before ending the round' : ''}
-                >
-                  {actionLoading ? 'Ending...' : (tournament && currentRoundToEnd ? `End ${getRoundLabel(currentRoundToEnd.roundNumber, tournament)}` : 'End Round')}
-                </button>
+                {roundToStart && (
+                  <button
+                    onClick={handleStartRound}
+                    disabled={actionLoading}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading ? 'Starting...' : `Start ${getRoundLabel(roundToStart.roundNumber, tournament)}`}
+                  </button>
+                )}
+                {!roundToStart && (
+                  <button
+                    onClick={handleEndRound}
+                    disabled={actionLoading || !allRoundsHaveGames}
+                    className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    title={!allRoundsHaveGames ? 'All games must be verified before ending the round' : ''}
+                  >
+                    {actionLoading ? 'Ending...' : (tournament && currentRoundToEnd ? `End ${getRoundLabel(currentRoundToEnd.roundNumber, tournament)}` : 'End Round')}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -553,6 +584,10 @@ const TournamentDetail: React.FC = () => {
       ) : null}
 
       {!tournament.isOnline && <EtiquetteDisplay/> }
+
+      <div className="text-sm text-gray-600">
+        Round strategy: {tournament.roundStrategy || 'Scramble'}
+      </div>
 
       {!tournament.isOnline && <RulesDisplay ruleset={tournament.ruleset} modifications={tournament.modifications} startingPointValue={tournament.startingPointValue} />}
 

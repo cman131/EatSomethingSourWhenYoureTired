@@ -6,7 +6,7 @@ const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const Game = require('../models/Game');
 const { validateMongoId, validateGameCreation } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
-const { generateRoundPairings } = require('../utils/roundGenerationService');
+const { generateRoundPairings, getFinalsMatchCount } = require('../utils/roundGenerationService');
 const { createGame } = require('../utils/gameService');
 const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
 
@@ -590,7 +590,7 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, numberOfFinalsMatches } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, roundStrategy } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
@@ -657,16 +657,15 @@ router.post('/', authenticateToken, async (req, res) => {
       tournamentData.startingPointValue = startingPointValue;
     }
 
-    // Add numberOfFinalsMatches if provided (1-2, schema default is 2)
-    if (numberOfFinalsMatches !== undefined) {
-      const num = parseInt(numberOfFinalsMatches, 10);
-      if (isNaN(num) || num < 1 || num > 2) {
+    // Add roundStrategy if provided (default Scramble)
+    if (roundStrategy !== undefined) {
+      if (roundStrategy !== 'Scramble' && roundStrategy !== 'TieredPointsOnly' && roundStrategy !== 'TieredPointsTop4') {
         return res.status(400).json({
           success: false,
-          message: 'numberOfFinalsMatches must be 1 or 2'
+          message: 'Invalid roundStrategy. Must be Scramble, TieredPointsOnly, or TieredPointsTop4'
         });
       }
-      tournamentData.numberOfFinalsMatches = num;
+      tournamentData.roundStrategy = roundStrategy;
     }
 
     if (isOnlineTournament) {
@@ -722,7 +721,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, numberOfFinalsMatches, notifyParticipants } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, roundStrategy, notifyParticipants } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -863,15 +862,20 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
       tournament.startingPointValue = startingPointValue;
     }
 
-    if (numberOfFinalsMatches !== undefined) {
-      const num = parseInt(numberOfFinalsMatches, 10);
-      if (isNaN(num) || num < 1 || num > 2) {
+    if (roundStrategy !== undefined) {
+      if (tournament.status !== 'NotStarted') {
         return res.status(400).json({
           success: false,
-          message: 'numberOfFinalsMatches must be 1 or 2'
+          message: 'roundStrategy cannot be changed after the tournament has started'
         });
       }
-      tournament.numberOfFinalsMatches = num;
+      if (roundStrategy !== 'Scramble' && roundStrategy !== 'TieredPointsOnly' && roundStrategy !== 'TieredPointsTop4') {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid roundStrategy. Must be Scramble, TieredPointsOnly, or TieredPointsTop4'
+        });
+      }
+      tournament.roundStrategy = roundStrategy;
     }
 
     await tournament.save();
@@ -969,16 +973,13 @@ router.put('/:id/start', authenticateToken, validateMongoId('id'), requireTourna
           // Create new round
           tournament.rounds.push({
             roundNumber: 1,
-            startDate: new Date(),
+            startDate: null,
             pairings: pairingsWithObjectIds
           });
         } else {
           // Update existing round
           firstRound.pairings = pairingsWithObjectIds;
-          // Set startDate if not already set
-          if (!firstRound.startDate) {
-            firstRound.startDate = new Date();
-          }
+          firstRound.startDate = null;
         }
         
         tournament.markModified('rounds');
@@ -1112,7 +1113,7 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
 
     // For finals rounds: set top4 only when this is the last finals match (order by finals-only UMA)
     const isFinalsRound = roundNumber > tournament.maxRounds;
-    const numberOfFinalsMatches = tournament.numberOfFinalsMatches ?? 2;
+    const numberOfFinalsMatches = getFinalsMatchCount(tournament);
     const finalsRoundsCompleted = roundNumber - tournament.maxRounds;
 
     if (isFinalsRound && finalsRoundsCompleted >= numberOfFinalsMatches) {
@@ -1158,16 +1159,13 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
           // Create new round
           tournament.rounds.push({
             roundNumber: nextRoundNumber,
-            startDate: new Date(),
+            startDate: null,
             pairings: pairingsWithObjectIds
           });
         } else {
           // Update existing round (in case it was reset)
           nextRound.pairings = pairingsWithObjectIds;
-          // Set startDate if not already set
-          if (!nextRound.startDate) {
-            nextRound.startDate = new Date();
-          }
+          nextRound.startDate = null;
         }
         tournament.markModified('rounds');
         
@@ -1179,49 +1177,57 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
         // Admin can manually create the round
       }
     } else if (roundNumber === tournament.maxRounds) {
-      // This is the last regular round - create the final 4 round
-      const finalRoundNumber = tournament.maxRounds + 1;
-      const finalRoundExists = tournament.rounds.some(r => r.roundNumber === finalRoundNumber);
+      const numberOfFinalsMatchesForStrategy = getFinalsMatchCount(tournament);
 
-      if (!finalRoundExists) {
-        // Get top 4 players by UMA (non-dropped only), using each player's uma virtual
+      if (numberOfFinalsMatchesForStrategy === 0) {
+        // No finals (e.g. TieredPointsOnly): set top4 by final regular-round UMA and complete
         const activePlayers = tournament.players
           .filter(p => !p.dropped)
           .sort((a, b) => (b.uma ?? 0) - (a.uma ?? 0))
           .slice(0, 4);
+        tournament.top4 = activePlayers.map(p => new mongoose.Types.ObjectId(p.player.toString ? p.player.toString() : p.player));
+        tournament.markModified('top4');
+        tournament.status = 'Completed';
+      } else {
+        // Create the final 4 round (Scramble, TieredPointsTop4, etc.)
+        const finalRoundNumber = tournament.maxRounds + 1;
+        const finalRoundExists = tournament.rounds.some(r => r.roundNumber === finalRoundNumber);
 
-        if (activePlayers.length < 4) {
-          // Not enough players for final 4 round, just end the tournament
-          tournament.status = 'Completed';
-        } else {
-          // Create final 4 round with single pairing
-          const seats = ['East', 'South', 'West', 'North'];
-          const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
+        if (!finalRoundExists) {
+          const activePlayers = tournament.players
+            .filter(p => !p.dropped)
+            .sort((a, b) => (b.uma ?? 0) - (a.uma ?? 0))
+            .slice(0, 4);
 
-          const finalPairing = {
-            tableNumber: 1,
-            players: activePlayers.map((playerEntry, index) => ({
-              player: new mongoose.Types.ObjectId(playerEntry.player),
-              seat: shuffledSeats[index]
-            })),
-            game: null
-          };
-          
-          tournament.rounds.push({
-            roundNumber: finalRoundNumber,
-            startDate: new Date(),
-            pairings: [finalPairing]
-          });
-          
-          tournament.markModified('rounds');
-          
-          // Send notifications to the top 4 players about the final round
-          sendRoundPairingNotifications(tournament, finalRoundNumber);
+          if (activePlayers.length < 4) {
+            tournament.status = 'Completed';
+          } else {
+            const seats = ['East', 'South', 'West', 'North'];
+            const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
+
+            const finalPairing = {
+              tableNumber: 1,
+              players: activePlayers.map((playerEntry, index) => ({
+                player: new mongoose.Types.ObjectId(playerEntry.player),
+                seat: shuffledSeats[index]
+              })),
+              game: null
+            };
+
+            tournament.rounds.push({
+              roundNumber: finalRoundNumber,
+              startDate: null,
+              pairings: [finalPairing]
+            });
+
+            tournament.markModified('rounds');
+            sendRoundPairingNotifications(tournament, finalRoundNumber);
+          }
         }
       }
     } else if (roundNumber > tournament.maxRounds) {
       // A finals round just ended
-      const numberOfFinalsMatchesVal = tournament.numberOfFinalsMatches ?? 2;
+      const numberOfFinalsMatchesVal = getFinalsMatchCount(tournament);
       const finalsRoundsCompletedVal = roundNumber - tournament.maxRounds;
 
       if (finalsRoundsCompletedVal < numberOfFinalsMatchesVal) {
@@ -1242,7 +1248,7 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
           };
           tournament.rounds.push({
             roundNumber: nextFinalsRoundNumber,
-            startDate: new Date(),
+            startDate: null,
             pairings: [nextFinalsPairing]
           });
           tournament.markModified('rounds');
@@ -1275,6 +1281,50 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       success: false,
       message: error.message || 'Failed to end round'
     });
+  }
+});
+
+// @route   PUT /api/tournaments/:id/rounds/:roundNumber/start
+// @desc    Start a round (set startDate to now) — Creator or Admin only
+// @access  Private (Creator or Admin)
+router.put('/:id/rounds/:roundNumber/start', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    const roundNumber = parseInt(req.params.roundNumber);
+
+    if (!tournament) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+
+    if (isNaN(roundNumber) || roundNumber < 1) {
+      return res.status(400).json({ success: false, message: 'Invalid round number' });
+    }
+
+    const round = tournament.rounds.find(r => r.roundNumber === roundNumber);
+    if (!round) {
+      return res.status(404).json({ success: false, message: 'Round not found' });
+    }
+
+    if (round.startDate) {
+      return res.status(400).json({ success: false, message: 'Round has already been started' });
+    }
+
+    round.startDate = new Date();
+    tournament.markModified('rounds');
+    await tournament.save();
+
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.game');
+
+    res.json({
+      success: true,
+      message: `Round ${roundNumber} started`,
+      data: { tournament }
+    });
+  } catch (error) {
+    console.error('Start round error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to start round' });
   }
 });
 

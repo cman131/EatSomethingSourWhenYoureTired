@@ -86,8 +86,8 @@ const TournamentSubmission: React.FC = () => {
   const [ruleset, setRuleset] = useState<'WRC2025'>('WRC2025');
   const [maxPlayers, setMaxPlayers] = useState('');
   const [roundDurationMinutes, setRoundDurationMinutes] = useState('90');
-  const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(25000);
-  const [numberOfFinalsMatches, setNumberOfFinalsMatches] = useState<1 | 2>(2);
+  const [startingPointValue, setStartingPointValue] = useState<25000 | 30000>(30000);
+  const [roundStrategy, setRoundStrategy] = useState<'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4'>('TieredPointsOnly');
 
   const { mutate: createTournament, loading, error } = useMutation(
     (tournamentData: {
@@ -102,7 +102,7 @@ const TournamentSubmission: React.FC = () => {
       maxPlayers?: number;
       roundDurationMinutes?: number;
       startingPointValue?: 25000 | 30000;
-      numberOfFinalsMatches?: number;
+      roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
     }) => tournamentsApi.createTournament(tournamentData)
   );
 
@@ -253,7 +253,7 @@ const TournamentSubmission: React.FC = () => {
         maxPlayers?: number;
         roundDurationMinutes?: number;
         startingPointValue?: 25000 | 30000;
-        numberOfFinalsMatches?: number;
+        roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
@@ -262,7 +262,7 @@ const TournamentSubmission: React.FC = () => {
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
         ruleset: ruleset,
         startingPointValue: startingPointValue,
-        numberOfFinalsMatches: numberOfFinalsMatches,
+        roundStrategy: roundStrategy,
       };
 
       // Add maxPlayers if provided
@@ -606,19 +606,20 @@ const TournamentSubmission: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="numberOfFinalsMatches" className="block text-sm font-medium text-gray-700 mb-2">
-              Number of finals matches
+            <label htmlFor="roundStrategy" className="block text-sm font-medium text-gray-700 mb-2">
+              Round strategy
             </label>
             <select
-              id="numberOfFinalsMatches"
-              value={numberOfFinalsMatches}
-              onChange={(e) => setNumberOfFinalsMatches(Number(e.target.value) as 1 | 2)}
+              id="roundStrategy"
+              value={roundStrategy}
+              onChange={(e) => setRoundStrategy(e.target.value as 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4')}
               className="input-field"
             >
-              <option value={1}>1</option>
-              <option value={2}>2</option>
+              <option value="Scramble">Scramble</option>
+              <option value="TieredPointsOnly">Tiered (points only, no finals)</option>
+              <option value="TieredPointsTop4">Tiered (top 4 finals)</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500">How many finals games the top 4 will play (UMA resets to 0 before the first)</p>
+            <p className="mt-1 text-xs text-gray-500">Scramble: shuffle to minimize repeat opponents. Tiered: round 1 scramble, then group by UMA and pair within tiers.</p>
           </div>
 
           <div>

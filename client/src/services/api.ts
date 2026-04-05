@@ -219,7 +219,7 @@ export interface Tournament {
   maxPlayers?: number | null;
   roundDurationMinutes?: number | null;
   startingPointValue?: 25000 | 30000;
-  numberOfFinalsMatches?: number;
+  roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
   waitlist?: TournamentWaitlistEntry[];
   umaPenalties?: { amount: number; player: string; description: string }[];
   createdAt?: string;
@@ -229,11 +229,17 @@ export interface Tournament {
 /**
  * Returns display label for a round (e.g. "Round 3" or "Finals 1 of 2").
  */
+/** Finals count: TieredPointsOnly = 0, Scramble and TieredPointsTop4 = 2 */
+function getNumberOfFinals(roundStrategy?: string): number {
+  if (roundStrategy === 'TieredPointsOnly') return 0;
+  return 2;
+}
+
 export function getRoundLabel(roundNumber: number, tournament: Tournament): string {
   const activeCount = tournament.players?.filter((p) => !p.dropped).length ?? 0;
   const maxRounds = Math.ceil(((activeCount - 4) / 12) + 1);
-  const numberOfFinals = tournament.numberOfFinalsMatches ?? 2;
-  if (roundNumber > maxRounds) {
+  const numberOfFinals = getNumberOfFinals(tournament.roundStrategy);
+  if (numberOfFinals > 0 && roundNumber > maxRounds) {
     const finalsIndex = roundNumber - maxRounds;
     return `Finals ${finalsIndex} of ${numberOfFinals}`;
   }
@@ -608,7 +614,7 @@ export const tournamentsApi = {
     maxPlayers?: number;
     roundDurationMinutes?: number;
     startingPointValue?: 25000 | 30000;
-    numberOfFinalsMatches?: number;
+    roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>('/tournaments', {
       method: 'POST',
@@ -628,7 +634,7 @@ export const tournamentsApi = {
     maxPlayers?: number | null;
     roundDurationMinutes?: number | null;
     startingPointValue?: 25000 | 30000;
-    numberOfFinalsMatches?: number;
+    roundStrategy?: 'Scramble' | 'TieredPointsOnly' | 'TieredPointsTop4';
     notifyParticipants?: boolean;
   }) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}`, {
@@ -663,6 +669,12 @@ export const tournamentsApi = {
 
   endRound: async (tournamentId: string, roundNumber: number) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/rounds/${roundNumber}/end`, {
+      method: 'PUT',
+    });
+  },
+
+  startRound: async (tournamentId: string, roundNumber: number) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/rounds/${roundNumber}/start`, {
       method: 'PUT',
     });
   },
