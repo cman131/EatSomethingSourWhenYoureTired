@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import CollapsibleSection from './CollapsibleSection';
 
 interface RulesDisplayProps {
@@ -12,17 +14,20 @@ const getRulesetInfo = (ruleset: 'WRC2025' | 'MahjongSoul') => {
     case 'WRC2025':
       return {
         url: 'https://www.worldriichi.org/s/WRC-Rules-2025-42fx.pdf',
-        displayName: 'WRC 2025'
+        displayName: 'WRC 2025',
+        penaltiesLink: true,
       };
     case 'MahjongSoul':
       return {
         url: 'https://mahjongsoul.yo-star.com/faq',
-        displayName: 'Mahjong Soul'
+        displayName: 'Mahjong Soul',
+        penaltiesLink: false,
       };
     default:
       return {
         url: 'https://www.worldriichi.org/s/WRC-Rules-2025-42fx.pdf',
-        displayName: 'WRC 2025'
+        displayName: 'WRC 2025',
+        penaltiesLink: false,
       };
   }
 };
@@ -46,6 +51,18 @@ const RulesDisplay: React.FC<RulesDisplayProps> = ({ ruleset, modifications = []
             {rulesetInfo.displayName}
           </a>
         </div>
+        {rulesetInfo.penaltiesLink && (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">Penalties Reference:</h3>
+            <Link
+              to="/penalties"
+              className="inline-flex items-center text-blue-600 hover:text-blue-800 underline font-medium"
+            >
+              WRC Penalties 2025
+              <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-1" />
+            </Link>
+          </div>
+        )}
         {startingPointValue && (
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Starting Point Value:</h3>

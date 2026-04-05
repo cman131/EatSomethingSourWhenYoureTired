@@ -23,6 +23,7 @@ import TournamentsList from './pages/TournamentsList';
 import TournamentGameSubmission from './pages/TournamentGameSubmission';
 import TournamentGamesAdmin from './pages/TournamentGamesAdmin';
 import TournamentWaitlist from './pages/TournamentWaitlist';
+import PenaltiesSearch from './pages/PenaltiesSearch';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
             <Route path="/members" element={<MembersList />} />
             <Route path="/achievements" element={<AchievementsList />} />
             <Route path="/resources" element={<Resources />} />
+            <Route path="/penalties" element={<PenaltiesSearch />} />
             <Route path="/calculator" element={<ScoreCalculator />} />
             <Route path="/discard-quiz/:discardQuizId" element={<DiscardQuiz />} />
             <Route path="/discard-quiz" element={<DiscardQuiz />} />

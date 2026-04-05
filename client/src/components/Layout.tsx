@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
 import { 
-  UserIcon, 
+  UserIcon,
   ChartBarIcon,
   Bars3Icon,
   XMarkIcon,
@@ -14,6 +14,7 @@ import {
   QuestionMarkCircleIcon,
   ShoppingBagIcon,
   TrophyIcon,
+  ScaleIcon,
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup, FaMedal } from 'react-icons/fa';
 
@@ -45,6 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const resourceLinks = [
     { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },
+    { name: 'Penalties', href: '/penalties', icon: ScaleIcon },
     ...(isAuthenticated ? [
       { name: 'Discard quiz', href: '/discard-quiz', icon: QuestionMarkCircleIcon },
       { name: 'Discard quiz V2', href: '/decision-quiz', icon: QuestionMarkCircleIcon },
