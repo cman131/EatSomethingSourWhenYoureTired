@@ -81,6 +81,13 @@ const GameSubmission: React.FC = () => {
     }
   }, [selectedPlayerIndex]);
 
+  useEffect(() => {
+    if (isRanked) {
+      setIsEastOnly(false);
+      setIsInPerson(true);
+    }
+  }, [isRanked]);
+
   const { mutate: createGame, loading, error } = useMutation(
     (gameData: {
       players: Array<{ player: string; score: number; position: number }>;
@@ -164,11 +171,13 @@ const GameSubmission: React.FC = () => {
       return false;
     }
 
-    // Validate total score (players + table) equals 100000 or 120000
+    // Validate total score (players + table) equals 120000 for ranked, 100000 or 120000 otherwise
     const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
     const totalScore = playersTotal + pointsLeftOnTable;
-    if (totalScore !== 100000 && totalScore !== 120000) {
-      return false;
+    if (isRanked) {
+      if (totalScore !== 120000) return false;
+    } else {
+      if (totalScore !== 100000 && totalScore !== 120000) return false;
     }
 
     return true;
@@ -208,10 +217,15 @@ const GameSubmission: React.FC = () => {
       return;
     }
 
-    // Validate total score (players + table) equals 100000 or 120000
+    // Validate total score (players + table) equals 120000 for ranked, 100000 or 120000 otherwise
     const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
     const totalScore = playersTotal + pointsLeftOnTable;
-    if (totalScore !== 100000 && totalScore !== 120000) {
+    if (isRanked) {
+      if (totalScore !== 120000) {
+        alert(`Ranked games must have a total score of exactly 120000. Current total: ${totalScore}`);
+        return;
+      }
+    } else if (totalScore !== 100000 && totalScore !== 120000) {
       alert(`Total score (players + table) must equal exactly 100000 or 120000. Current total: ${totalScore}`);
       return;
     }
@@ -380,22 +394,24 @@ const GameSubmission: React.FC = () => {
         </div>
 
         <div className="flex gap-6">
-          <label className="flex items-center gap-2 cursor-pointer" title="Check this if the game was played in person">
+          <label className={`flex items-center gap-2 ${isRanked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`} title="Check this if the game was played in person">
             <input
               type="checkbox"
               checked={isInPerson}
               onChange={(e) => setIsInPerson(e.target.checked)}
-              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              disabled={isRanked}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 disabled:cursor-not-allowed"
             />
             <span className="text-sm font-medium text-gray-700">In Person</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer" title="Check this if the game was played with only the East prevalent wind round">
+          <label className={`flex items-center gap-2 ${isRanked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`} title="Check this if the game was played with only the East prevalent wind round">
             <input
               type="checkbox"
               checked={isEastOnly}
               onChange={(e) => setIsEastOnly(e.target.checked)}
-              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+              disabled={isRanked}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 disabled:cursor-not-allowed"
             />
             <span className="text-sm font-medium text-gray-700">East Only Game</span>
           </label>
