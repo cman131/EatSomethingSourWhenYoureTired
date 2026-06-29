@@ -51,6 +51,16 @@ const RankedLeague: React.FC = () => {
     ? Math.max(0, 90 - Math.floor((Date.now() - new Date(league.startDate).getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
 
+  const rankedPlayers = league
+    ? league.players.filter(p => p.gamesPlayed >= 6)
+    : [];
+
+  const unrankedPlayers = league
+    ? league.players
+        .filter(p => p.gamesPlayed < 6)
+        .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
+    : [];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -93,8 +103,8 @@ const RankedLeague: React.FC = () => {
 
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Leaderboard</h2>
-            {league.players.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No players have joined this season yet. Be the first!</p>
+            {rankedPlayers.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No players have qualified yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full">
@@ -102,16 +112,18 @@ const RankedLeague: React.FC = () => {
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-2 pr-4 text-sm font-medium text-gray-700 w-12">Rank</th>
                       <th className="text-left py-2 pr-4 text-sm font-medium text-gray-700">Player</th>
+                      <th className="text-right py-2 pr-4 text-sm font-medium text-gray-700 w-16">Games</th>
                       <th className="text-right py-2 text-sm font-medium text-gray-700">Points</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {league.players.map((entry, index) => (
+                    {rankedPlayers.map((entry, index) => (
                       <tr key={entry.player._id} className="border-b border-gray-100 last:border-0">
                         <td className="py-3 pr-4 text-sm font-medium text-gray-500">#{index + 1}</td>
                         <td className="py-3 pr-4">
                           <UserDisplay user={entry.player} size="sm" />
                         </td>
+                        <td className="py-3 pr-4 text-right text-sm text-gray-700">{entry.gamesPlayed}</td>
                         <td className="py-3 text-right text-sm font-semibold text-gray-900">
                           {entry.rankedPoints}
                         </td>
@@ -122,6 +134,33 @@ const RankedLeague: React.FC = () => {
               </div>
             )}
           </div>
+
+          {unrankedPlayers.length > 0 && (
+            <div className="card">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Unranked</h2>
+              <p className="text-sm text-gray-400 mb-4">Less than 6 games — not yet eligible for the leaderboard</p>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 pr-4 text-sm font-medium text-gray-700">Player</th>
+                      <th className="text-right py-2 text-sm font-medium text-gray-700 w-16">Games</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unrankedPlayers.map((entry) => (
+                      <tr key={entry.player._id} className="border-b border-gray-100 last:border-0">
+                        <td className="py-3 pr-4">
+                          <UserDisplay user={entry.player} size="sm" />
+                        </td>
+                        <td className="py-3 text-right text-sm text-gray-700">{entry.gamesPlayed}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       ) : null}
     </div>
