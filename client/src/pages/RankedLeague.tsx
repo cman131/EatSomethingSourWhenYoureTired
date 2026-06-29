@@ -5,6 +5,8 @@ import { rankedLeaguesApi, RankedLeague as RankedLeagueType } from '../services/
 import UserDisplay from '../components/user/UserDisplay';
 import { StarIcon } from '@heroicons/react/24/outline';
 
+const RANKED_GAMES_THRESHOLD = 6;
+
 const RankedLeague: React.FC = () => {
   useRequireAuth();
   const { user } = useAuth();
@@ -52,13 +54,15 @@ const RankedLeague: React.FC = () => {
     : 0;
 
   const rankedPlayers = league
-    ? league.players.filter(p => p.gamesPlayed >= 6)
+    ? league.players
+        .filter(p => p.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+        .sort((a, b) => b.rankedPoints - a.rankedPoints)
     : [];
 
   const unrankedPlayers = league
     ? league.players
-        .filter(p => p.gamesPlayed < 6)
-        .sort((a, b) => b.gamesPlayed - a.gamesPlayed)
+        .filter(p => p.gamesPlayed < RANKED_GAMES_THRESHOLD)
+        .sort((a, b) => b.gamesPlayed - a.gamesPlayed || a.player._id.localeCompare(b.player._id))
     : [];
 
   return (
@@ -138,7 +142,7 @@ const RankedLeague: React.FC = () => {
           {unrankedPlayers.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Unranked</h2>
-              <p className="text-sm text-gray-400 mb-4">Less than 6 games — not yet eligible for the leaderboard</p>
+              <p className="text-sm text-gray-500 mb-4">Less than 6 games — not yet eligible for the leaderboard</p>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
