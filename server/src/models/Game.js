@@ -54,6 +54,10 @@ const gameSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isRanked: {
+    type: Boolean,
+    default: false
+  },
   comments: [{
     comment: {
       type: String,

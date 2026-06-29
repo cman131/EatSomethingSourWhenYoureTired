@@ -226,6 +226,19 @@ export interface Tournament {
   updatedAt?: string;
 }
 
+export interface RankedLeaguePlayer {
+  player: User;
+  rankedPoints: number;
+}
+
+export interface RankedLeague {
+  _id: string;
+  startDate: string;
+  players: RankedLeaguePlayer[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 /**
  * Returns display label for a round (e.g. "Round 3" or "Finals 1 of 2").
  */
@@ -469,6 +482,9 @@ export const gamesApi = {
     notes?: string;
     pointsLeftOnTable?: number;
     isEastOnly?: boolean;
+    isInPerson?: boolean;
+    ranOutOfTime?: boolean;
+    isRanked?: boolean;
   }) => {
     return apiRequest<ApiResponse<{ game: Game }>>('/games', {
       method: 'POST',
@@ -730,6 +746,19 @@ export const tournamentsApi = {
         body: JSON.stringify(gameData),
       }
     );
+  },
+};
+
+// Ranked Leagues API
+export const rankedLeaguesApi = {
+  getCurrent: async () => {
+    return apiRequest<ApiResponse<{ league: RankedLeague }>>('/ranked-leagues/current');
+  },
+
+  joinLeague: async () => {
+    return apiRequest<ApiResponse<{ league: RankedLeague }>>('/ranked-leagues/current/join', {
+      method: 'POST',
+    });
   },
 };
 

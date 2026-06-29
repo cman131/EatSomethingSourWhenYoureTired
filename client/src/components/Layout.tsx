@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
-import { 
+import {
   UserIcon,
   ChartBarIcon,
   Bars3Icon,
@@ -15,6 +15,7 @@ import {
   ShoppingBagIcon,
   TrophyIcon,
   ScaleIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup, FaMedal } from 'react-icons/fa';
 
@@ -40,7 +41,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const communityLinks = isAuthenticated ? [
     { name: 'Games', href: '/games', icon: ChartBarIcon },
-    { name: 'Members', href: '/members', icon: UserGroupIcon },
+    { name: 'Ranked', href: '/ranked', icon: StarIcon },
     { name: 'Achievements', href: '/achievements', icon: FaMedal },
   ] : [];
 

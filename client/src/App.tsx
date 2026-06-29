@@ -12,7 +12,7 @@ import Profile from './pages/Profile';
 import GamesList from './pages/GamesList';
 import GameDetail from './pages/GameDetail';
 import Resources from './pages/Resources';
-import MembersList from './pages/MembersList';
+import RankedLeague from './pages/RankedLeague';
 import AchievementsList from './pages/AchievementsList';
 import ScoreCalculator from './pages/ScoreCalculator';
 import DiscardQuiz from './pages/DiscardQuiz';
@@ -42,7 +42,7 @@ function App() {
             <Route path="/games" element={<GamesList />} />
             <Route path="/games/:id" element={<GameDetail />} />
             <Route path="/tournaments" element={<TournamentsList />} />
-            <Route path="/members" element={<MembersList />} />
+            <Route path="/ranked" element={<RankedLeague />} />
             <Route path="/achievements" element={<AchievementsList />} />
             <Route path="/resources" element={<Resources />} />
             <Route path="/penalties" element={<PenaltiesSearch />} />

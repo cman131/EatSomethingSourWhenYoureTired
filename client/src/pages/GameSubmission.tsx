@@ -26,6 +26,7 @@ const GameSubmission: React.FC = () => {
   const [isEastOnly, setIsEastOnly] = useState(false);
   const [isInPerson, setIsInPerson] = useState(true);
   const [ranOutOfTime, setRanOutOfTime] = useState(false);
+  const [isRanked, setIsRanked] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
@@ -89,6 +90,7 @@ const GameSubmission: React.FC = () => {
       isEastOnly?: boolean;
       isInPerson?: boolean;
       ranOutOfTime?: boolean;
+      isRanked?: boolean;
     }) => gamesApi.createGame(gameData)
   );
 
@@ -226,7 +228,8 @@ const GameSubmission: React.FC = () => {
         pointsLeftOnTable: pointsLeftOnTable || undefined,
         isEastOnly: isEastOnly || undefined,
         isInPerson: isInPerson || undefined,
-        ranOutOfTime: ranOutOfTime || undefined
+        ranOutOfTime: ranOutOfTime || undefined,
+        isRanked: isRanked || undefined
       });
       navigate('/games');
     } catch (err) {
@@ -405,6 +408,16 @@ const GameSubmission: React.FC = () => {
               className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
             />
             <span className="text-sm font-medium text-gray-700">Ran Out of Time</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer" title="Check this if all players are in the ranked league and this game counts for standings">
+            <input
+              type="checkbox"
+              checked={isRanked}
+              onChange={(e) => setIsRanked(e.target.checked)}
+              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Ranked Game</span>
           </label>
         </div>
 
