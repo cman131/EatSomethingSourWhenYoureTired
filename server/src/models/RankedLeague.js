@@ -14,6 +14,10 @@ const rankedLeagueSchema = new mongoose.Schema({
     rankedPoints: {
       type: Number,
       default: 500
+    },
+    gamesPlayed: {
+      type: Number,
+      default: 0
     }
   }]
 }, {
