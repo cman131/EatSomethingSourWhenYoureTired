@@ -123,7 +123,12 @@ const validateGameCreation = [
     .optional()
     .isLength({ max: 500 })
     .withMessage('Notes cannot be more than 500 characters'),
-  
+
+  body('isRanked')
+    .optional()
+    .isBoolean()
+    .withMessage('isRanked must be a boolean'),
+
   handleValidationErrors
 ];
 

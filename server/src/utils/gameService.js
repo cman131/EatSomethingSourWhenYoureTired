@@ -18,7 +18,7 @@ const { sendNewGameNotificationEmail } = require('./emailService');
  * @returns {Promise<Game>} The created game with populated fields
  */
 async function createGame(gameData, submitterId) {
-  const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime, isTournamentGame } = gameData;
+  const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime, isTournamentGame, isRanked } = gameData;
 
   // Verify all player IDs exist
   const playerIds = players.map(p => p.player);
@@ -45,7 +45,8 @@ async function createGame(gameData, submitterId) {
     pointsLeftOnTable: pointsLeftOnTable || 0,
     isEastOnly: isEastOnly || false,
     isInPerson: isInPerson !== undefined ? isInPerson : true,
-    ranOutOfTime: ranOutOfTime || false
+    ranOutOfTime: ranOutOfTime || false,
+    isRanked: isRanked || false
   });
 
   await game.save();

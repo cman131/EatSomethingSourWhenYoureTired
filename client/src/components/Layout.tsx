@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
-import { 
+import {
   UserIcon,
   ChartBarIcon,
   Bars3Icon,
@@ -15,6 +15,7 @@ import {
   ShoppingBagIcon,
   TrophyIcon,
   ScaleIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup, FaMedal } from 'react-icons/fa';
 
@@ -35,12 +36,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
     { name: 'Tournaments', href: '/tournaments', icon: TrophyIcon },
+    { name: 'Ranked', href: '/ranked', icon: StarIcon },
     { name: 'Store', href: 'https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club', icon: ShoppingBagIcon, external: true },
   ];
 
   const communityLinks = isAuthenticated ? [
     { name: 'Games', href: '/games', icon: ChartBarIcon },
-    { name: 'Members', href: '/members', icon: UserGroupIcon },
     { name: 'Achievements', href: '/achievements', icon: FaMedal },
   ] : [];
 

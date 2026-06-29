@@ -6,6 +6,7 @@ const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const { validateGameCreation, validateMongoId } = require('../middleware/validation');
 const { sendNewCommentNotificationEmail } = require('../utils/emailService');
 const { createGame } = require('../utils/gameService');
+const { getCurrentLeague, updateRankedPoints } = require('../utils/rankedLeagueService');
 
 const router = express.Router();
 
@@ -54,11 +55,29 @@ router.get('/', async (req, res) => {
 // @access  Private
 router.post('/', validateGameCreation, async (req, res) => {
   try {
-    const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime } = req.body;
+    const { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime, isRanked } = req.body;
+
+    // Ranked game validation: all 4 players must be enrolled in the current league
+    if (isRanked) {
+      const league = await getCurrentLeague();
+      const leaguePlayerIds = new Set(league.players.map(p => p.player.toString()));
+      const nonRankedPlayerIds = players
+        .map(p => p.player)
+        .filter(id => !leaguePlayerIds.has(id));
+
+      if (nonRankedPlayerIds.length > 0) {
+        const nonRankedUsers = await User.find({ _id: { $in: nonRankedPlayerIds } }).select('displayName');
+        const names = nonRankedUsers.map(u => u.displayName).join(', ');
+        return res.status(400).json({
+          success: false,
+          message: `The following players are not in the current ranked league: ${names}`
+        });
+      }
+    }
 
     // Create game using the service (includes validation and notifications)
     const game = await createGame(
-      { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime },
+      { players, gameDate, notes, pointsLeftOnTable, isEastOnly, isInPerson, ranOutOfTime, isRanked },
       req.user._id
     );
 
@@ -257,6 +276,14 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
     game.verifiedAt = new Date();
 
     await game.save();
+
+    if (game.isRanked) {
+      try {
+        await updateRankedPoints(game);
+      } catch (err) {
+        console.error('Failed to update ranked points:', err);
+      }
+    }
 
     await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
     await game.populate('players.player', PLAYER_POPULATE_FIELDS);
