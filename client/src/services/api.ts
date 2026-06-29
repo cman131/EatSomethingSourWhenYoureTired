@@ -229,6 +229,7 @@ export interface Tournament {
 export interface RankedLeaguePlayer {
   player: User;
   rankedPoints: number;
+  gamesPlayed: number;
 }
 
 export interface RankedLeague {
