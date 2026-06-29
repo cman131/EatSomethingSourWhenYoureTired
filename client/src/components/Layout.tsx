@@ -36,12 +36,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Events', href: 'https://www.meetup.com/charleston-riichi-mahjong/events/', icon: CalendarIcon, external: true },
     { name: 'Tournaments', href: '/tournaments', icon: TrophyIcon },
+    { name: 'Ranked', href: '/ranked', icon: StarIcon },
     { name: 'Store', href: 'https://shop.printyourcause.com/campaigns/charleston-riichi-mahjong-club', icon: ShoppingBagIcon, external: true },
   ];
 
   const communityLinks = isAuthenticated ? [
     { name: 'Games', href: '/games', icon: ChartBarIcon },
-    { name: 'Ranked', href: '/ranked', icon: StarIcon },
     { name: 'Achievements', href: '/achievements', icon: FaMedal },
   ] : [];
 
