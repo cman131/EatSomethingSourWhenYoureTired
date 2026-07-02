@@ -19,7 +19,27 @@ router.get('/', async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const games = await Game.find()
+    const VALID_FILTERS = ['all', 'ranked', 'tournament', 'normal'];
+    const filter = VALID_FILTERS.includes(req.query.filter) ? req.query.filter : 'all';
+
+    let query = {};
+    if (filter === 'ranked') {
+      query = { isRanked: true };
+    } else if (filter === 'tournament' || filter === 'normal') {
+      const tournaments = await Tournament.find({}, 'rounds.pairings.game').lean();
+      const tournamentGameIds = tournaments.flatMap(t =>
+        (t.rounds || []).flatMap(r =>
+          (r.pairings || []).map(p => p.game).filter(Boolean)
+        )
+      );
+      if (filter === 'tournament') {
+        query = { _id: { $in: tournamentGameIds } };
+      } else {
+        query = { isRanked: { $ne: true }, _id: { $nin: tournamentGameIds } };
+      }
+    }
+
+    const games = await Game.find(query)
       .populate('submittedBy', PLAYER_POPULATE_FIELDS)
       .populate('players.player', PLAYER_POPULATE_FIELDS)
       .populate('verifiedBy', PLAYER_POPULATE_FIELDS)
@@ -27,7 +47,7 @@ router.get('/', async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const total = await Game.countDocuments();
+    const total = await Game.countDocuments(query);
 
     res.json({
       success: true,

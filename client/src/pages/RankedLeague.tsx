@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { rankedLeaguesApi, RankedLeague as RankedLeagueType } from '../services/api';
@@ -72,15 +73,23 @@ const RankedLeague: React.FC = () => {
           <StarIcon className="h-8 w-8 text-yellow-500" />
           Ranked League
         </h1>
-        {!loading && league && !isInLeague && (
-          <button
-            onClick={handleJoin}
-            disabled={joining}
-            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        <div className="flex items-center gap-3">
+          <Link
+            to="/games?filter=ranked"
+            className="btn-secondary"
           >
-            {joining ? 'Joining...' : 'Join Ranked League'}
-          </button>
-        )}
+            View Ranked Games
+          </Link>
+          {!loading && league && !isInLeague && (
+            <button
+              onClick={handleJoin}
+              disabled={joining}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {joining ? 'Joining...' : 'Join Ranked League'}
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (

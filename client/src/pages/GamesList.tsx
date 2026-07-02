@@ -1,21 +1,38 @@
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { usePaginatedApi } from '../hooks/useApi';
 import { useRequireAuth } from '../hooks/useRequireAuth';
-import { gamesApi, Game } from '../services/api';
+import { gamesApi, Game, GameFilter } from '../services/api';
 import UserDisplay from '../components/user/UserDisplay';
 import { MagnifyingGlassIcon, PlusIcon } from '@heroicons/react/24/outline';
 
+const VALID_FILTERS: GameFilter[] = ['all', 'ranked', 'tournament', 'normal'];
+
 const GamesList: React.FC = () => {
   useRequireAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const pageLimit = 20;
   const PlayerSeats = ['East', 'South', 'West', 'North'];
 
+  const rawFilter = searchParams.get('filter') as GameFilter | null;
+  const [filter, setFilter] = useState<GameFilter>(
+    rawFilter && VALID_FILTERS.includes(rawFilter) ? rawFilter : 'all'
+  );
+
+  const handleFilterChange = (newFilter: GameFilter) => {
+    setFilter(newFilter);
+    if (newFilter === 'all') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ filter: newFilter });
+    }
+  };
+
   // Memoize the API call function to prevent infinite loops
   const getGames = React.useCallback(
-    (page: number, limit: number) => gamesApi.getGames(page, limit),
-    []
+    (page: number, limit: number) => gamesApi.getGames(page, limit, filter),
+    [filter]
   );
 
   // Fetch games with pagination
@@ -70,6 +87,23 @@ const GamesList: React.FC = () => {
           <PlusIcon className="h-5 w-5" />
           Submit Game
         </Link>
+      </div>
+
+      {/* Filter Buttons */}
+      <div className="flex gap-2 flex-wrap">
+        {VALID_FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => handleFilterChange(f)}
+            className={`px-4 py-2 text-sm rounded-full font-medium transition-colors ${
+              filter === f
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
       </div>
 
       {/* Search Bar */}

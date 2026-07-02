@@ -31,6 +31,7 @@ const GameSubmission: React.FC = () => {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
   const [playerErrors, setPlayerErrors] = useState<boolean[]>([false, false, false, false]);
+  const [scoresTouched, setScoresTouched] = useState(false);
   const PlayerSeats = ['East', 'South', 'West', 'North'];
   const searchInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -113,6 +114,7 @@ const GameSubmission: React.FC = () => {
     const newPlayers = [...players];
     newPlayers[index].score = value ?? 0;
     setPlayers(newPlayers);
+    setScoresTouched(true);
   };
 
   const selectPlayer = (user: User) => {
@@ -144,41 +146,32 @@ const GameSubmission: React.FC = () => {
     }
   };
 
-  const isFormValid = () => {
-    // Validate all players are selected
-    if (players.some(p => !p.player)) {
-      return false;
-    }
-
-    // Validate all scores are numbers
-    if (players.some(p => p.score === undefined || p.score === null || isNaN(Number(p.score)))) {
-      return false;
-    }
-
-    // Validate all players are unique
+  const getValidationErrors = () => {
     const playerIds = players.map(p => p.player);
-    if (new Set(playerIds).size !== 4) {
-      return false;
-    }
-
-    // Validate that the authenticated user is one of the players
-    if (!user || !playerIds.includes(user._id)) {
-      return false;
-    }
-
-    // Validate points left on table is a multiple of 1000
-    if (pointsLeftOnTable % 1000 !== 0) {
-      return false;
-    }
-
-    // Validate total score (players + table) equals 120000 for ranked, 100000 or 120000 otherwise
+    const allPlayersSelected = players.every(p => !!p.player);
     const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
     const totalScore = playersTotal + pointsLeftOnTable;
-    if (isRanked) {
-      if (totalScore !== 120000) return false;
-    } else {
-      if (totalScore !== 100000 && totalScore !== 120000) return false;
+
+    const duplicatePlayers = allPlayersSelected && new Set(playerIds).size !== 4;
+    const missingSelf = allPlayersSelected && (!user || !playerIds.includes(user._id));
+    const pointsNotMultiple = pointsLeftOnTable % 1000 !== 0;
+
+    let totalScoreError: string | null = null;
+    if (isRanked && totalScore !== 120000) {
+      totalScoreError = `Ranked games must total exactly 120,000 (current: ${totalScore.toLocaleString()})`;
+    } else if (!isRanked && totalScore !== 100000 && totalScore !== 120000) {
+      totalScoreError = `Total must equal 100,000 or 120,000 (current: ${totalScore.toLocaleString()})`;
     }
+
+    return { duplicatePlayers, missingSelf, pointsNotMultiple, totalScoreError, totalScore };
+  };
+
+  const isFormValid = () => {
+    if (players.some(p => !p.player)) return false;
+    if (players.some(p => p.score === undefined || p.score === null || isNaN(Number(p.score)))) return false;
+
+    const { duplicatePlayers, missingSelf, pointsNotMultiple, totalScoreError } = getValidationErrors();
+    if (duplicatePlayers || missingSelf || pointsNotMultiple || totalScoreError) return false;
 
     return true;
   };
@@ -186,49 +179,7 @@ const GameSubmission: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate all players are selected
-    if (players.some(p => !p.player)) {
-      alert('Please select all 4 players');
-      return;
-    }
-
-    // Validate all scores are numbers
-    if (players.some(p => !p.score || isNaN(Number(p.score)))) {
-      alert('Please enter valid scores for all players');
-      return;
-    }
-
-    // Validate all players are unique
-    const playerIds = players.map(p => p.player);
-    if (new Set(playerIds).size !== 4) {
-      alert('All players must be unique');
-      return;
-    }
-
-    // Validate that the authenticated user is one of the players
-    if (!user || !playerIds.includes(user._id)) {
-      alert('You must include yourself as one of the players');
-      return;
-    }
-
-    // Validate points left on table is a multiple of 100
-    if (pointsLeftOnTable % 1000 !== 0) {
-      alert('Points left on table must be a multiple of 1000');
-      return;
-    }
-
-    // Validate total score (players + table) equals 120000 for ranked, 100000 or 120000 otherwise
-    const playersTotal = players.reduce((sum, p) => sum + Number(p.score), 0);
-    const totalScore = playersTotal + pointsLeftOnTable;
-    if (isRanked) {
-      if (totalScore !== 120000) {
-        alert(`Ranked games must have a total score of exactly 120000. Current total: ${totalScore}`);
-        return;
-      }
-    } else if (totalScore !== 100000 && totalScore !== 120000) {
-      alert(`Total score (players + table) must equal exactly 100000 or 120000. Current total: ${totalScore}`);
-      return;
-    }
+    if (!isFormValid()) return;
 
     try {
       await createGame({
@@ -250,6 +201,9 @@ const GameSubmission: React.FC = () => {
       console.error('Failed to submit game:', err);
     }
   };
+
+  const { duplicatePlayers, missingSelf, pointsNotMultiple, totalScoreError, totalScore } = getValidationErrors();
+  const allPlayersSelected = players.every(p => !!p.player);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -368,6 +322,12 @@ const GameSubmission: React.FC = () => {
               </div>
             ))}
           </div>
+          {allPlayersSelected && duplicatePlayers && (
+            <p className="mt-2 text-xs text-red-600">All players must be unique</p>
+          )}
+          {allPlayersSelected && !duplicatePlayers && missingSelf && (
+            <p className="mt-2 text-xs text-red-600">You must include yourself as one of the players</p>
+          )}
         </div>
 
         <div>
@@ -377,23 +337,29 @@ const GameSubmission: React.FC = () => {
           <NumericInput
             id="pointsLeftOnTable"
             value={pointsLeftOnTable}
-            onChange={(value) => setPointsLeftOnTable(value ?? 0)}
+            onChange={(value) => { setPointsLeftOnTable(value ?? 0); setScoresTouched(true); }}
             step={1000}
             min={0}
             className="w-full"
             required
           />
-          <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+          {scoresTouched && pointsNotMultiple && (
+            <p className="mt-1 text-xs text-red-600">Points left on table must be a multiple of 1,000</p>
+          )}
+          <div className={`mt-2 p-3 rounded-md border ${scoresTouched && totalScoreError ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Total:</span>
-              <span className="text-lg font-semibold text-gray-900">
-                {(players.reduce((sum, p) => sum + Number(p.score), 0) + pointsLeftOnTable).toLocaleString()}
+              <span className={`text-lg font-semibold ${scoresTouched && totalScoreError ? 'text-red-600' : 'text-gray-900'}`}>
+                {totalScore.toLocaleString()}
               </span>
             </div>
+            {scoresTouched && totalScoreError && (
+              <p className="mt-1 text-xs text-red-600">{totalScoreError}</p>
+            )}
           </div>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
           <label className={`flex items-center gap-2 ${isRanked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`} title="Check this if the game was played in person">
             <input
               type="checkbox"

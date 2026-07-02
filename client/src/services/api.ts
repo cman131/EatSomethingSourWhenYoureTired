@@ -64,6 +64,7 @@ export interface Game {
   notes?: string;
   pointsLeftOnTable?: number;
   isEastOnly?: boolean;
+  isRanked?: boolean;
   verified: boolean;
   verifiedBy?: User;
   verifiedAt?: string;
@@ -471,10 +472,14 @@ export const notificationsApi = {
   },
 };
 
+export type GameFilter = 'all' | 'ranked' | 'tournament' | 'normal';
+
 // Games API
 export const gamesApi = {
-  getGames: async (page = 1, limit = 20) => {
-    return apiRequest<PaginatedResponse<Game>>(`/games?page=${page}&limit=${limit}`);
+  getGames: async (page = 1, limit = 20, filter: GameFilter = 'all') => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (filter && filter !== 'all') params.set('filter', filter);
+    return apiRequest<PaginatedResponse<Game>>(`/games?${params.toString()}`);
   },
 
   createGame: async (gameData: {
