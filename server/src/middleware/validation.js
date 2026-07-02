@@ -23,8 +23,8 @@ const validateUserRegistration = [
   
   body('displayName')
     .trim()
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Display name must be between 3 and 30 characters'),
+    .isLength({ min: 2, max: 30 })
+    .withMessage('Display name must be between 2 and 30 characters'),
   
   body('password')
     .isLength({ min: 6 })
@@ -50,8 +50,8 @@ const validateUserUpdate = [
   body('displayName')
     .optional()
     .trim()
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Display name must be between 3 and 30 characters')
+    .isLength({ min: 2, max: 30 })
+    .withMessage('Display name must be between 2 and 30 characters')
     .matches(/^[a-zA-Z0-9_]+$/)
     .withMessage('Display name can only contain letters, numbers, and underscores'),
   
