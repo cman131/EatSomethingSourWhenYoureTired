@@ -119,6 +119,8 @@ const Register: React.FC = () => {
                 type="text"
                 autoComplete="display-name"
                 required
+                minLength={2}
+                maxLength={30}
                 className="input-field mt-1"
                 placeholder="Choose a display name"
                 value={formData.displayName}
