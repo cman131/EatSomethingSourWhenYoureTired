@@ -74,7 +74,7 @@ router.post('/login', authLimiter, validateUserLogin, async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-      console.log('Invalid email');
+      console.log('No user found with email address: ' + email);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
