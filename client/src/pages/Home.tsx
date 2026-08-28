@@ -117,8 +117,8 @@ const Home: React.FC = () => {
             {isAuthenticated ? `Welcome back, ${user?.displayName}!` : 'Welcome to Charleston\'s Riichi Mahjong Club!'}
           </h1>
           <p className="text-xl text-primary-100 mb-6">
-            We primarily play 10am - 12pm every Sunday at <b>
-              <a href="https://blumsc.com" rel="noreferrer" target="_blank"><ArrowTopRightOnSquareIcon className="h-4 w-4 inline-block mr-1" />Blum downtown
+            We primarily play 10am - 1pm every Sunday at <b>
+              <a href="https://www.annieolove.com" rel="noreferrer" target="_blank"><ArrowTopRightOnSquareIcon className="h-4 w-4 inline-block mr-1" />Annie O'Loves in Washley
               </a></b>.
             <br/>
             All skill levels are welcome and we're happy to teach! Come learn to play {":)"}
