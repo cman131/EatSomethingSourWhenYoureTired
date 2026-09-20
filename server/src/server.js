@@ -15,6 +15,7 @@ const decisionQuizRoutes = require('./routes/decisionQuizzes');
 const tournamentRoutes = require('./routes/tournaments');
 const rankedLeagueRoutes = require('./routes/rankedLeagues');
 const pointsRoutes = require('./routes/points');
+const shopRoutes = require('./routes/shop');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -89,6 +90,7 @@ app.use('/api/decision-quizzes', authenticateToken, decisionQuizRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/ranked-leagues', authenticateToken, rankedLeagueRoutes);
 app.use('/api/points', authenticateToken, pointsRoutes);
+app.use('/api/shop', authenticateToken, shopRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

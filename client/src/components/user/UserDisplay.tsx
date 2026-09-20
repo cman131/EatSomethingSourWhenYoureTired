@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import UserAvatar from './UserAvatar';
+import { EquippedFlair } from '../../services/api';
 
 interface UserDisplayProps {
   user: {
@@ -11,6 +12,7 @@ interface UserDisplayProps {
     realName?: string | null;
     privateMode?: boolean;
     isGuest?: boolean;
+    equippedFlair?: EquippedFlair | null;
   };
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showLink?: boolean;
@@ -42,11 +44,15 @@ const UserDisplay: React.FC<UserDisplayProps> = ({
   const shouldShowYouIndicator = showYouIndicator && isCurrentUser;
   const isPrivate = user.privateMode === true;
   const isGuest = user.isGuest === true;
-  // Don't show link for guest users or private users
   const shouldShowLink = showLink && !isPrivate && !isGuest;
+
+  const flair = user.equippedFlair;
+  const nameColorClass = flair?.nameColor || '';
+  const nameIcon = flair?.nameIcon || null;
 
   const nameContent = (
     <>
+      {nameIcon && <span className="mr-1 text-sm" aria-hidden="true">{nameIcon}</span>}
       {displayName}
       {shouldShowYouIndicator && (
         <span className="ml-2 text-xs text-primary-600 font-normal">(You)</span>
@@ -57,12 +63,12 @@ const UserDisplay: React.FC<UserDisplayProps> = ({
   const nameElement = shouldShowLink ? (
     <Link
       to={`/profile/${user._id}`}
-      className={`font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors ${nameClassName}`}
+      className={`font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors ${nameColorClass} ${nameClassName}`}
     >
       {nameContent}
     </Link>
   ) : (
-    <span className={`font-medium text-gray-900 ${nameClassName}`}>
+    <span className={`font-medium text-gray-900 ${nameColorClass} ${nameClassName}`}>
       {nameContent}
     </span>
   );

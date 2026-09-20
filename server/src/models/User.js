@@ -157,6 +157,16 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  purchasedItems: [{
+    item: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopItem' },
+    purchasedAt: { type: Date, default: Date.now },
+  }],
+  equippedFlair: {
+    nameColor:     { type: String, default: null },
+    nameIcon:      { type: String, default: null },
+    profileBorder: { type: String, default: null },
+    title:         { type: String, default: null },
+  },
 }, {
   timestamps: true
 });
