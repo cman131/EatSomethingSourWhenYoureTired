@@ -5,14 +5,14 @@ const ShopItem = require('../src/models/ShopItem');
 
 const SEED_ITEMS = [
   // nameColor — 8 items
-  { name: 'Sakura Pink',    description: 'Delicate cherry blossom pink',                 category: 'nameColor',     cost: 100, tier: 'entry',   value: 'text-pink-500',    sortOrder: 1 },
-  { name: 'Sea Teal',       description: 'Inspired by the East China Sea',                category: 'nameColor',     cost: 100, tier: 'entry',   value: 'text-teal-600',    sortOrder: 2 },
-  { name: 'Amber',          description: 'Warm amber glow',                               category: 'nameColor',     cost: 150, tier: 'entry',   value: 'text-amber-600',   sortOrder: 3 },
-  { name: 'Jade Green',     description: 'Classic jade green',                            category: 'nameColor',     cost: 250, tier: 'mid',     value: 'text-emerald-600', sortOrder: 4 },
-  { name: 'Ocean Blue',     description: 'A deep ocean blue',                             category: 'nameColor',     cost: 250, tier: 'mid',     value: 'text-blue-600',    sortOrder: 5 },
-  { name: 'Royal Purple',   description: 'Regal and commanding',                          category: 'nameColor',     cost: 300, tier: 'mid',     value: 'text-purple-600',  sortOrder: 6 },
-  { name: 'Crimson Dragon', description: 'The fierce red of a dragon',                    category: 'nameColor',     cost: 600, tier: 'premium', value: 'text-red-600',     sortOrder: 7 },
-  { name: 'Mahjong Gold',   description: 'The golden color of a winning hand',            category: 'nameColor',     cost: 700, tier: 'premium', value: 'text-yellow-600',  sortOrder: 8 },
+  { name: 'Sakura Pink',    description: 'Delicate cherry blossom pink',                 category: 'nameColor',     cost: 100, tier: 'entry',   value: 'flair-color-pink',    sortOrder: 1 },
+  { name: 'Sea Teal',       description: 'Inspired by the East China Sea',                category: 'nameColor',     cost: 100, tier: 'entry',   value: 'flair-color-teal',    sortOrder: 2 },
+  { name: 'Amber',          description: 'Warm amber glow',                               category: 'nameColor',     cost: 150, tier: 'entry',   value: 'flair-color-amber',   sortOrder: 3 },
+  { name: 'Jade Green',     description: 'Classic jade green',                            category: 'nameColor',     cost: 250, tier: 'mid',     value: 'flair-color-emerald', sortOrder: 4 },
+  { name: 'Ocean Blue',     description: 'A deep ocean blue',                             category: 'nameColor',     cost: 250, tier: 'mid',     value: 'flair-color-blue',    sortOrder: 5 },
+  { name: 'Royal Purple',   description: 'Regal and commanding',                          category: 'nameColor',     cost: 300, tier: 'mid',     value: 'flair-color-purple',  sortOrder: 6 },
+  { name: 'Crimson Dragon', description: 'The fierce red of a dragon',                    category: 'nameColor',     cost: 600, tier: 'premium', value: 'flair-color-red',     sortOrder: 7 },
+  { name: 'Mahjong Gold',   description: 'The golden color of a winning hand',            category: 'nameColor',     cost: 700, tier: 'premium', value: 'flair-color-gold',    sortOrder: 8 },
 
   // nameIcon — 8 items
   { name: 'Cherry Blossom', description: 'A delicate sakura bloom',                       category: 'nameIcon',      cost: 100, tier: 'entry',   value: '🌸', sortOrder: 1 },
@@ -25,11 +25,11 @@ const SEED_ITEMS = [
   { name: 'Crown',          description: 'Royalty at the table',                          category: 'nameIcon',      cost: 600, tier: 'premium', value: '👑', sortOrder: 8 },
 
   // profileBorder — 7 items
-  { name: 'Blush',          description: 'A soft pink ring',                              category: 'profileBorder', cost: 100, tier: 'entry',   value: 'ring-2 ring-pink-300',    sortOrder: 1 },
-  { name: 'Pebble',         description: 'A simple stone-grey ring',                      category: 'profileBorder', cost: 100, tier: 'entry',   value: 'ring-2 ring-gray-400',    sortOrder: 2 },
-  { name: 'Jade Ring',      description: 'Rich jade border',                              category: 'profileBorder', cost: 250, tier: 'mid',     value: 'ring-2 ring-emerald-500', sortOrder: 3 },
-  { name: 'Cobalt Ring',    description: 'Deep cobalt border',                            category: 'profileBorder', cost: 250, tier: 'mid',     value: 'ring-2 ring-blue-500',    sortOrder: 4 },
-  { name: 'Sakura Ring',    description: 'Cherry blossom pink border',                    category: 'profileBorder', cost: 300, tier: 'mid',     value: 'ring-2 ring-pink-400',    sortOrder: 5 },
+  { name: 'Blush',          description: 'A soft pink ring',                              category: 'profileBorder', cost: 100, tier: 'entry',   value: 'flair-ring-blush',  sortOrder: 1 },
+  { name: 'Pebble',         description: 'A simple stone-grey ring',                      category: 'profileBorder', cost: 100, tier: 'entry',   value: 'flair-ring-pebble', sortOrder: 2 },
+  { name: 'Jade Ring',      description: 'Rich jade border',                              category: 'profileBorder', cost: 250, tier: 'mid',     value: 'flair-ring-jade',   sortOrder: 3 },
+  { name: 'Cobalt Ring',    description: 'Deep cobalt border',                            category: 'profileBorder', cost: 250, tier: 'mid',     value: 'flair-ring-cobalt', sortOrder: 4 },
+  { name: 'Sakura Ring',    description: 'Cherry blossom pink border',                    category: 'profileBorder', cost: 300, tier: 'mid',     value: 'flair-ring-sakura', sortOrder: 5 },
   { name: 'Rainbow Halo',   description: 'Slowly spinning rainbow conic gradient',        category: 'profileBorder', cost: 600, tier: 'premium', value: 'flair-border-rainbow',    sortOrder: 6 },
   { name: 'Dragon Scale',   description: 'Spinning emerald gradient — shimmering scales', category: 'profileBorder', cost: 700, tier: 'premium', value: 'flair-border-dragon',     sortOrder: 7 },
 

@@ -31,6 +31,23 @@
   overflow: hidden;
 }
 
+/* Name color flair */
+.flair-color-pink    { color: #ec4899; }
+.flair-color-teal    { color: #0d9488; }
+.flair-color-amber   { color: #d97706; }
+.flair-color-emerald { color: #059669; }
+.flair-color-blue    { color: #2563eb; }
+.flair-color-purple  { color: #9333ea; }
+.flair-color-red     { color: #dc2626; }
+.flair-color-gold    { color: #ca8a04; }
+
+/* Profile border flair (non-premium — applied directly to avatar element) */
+.flair-ring-blush  { box-shadow: 0 0 0 2px #f9a8d4; }
+.flair-ring-pebble { box-shadow: 0 0 0 2px #9ca3af; }
+.flair-ring-jade   { box-shadow: 0 0 0 2px #10b981; }
+.flair-ring-cobalt { box-shadow: 0 0 0 2px #3b82f6; }
+.flair-ring-sakura { box-shadow: 0 0 0 2px #f472b6; }
+
 .flair-title-chicken {
   background: linear-gradient(135deg, #fef08a, #fde68a, #fbbf24);
   color: #92400e;
