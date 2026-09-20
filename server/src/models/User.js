@@ -263,7 +263,7 @@ userSchema.methods.toJSON = function() {
 };
 
 // Common fields to populate when fetching player data
-const PLAYER_POPULATE_FIELDS = 'displayName avatar privateMode isGuest';
+const PLAYER_POPULATE_FIELDS = 'displayName avatar privateMode isGuest equippedFlair';
 
 module.exports = mongoose.model('User', userSchema);
 module.exports.PLAYER_POPULATE_FIELDS = PLAYER_POPULATE_FIELDS;

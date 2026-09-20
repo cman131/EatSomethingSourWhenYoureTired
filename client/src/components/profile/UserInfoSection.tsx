@@ -101,7 +101,20 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
               />
             </div>
             <div>
-              <h3 className="text-3xl font-bold text-gray-900">{user?.displayName}</h3>
+              <h3 className={`text-3xl font-bold text-gray-900 ${user?.equippedFlair?.nameColor || ''}`}>
+                {user?.equippedFlair?.nameIcon && (
+                  <span className="mr-2 text-2xl" aria-hidden="true">{user.equippedFlair.nameIcon}</span>
+                )}
+                {user?.displayName}
+              </h3>
+              {user?.equippedFlair?.title && (
+                <span
+                  data-testid="flair-title-badge"
+                  className="mt-1 inline-block px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full"
+                >
+                  {user.equippedFlair.title}
+                </span>
+              )}
             </div>
           </div>
 

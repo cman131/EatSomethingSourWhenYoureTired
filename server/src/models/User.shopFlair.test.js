@@ -18,6 +18,13 @@ beforeEach(async () => {
   await ShopItem.deleteMany({ name: /^test-flair/ });
 });
 
+describe('PLAYER_POPULATE_FIELDS', () => {
+  test('includes equippedFlair so flair renders in game rows and member lists', () => {
+    const { PLAYER_POPULATE_FIELDS } = require('./User');
+    expect(PLAYER_POPULATE_FIELDS).toContain('equippedFlair');
+  });
+});
+
 describe('User flair fields', () => {
   test('new user has empty purchasedItems and null equippedFlair', async () => {
     const user = await User.create({

@@ -137,7 +137,7 @@ describe('POST /api/shop/equip', () => {
     });
   });
 
-  test('sets equippedFlair slot for an owned item', async () => {
+  test('sets equippedFlair slot to item value for an owned item', async () => {
     const res = await request(app)
       .post('/api/shop/equip')
       .send({ itemId: item._id.toString(), slot: 'nameColor' });
@@ -146,7 +146,7 @@ describe('POST /api/shop/equip', () => {
     expect(res.body.success).toBe(true);
 
     const updated = await User.findById(user._id);
-    expect(updated.equippedFlair.nameColor).toBe(item._id.toString());
+    expect(updated.equippedFlair.nameColor).toBe(item.value);
   });
 
   test('unequips a slot when itemId is null', async () => {

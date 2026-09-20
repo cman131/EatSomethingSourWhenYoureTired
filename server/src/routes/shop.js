@@ -101,8 +101,13 @@ router.post('/equip', async (req, res) => {
       return res.status(403).json({ success: false, message: 'You do not own this item' });
     }
 
+    const item = await ShopItem.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
     await User.findByIdAndUpdate(req.user._id, {
-      [`equippedFlair.${slot}`]: itemId,
+      [`equippedFlair.${slot}`]: item.value,
     });
 
     res.json({ success: true, message: 'Item equipped' });
