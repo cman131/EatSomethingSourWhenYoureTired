@@ -234,7 +234,7 @@ const TournamentDetail: React.FC = () => {
   };
 
   const handleEndRound = async () => {
-    if (!id || !currentRoundToEnd.roundNumber) return;
+    if (!id || !currentRoundToEnd) return;
 
     const roundLabel = tournament ? getRoundLabel(currentRoundToEnd.roundNumber, tournament) : `Round ${currentRoundToEnd.roundNumber}`;
     if (!window.confirm(`Are you sure you want to end ${roundLabel}? This will calculate UMA scores and generate the next round if applicable.`)) {
@@ -545,7 +545,7 @@ const TournamentDetail: React.FC = () => {
                     {actionLoading ? 'Starting...' : `Start ${getRoundLabel(roundToStart.roundNumber, tournament)}`}
                   </button>
                 )}
-                {!roundToStart && (
+                {!roundToStart && currentRoundToEnd && (
                   <button
                     onClick={handleEndRound}
                     disabled={actionLoading || !allRoundsHaveGames}
