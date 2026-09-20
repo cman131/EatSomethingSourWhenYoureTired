@@ -150,7 +150,7 @@ const TournamentGamesAdmin: React.FC = () => {
   }, [tournament]);
 
   const handleDeleteGame = async (gameId: string) => {
-    if (!tournament || tournament.status === 'Completed' || !window.confirm('Are you sure you want to delete this game? This action cannot be undone.')) {
+    if (!tournament || tournament.status === 'Completed' || !window.confirm('Delete this game? The pairing will be reset and players can resubmit a new game for this table.')) {
       return;
     }
 
