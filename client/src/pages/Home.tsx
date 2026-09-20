@@ -72,31 +72,35 @@ const Home: React.FC = () => {
             </Link>
           </div>
           <div className="space-y-3">
-            {nextTournament && (
-              <div className="card">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Upcoming</div>
-                    <div className="font-semibold text-gray-900">{nextTournament.name}</div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      {new Date(nextTournament.date).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                      {nextTournament.location &&
-                        ` · ${nextTournament.location.city}, ${nextTournament.location.state}`}
+            <div className="card">
+              {nextTournament ? (
+                <>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Upcoming</div>
+                      <div className="font-semibold text-gray-900">{nextTournament.name}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {new Date(nextTournament.date).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                        {nextTournament.location &&
+                          ` · ${nextTournament.location.city}, ${nextTournament.location.state}`}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <Link
-                  to={`/tournaments/${nextTournament._id}`}
-                  className="text-sm text-primary-600 font-semibold mt-3 inline-block hover:text-primary-700"
-                >
-                  View details →
-                </Link>
-              </div>
-            )}
+                  <Link
+                    to={`/tournaments/${nextTournament._id}`}
+                    className="text-sm text-primary-600 font-semibold mt-3 inline-block hover:text-primary-700"
+                  >
+                    View details →
+                  </Link>
+                </>
+              ) : (
+                <p className="text-gray-400 text-sm">No upcoming tournaments</p>
+              )}
+            </div>
             <div className="card flex items-center justify-between">
               <div>
                 <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Ranked League</div>
