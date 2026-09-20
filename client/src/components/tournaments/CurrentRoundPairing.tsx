@@ -120,6 +120,13 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
     return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Build URL for the fullscreen round timer page
+  const currentRound = tournament.rounds?.find((r: any) => r.roundNumber === currentPairing?.round);
+  const timerUrl =
+    currentRound && (currentRound as any).startDate && tournament.roundDurationMinutes
+      ? `/round-timer?startDate=${encodeURIComponent((currentRound as any).startDate)}&duration=${tournament.roundDurationMinutes}`
+      : null;
+
   // Get game ID for linking and check verification status
   const game = currentPairing?.pairing.game;
   const hasGame = game != null && game !== '';
@@ -162,10 +169,15 @@ const CurrentRoundPairing: React.FC<CurrentRoundPairingProps> = ({ tournament, c
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <span className="font-medium">{getRoundLabel(currentPairing.round, tournament)}</span>
           <span className="font-medium">Table {currentPairing.pairing.tableNumber}</span>
-          {!tournament.isOnline && timeRemaining !== null && (
-            <span className={`font-medium ${timeRemaining < 0 ? 'text-red-600' : ''}`}>
+          {!tournament.isOnline && timeRemaining !== null && timerUrl && (
+            <a
+              href={timerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={`font-medium ${timeRemaining < 0 ? 'text-red-600' : ''}`}
+            >
               Time: {formatTimeRemaining(timeRemaining)}
-            </span>
+            </a>
           )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
