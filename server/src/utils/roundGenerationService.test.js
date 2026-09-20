@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { generateRoundPairings } = require('./roundGenerationService');
+const tournamentUma = require('../utils/tournamentUma');
 
 jest.mock('../models/User', () => {
   const m = require('mongoose');
@@ -29,6 +30,10 @@ function makeRound1Pairings(playerIds) {
 function allPairedIds(pairings) {
   return pairings.flatMap(p => p.players.map(pl => pl.player.toString()));
 }
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('generateRoundPairings - wheel strategy with dropped players', () => {
   // Round 2 threshold = 12*(2-1)+4 = 16. 20 players > 16 → wheel triggers.
@@ -150,5 +155,125 @@ describe('generateRoundPairings - TieredPointsOnly strategy', () => {
     const ids = allPairedIds(pairings);
     expect(new Set(ids).size).toBe(8);
     playerIds.forEach(id => expect(ids).toContain(id));
+  });
+});
+
+describe('generateRoundPairings — TieredPointsOnly round 2, filler tier placement', () => {
+  const realIds = ['real-p1', 'real-p2', 'real-p3', 'real-p4', 'real-p5'];
+
+  function isFiller(playerId) {
+    return !realIds.includes(playerId);
+  }
+
+  let umaMapSpy;
+
+  beforeEach(() => {
+    umaMapSpy = jest.spyOn(tournamentUma, 'computePlayerUmaMap');
+  });
+
+  afterEach(() => {
+    umaMapSpy.mockRestore();
+  });
+
+  function buildTournament(completedPairings = []) {
+    return {
+      roundStrategy: 'TieredPointsOnly',
+      startingPointValue: 30000,
+      maxRounds: 0,
+      umaPenalties: [],
+      players: realIds.map(id => ({ player: id, dropped: false })),
+      rounds: completedPairings.length > 0
+        ? [{ roundNumber: 1, pairings: completedPairings }]
+        : []
+    };
+  }
+
+  test('fillers appear only in the bottom tier table, not in the top tier table', async () => {
+    // 5 real players, UMA: p1=20 > p2=10 > p3=-1 > p4=-5 > p5=-10
+    // Top 4 should be [p1, p2, p3, p4] — no fillers
+    // Bottom table should be [p5, filler, filler, filler]
+    umaMapSpy.mockReturnValue(new Map([
+      ['real-p1', 20], ['real-p2', 10], ['real-p3', -1], ['real-p4', -5], ['real-p5', -10]
+    ]));
+
+    const round1Pairing = {
+      tableNumber: 1,
+      players: realIds.slice(0, 4).map(id => ({ player: id }))
+    };
+    const tournament = buildTournament([round1Pairing]);
+
+    const pairings = await generateRoundPairings(tournament, 2);
+
+    expect(pairings).toHaveLength(2);
+    pairings.forEach(p => expect(p.players).toHaveLength(4));
+
+    // There must be exactly one table that contains NO fillers
+    const topTable = pairings.find(p => p.players.every(pp => !isFiller(pp.player)));
+    expect(topTable).toBeDefined();
+
+    // That table must contain the 4 highest-UMA real players
+    const topIds = topTable.players.map(pp => pp.player);
+    expect(topIds).toContain('real-p1');
+    expect(topIds).toContain('real-p2');
+    expect(topIds).toContain('real-p3');
+    expect(topIds).toContain('real-p4');
+    expect(topIds).not.toContain('real-p5');
+
+    // The other table contains p5 and fillers
+    const bottomTable = pairings.find(p => p !== topTable);
+    const bottomIds = bottomTable.players.map(pp => pp.player);
+    expect(bottomIds).toContain('real-p5');
+    expect(bottomIds.filter(isFiller)).toHaveLength(3);
+  });
+
+  test('top tier table has no fillers even when filler UMA=0 ranks above negative-UMA real players', async () => {
+    // Key invariant: fillers resolve to UMA=0 via ?? 0; here all real players p3–p5 have
+    // negative UMA, so without the fix fillers would land in the top group (above negatives).
+    umaMapSpy.mockReturnValue(new Map([
+      ['real-p1', 15], ['real-p2', 8], ['real-p3', -2], ['real-p4', -7], ['real-p5', -12]
+    ]));
+
+    const round1Pairing = {
+      tableNumber: 1,
+      players: realIds.slice(0, 4).map(id => ({ player: id }))
+    };
+    const tournament = buildTournament([round1Pairing]);
+
+    const pairings = await generateRoundPairings(tournament, 2);
+
+    const topTable = pairings.find(p => p.players.every(pp => !isFiller(pp.player)));
+    expect(topTable).toBeDefined();
+
+    const topIds = topTable.players.map(pp => pp.player);
+    // p3 and p4 have negative UMA but still belong in the top group over any filler
+    expect(topIds).toContain('real-p3');
+    expect(topIds).toContain('real-p4');
+  });
+});
+
+describe('generateRoundPairings — TieredPointsOnly round 1 filler handling', () => {
+  test('round 1 produces full tables when player count is not divisible by 4', async () => {
+    const realIds = ['real-p1', 'real-p2', 'real-p3', 'real-p4', 'real-p5'];
+
+    const tournament = {
+      roundStrategy: 'TieredPointsOnly',
+      startingPointValue: 30000,
+      maxRounds: 0,
+      umaPenalties: [],
+      players: realIds.map(id => ({ player: id, dropped: false })),
+      rounds: []
+    };
+
+    const pairings = await generateRoundPairings(tournament, 1);
+
+    // 5 players → 3 fillers added → 2 full tables of 4
+    expect(pairings).toHaveLength(2);
+    pairings.forEach(p => expect(p.players).toHaveLength(4));
+
+    const allIds = pairings.flatMap(p => p.players.map(pp => pp.player));
+    expect(allIds).toHaveLength(8);
+
+    const fillerCount = allIds.filter(id => !realIds.includes(id)).length;
+    expect(fillerCount).toBe(3);
   });
 });
