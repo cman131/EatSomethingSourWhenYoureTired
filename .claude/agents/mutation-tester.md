@@ -33,12 +33,12 @@ Enter worktree (isolated copy)
   For each mutant (one at a time):
     Apply single source mutation via Edit
         │
-    [[TEST_COMMAND]] --no-build --filter "FullyQualifiedName~{TestClass}"
+    cd client && npm test -- --watchAll=false --testPathPattern="{TestClass}"
        / \
    KILLED  SURVIVED
       │        │
    revert      Write test that catches the mutant
-   mutation    Verify: [[TEST_COMMAND]] passes with fix, fails without
+   mutation    Verify: `cd client && npm test -- --watchAll=false` passes with fix, fails without
                   │
                git diff -- "test/**/*.cs" > patches/mut_{id}.patch
                Revert source mutation (keep test fix staged)
@@ -116,8 +116,8 @@ Don't mutate everything — pick high-value candidates:
 Before any mutations, verify the test suite is green:
 
 ```bash
-[[BUILD_COMMAND]]
-[[TEST_COMMAND]] --filter "FullyQualifiedName~{TestClass}" --no-build
+cd client && npm run build
+cd client && npm test -- --watchAll=false --testPathPattern="{TestClass}"
 ```
 
 If baseline fails, stop and report. Mutation testing requires a green suite.
@@ -153,7 +153,7 @@ For each selected mutant:
 1. **Apply the mutation** using Edit on the source file
 2. **Run targeted tests**:
    ```bash
-   [[TEST_COMMAND]] --filter "FullyQualifiedName~{TestClass}" --no-build
+   cd client && npm test -- --watchAll=false --testPathPattern="{TestClass}"
    ```
 3. **Evaluate result**:
    - **Tests fail** → mutant KILLED. Revert the mutation. Move on.
@@ -187,7 +187,7 @@ Stage the test change for the final commit. Ensure **no source file changes** ar
 After each mutant (killed or survived):
 
 1. Revert any source mutations: `git checkout -- src/`
-2. Confirm build still passes: `[[BUILD_COMMAND]] --no-restore`
+2. Confirm build still passes: `cd client && npm run build`
 
 ## Scoring
 
@@ -351,7 +351,7 @@ Apply this mutation to {file}:{line}:
   Original: {original_code}
   Mutant: {mutated_code}
 
-Then run: [[TEST_COMMAND]] --filter "FullyQualifiedName~{TestClass}" --no-restore
+Then run: `cd client && npm test -- --watchAll=false --testPathPattern="{TestClass}"`
 Report: KILLED (which test caught it) or SURVIVED
 Revert the mutation before exiting.
 ```

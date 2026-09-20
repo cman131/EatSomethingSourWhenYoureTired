@@ -197,7 +197,7 @@ implemented for a comparable input/output shape.
   - Mitigation: [specific mitigation]
 
 ## Success Criteria
-- [ ] `[[BUILD_COMMAND]]` passes with the new component included
+- [ ] `cd client && npm run build` passes with the new component included
 - [ ] Happy-path input produces the expected persisted result
 - [ ] All new unit tests pass; no regressions in existing test suites
 - [ ] Reference docs updated to reflect the new component

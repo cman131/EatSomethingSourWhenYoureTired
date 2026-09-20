@@ -93,7 +93,7 @@ Execute each unit using TDD, then run the improve loop.
 
 > **Print:** `Running tests — expecting red...`
 
-2. **Confirm red** — `[[TEST_COMMAND]] --filter "FullyQualifiedName~ClassName"` (adapt the filter syntax to your stack's test runner)
+2. **Confirm red** — `cd client && npm test -- --watchAll=false --testPathPattern="ClassName"` (adapt the pattern to target your specific test file)
 
 > **Print:** `Implementing...`
 
@@ -106,7 +106,7 @@ Execute each unit using TDD, then run the improve loop.
 
 > **Print:** `Building...`
 
-6. **Build clean** — `[[BUILD_COMMAND]]`
+6. **Build clean** — `cd client && npm run build`
 
 > **Print:** Unit report — tests written, passing, build status.
 
@@ -121,7 +121,7 @@ After all units pass, run `/project:improve` on the full changeset. Fix findings
 > **Print:** `## Phase 4: Verify — checking completion criteria`
 
 1. **Check completion criteria** — did we hit "done" from Phase 2?
-2. **Final regression verification** — run the full test suite (`[[TEST_COMMAND]]`) and build (`[[BUILD_COMMAND]]`). Confirm no new failures before marking done.
+2. **Final regression verification** — run the full test suite (`cd client && npm test -- --watchAll=false`) and build (`cd client && npm run build`). Confirm no new failures before marking done.
 3. **Learnings check** — scan learned skills for any covering modified code. Flag stale ones.
 4. **Offer to save** — if you discovered a reusable pattern, ask the user.
 
