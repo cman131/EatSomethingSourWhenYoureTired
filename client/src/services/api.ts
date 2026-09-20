@@ -42,6 +42,8 @@ export interface User {
   } | null;
   pointsBalance?: number;
   totalPointsEarned?: number;
+  equippedFlair?: EquippedFlair;
+  purchasedItems?: PurchasedItem[];
 }
 
 export interface GamePlayer {
@@ -742,6 +744,75 @@ export const pointsApi = {
 
   getHistory: async (page = 1, limit = 20) => {
     return apiRequest<ApiResponse<PointsHistory>>(`/points/me/history?page=${page}&limit=${limit}`);
+  },
+};
+
+export type FlairCategory = 'nameColor' | 'nameIcon' | 'profileBorder' | 'title';
+
+export interface ShopItem {
+  _id: string;
+  name: string;
+  description: string;
+  category: FlairCategory;
+  cost: number;
+  value: string;
+  previewCss?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface EquippedFlair {
+  nameColor: string | null;
+  nameIcon: string | null;
+  profileBorder: string | null;
+  title: string | null;
+}
+
+export interface PurchasedItem {
+  item: ShopItem;
+  purchasedAt: string;
+}
+
+export interface ShopCatalog {
+  nameColor?: ShopItem[];
+  nameIcon?: ShopItem[];
+  profileBorder?: ShopItem[];
+  title?: ShopItem[];
+}
+
+export interface ShopInventory {
+  purchasedItems: PurchasedItem[];
+  equippedFlair: EquippedFlair;
+  pointsBalance: number;
+}
+
+export const shopApi = {
+  getCatalog: async () => {
+    return apiRequest<ApiResponse<ShopCatalog>>('/shop');
+  },
+
+  getInventory: async () => {
+    return apiRequest<ApiResponse<ShopInventory>>('/shop/inventory');
+  },
+
+  purchase: async (itemId: string) => {
+    return apiRequest<ApiResponse<null>>('/shop/purchase', {
+      method: 'POST',
+      body: JSON.stringify({ itemId }),
+    });
+  },
+
+  equip: async (itemId: string | null, slot: FlairCategory) => {
+    return apiRequest<ApiResponse<null>>('/shop/equip', {
+      method: 'POST',
+      body: JSON.stringify({ itemId, slot }),
+    });
+  },
+
+  seed: async () => {
+    return apiRequest<ApiResponse<{ count: number }>>('/shop/seed', {
+      method: 'POST',
+    });
   },
 };
 

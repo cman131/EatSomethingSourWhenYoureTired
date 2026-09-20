@@ -16,6 +16,7 @@ import {
   ScaleIcon,
   StarIcon,
   CurrencyDollarIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup } from 'react-icons/fa';
 
@@ -39,6 +40,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ...(isAuthenticated ? [
       { name: 'Games', href: '/games', icon: ChartBarIcon },
       { name: 'Points', href: '/points', icon: CurrencyDollarIcon },
+      { name: 'Flair Shop', href: '/shop', icon: SparklesIcon },
     ] : []),
   ];
 

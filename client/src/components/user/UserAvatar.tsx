@@ -1,11 +1,13 @@
 import React from 'react';
 import { UserIcon } from '@heroicons/react/24/outline';
+import { EquippedFlair } from '../../services/api';
 
 interface UserAvatarProps {
   user: {
     avatar?: string | null;
     displayName?: string;
     privateMode?: boolean;
+    equippedFlair?: EquippedFlair | null;
   };
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
@@ -41,12 +43,12 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   const altText = `${displayName}'s avatar`;
   const avatar = user.avatar;
   const isPrivate = user.privateMode === true;
+  const borderClass = (!isPrivate && user.equippedFlair?.profileBorder) || '';
 
-  // If user is in private mode, always show placeholder
   if (isPrivate || !avatar) {
     const iconSizeClass = iconSizeClasses[size];
     return (
-      <div className={`${sizeClass} rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${className}`}>
+      <div className={`${sizeClass} rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${borderClass} ${className}`}>
         <UserIcon className={`${iconSizeClass} text-gray-400`} />
       </div>
     );
@@ -56,9 +58,8 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
     <img
       src={avatar}
       alt={altText}
-      className={`${sizeClass} rounded-full object-cover border border-gray-200 ${className}`}
+      className={`${sizeClass} rounded-full object-cover border border-gray-200 ${borderClass} ${className}`}
       onError={(e) => {
-        // Hide image if it fails to load
         e.currentTarget.style.display = 'none';
       }}
     />
