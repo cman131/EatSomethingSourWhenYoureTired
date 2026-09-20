@@ -278,7 +278,11 @@ async function generateRoundPairingsTieredPointsOnly(tournament, roundNumber, ac
   const N = activePlayerIds.length;
 
   if (roundNumber === 1) {
-    const pairings = await generatePairingsOptimized(activePlayerIds, opponentHistory);
+    let idsForRound1 = activePlayerIds;
+    if (activePlayerIds.length % 4 !== 0) {
+      idsForRound1 = await addFillersToPlayerList(activePlayerIds, User);
+    }
+    const pairings = await generatePairingsOptimized(idsForRound1, opponentHistory);
     return pairings.map(assignSeats);
   }
 
@@ -362,17 +366,30 @@ async function generateRoundPairings(tournament, roundNumber) {
     return playerId.toString ? playerId.toString() : playerId;
   });
 
-  // Add filler users until count is divisible by 4
+  // Get completed rounds (rounds before the current one)
+  const completedRounds = tournament.rounds
+    .filter(r => r.roundNumber < roundNumber && r.pairings && r.pairings.length > 0)
+    .sort((a, b) => a.roundNumber - b.roundNumber);
+
+  const strategy = tournament.roundStrategy || 'Scramble';
+  if (strategy === 'TieredPointsOnly' || strategy === 'TieredPointsTop4') {
+    // Pass real player IDs only — strategy owns all filler padding so fillers
+    // are appended after the UMA sort, not scattered through it.
+    const pairings = await generateRoundPairingsTieredPointsOnly(tournament, roundNumber, activePlayerIds, completedRounds, User);
+    return pairings;
+  }
+
+  // Add filler users until count is divisible by 4 (Scramble / legacy strategies only)
   const incompletePairing = 4 - (activePlayerIds.length % 4);
   if (incompletePairing !== 4) {
     for (let i = 0; i < incompletePairing; i++) {
       const fillerName = `Filler ${i + 1}`;
       // Check if a guest user with this name already exists
-      let fillerUser = await User.findOne({ 
+      let fillerUser = await User.findOne({
         displayName: fillerName,
-        isGuest: true 
+        isGuest: true
       });
-      
+
       // If it doesn't exist, create a new guest user with unique dummy email
       if (!fillerUser) {
         fillerUser = new User({
@@ -382,20 +399,9 @@ async function generateRoundPairings(tournament, roundNumber) {
         });
         await fillerUser.save();
       }
-      
+
       activePlayerIds.push(fillerUser._id.toString());
     }
-  }
-
-  // Get completed rounds (rounds before the current one)
-  const completedRounds = tournament.rounds
-    .filter(r => r.roundNumber < roundNumber && r.pairings && r.pairings.length > 0)
-    .sort((a, b) => a.roundNumber - b.roundNumber);
-
-  const strategy = tournament.roundStrategy || 'Scramble';
-  if (strategy === 'TieredPointsOnly' || strategy === 'TieredPointsTop4') {
-    const pairings = await generateRoundPairingsTieredPointsOnly(tournament, roundNumber, activePlayerIds, completedRounds, User);
-    return pairings;
   }
 
   // Scramble (or legacy)
