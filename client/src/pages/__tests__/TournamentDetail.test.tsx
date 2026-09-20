@@ -34,6 +34,7 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 
 jest.mock('../../components/ShareButton', () => () => <div data-testid="share-button" />);
+jest.mock('../../components/QRCodeButton', () => () => <div data-testid="qr-code-button" />);
 jest.mock('../../components/AddressDisplay', () => () => <div />);
 jest.mock('../../components/tournaments/Standings', () => () => <div />);
 jest.mock('../../components/tournaments/CurrentRoundPairing', () => () => <div />);

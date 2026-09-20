@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { tournamentsApi, gamesApi, Tournament, getRoundLabel } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import ShareButton from '../components/ShareButton';
+import QRCodeButton from '../components/QRCodeButton';
 import AddressDisplay from '../components/AddressDisplay';
 import { ArrowLeftIcon, CalendarIcon, PencilIcon, TableCellsIcon, UserGroupIcon, ClockIcon } from '@heroicons/react/24/outline';
 import Standings from '../components/tournaments/Standings';
@@ -482,6 +483,9 @@ const TournamentDetail: React.FC = () => {
           )}
           <div className="w-full sm:w-auto">
             <ShareButton title="Share this tournament" />
+          </div>
+          <div className="w-full sm:w-auto">
+            <QRCodeButton url={window.location.href} />
           </div>
         </div>
       </div>
