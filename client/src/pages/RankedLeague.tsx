@@ -151,7 +151,7 @@ const RankedLeague: React.FC = () => {
           {unrankedPlayers.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Unranked</h2>
-              <p className="text-sm text-gray-500 mb-4">Less than 6 games — not yet eligible for the leaderboard</p>
+              <p className="text-sm text-gray-500 mb-4">Less than {RANKED_GAMES_THRESHOLD} games — not yet eligible for the leaderboard</p>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
