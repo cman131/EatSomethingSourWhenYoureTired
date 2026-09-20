@@ -8,7 +8,7 @@
 function computePlayerUmaMap(tournament, finalsOnly = false) {
   const map = new Map();
   const startingPoint = tournament.startingPointValue ?? 30000;
-  const maxRounds = tournament.maxRounds ?? 0;
+  const maxRounds = tournament.preliminaryRoundCount ?? tournament.maxRounds ?? 0;
 
   if (!tournament.rounds || !Array.isArray(tournament.rounds)) {
     return map;
