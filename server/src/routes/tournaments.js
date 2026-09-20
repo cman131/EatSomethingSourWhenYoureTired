@@ -995,6 +995,10 @@ router.put('/:id/start', authenticateToken, validateMongoId('id'), requireTourna
       }
     }
 
+    // Lock in the preliminary round count based on the initial active player count.
+    // Using the stored value prevents player drops from shifting the round boundary mid-tournament.
+    tournament.preliminaryRoundCount = Math.ceil(((activePlayers.length - 4) / 12) + 1);
+
     // Update tournament status to InProgress
     tournament.status = 'InProgress';
     
@@ -1111,10 +1115,15 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       });
     }
 
+    // Use the stored preliminary round count (locked at start time) so player drops
+    // cannot shift the finals boundary mid-tournament. Fall back to the virtual for
+    // tournaments that started before this field existed.
+    const prelimCount = tournament.preliminaryRoundCount ?? tournament.maxRounds;
+
     // For finals rounds: set top4 only when this is the last finals match (order by finals-only UMA)
-    const isFinalsRound = roundNumber > tournament.maxRounds;
+    const isFinalsRound = roundNumber > prelimCount;
     const numberOfFinalsMatches = getFinalsMatchCount(tournament);
-    const finalsRoundsCompleted = roundNumber - tournament.maxRounds;
+    const finalsRoundsCompleted = roundNumber - prelimCount;
 
     if (isFinalsRound && finalsRoundsCompleted >= numberOfFinalsMatches) {
       const finalPairing = round.pairings.find(p => p.game);
@@ -1137,7 +1146,7 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
     }
 
     // Generate the next round and its pairings if round is not the last round
-    if (roundNumber < tournament.maxRounds) {
+    if (roundNumber < prelimCount) {
       try {
         const nextRoundNumber = roundNumber + 1;
         const nextRoundPairings = await generateRoundPairings(tournament, nextRoundNumber);
@@ -1176,7 +1185,7 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
         // Don't fail the request if round generation fails
         // Admin can manually create the round
       }
-    } else if (roundNumber === tournament.maxRounds) {
+    } else if (roundNumber === prelimCount) {
       const numberOfFinalsMatchesForStrategy = getFinalsMatchCount(tournament);
 
       if (numberOfFinalsMatchesForStrategy === 0) {
@@ -1190,7 +1199,7 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
         tournament.status = 'Completed';
       } else {
         // Create the final 4 round (Scramble, TieredPointsTop4, etc.)
-        const finalRoundNumber = tournament.maxRounds + 1;
+        const finalRoundNumber = prelimCount + 1;
         const finalRoundExists = tournament.rounds.some(r => r.roundNumber === finalRoundNumber);
 
         if (!finalRoundExists) {
@@ -1225,17 +1234,17 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
           }
         }
       }
-    } else if (roundNumber > tournament.maxRounds) {
+    } else if (roundNumber > prelimCount) {
       // A finals round just ended
       const numberOfFinalsMatchesVal = getFinalsMatchCount(tournament);
-      const finalsRoundsCompletedVal = roundNumber - tournament.maxRounds;
+      const finalsRoundsCompletedVal = roundNumber - prelimCount;
 
       if (finalsRoundsCompletedVal < numberOfFinalsMatchesVal) {
         // More finals matches to play: create next finals round with same 4 players
-        const firstFinalsRound = tournament.rounds.find(r => r.roundNumber === tournament.maxRounds + 1);
+        const firstFinalsRound = tournament.rounds.find(r => r.roundNumber === prelimCount + 1);
         const firstFinalsPairing = firstFinalsRound && firstFinalsRound.pairings && firstFinalsRound.pairings[0];
         if (firstFinalsPairing && firstFinalsPairing.players && firstFinalsPairing.players.length === 4) {
-          const nextFinalsRoundNumber = tournament.maxRounds + finalsRoundsCompletedVal + 1;
+          const nextFinalsRoundNumber = prelimCount + finalsRoundsCompletedVal + 1;
           const seats = ['East', 'South', 'West', 'North'];
           const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
           const nextFinalsPairing = {
