@@ -756,6 +756,7 @@ export interface ShopItem {
   category: FlairCategory;
   cost: number;
   value: string;
+  tier: 'entry' | 'mid' | 'premium';
   previewCss?: string | null;
   sortOrder: number;
   isActive: boolean;

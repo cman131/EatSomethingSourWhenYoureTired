@@ -10,6 +10,7 @@ const shopItemSchema = new mongoose.Schema({
   },
   cost: { type: Number, required: true },
   value: { type: String, required: true },
+  tier: { type: String, enum: ['entry', 'mid', 'premium'], default: 'entry' },
   previewCss: { type: String, default: null },
   sortOrder: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },

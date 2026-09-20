@@ -9,6 +9,7 @@ import {
   FlairCategory,
 } from '../services/api';
 import { SparklesIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { isPremiumBorder, getPremiumTitleClass, getPremiumTitleEmoji } from '../utils/flairUtils';
 
 type Tab = { key: FlairCategory; label: string };
 
@@ -95,6 +96,9 @@ const Shop: React.FC = () => {
   const previewNameColor = previewUser.equippedFlair.nameColor ?? '';
   const previewIcon = previewUser.equippedFlair.nameIcon ?? '';
   const previewBorder = previewUser.equippedFlair.profileBorder ?? '';
+  const previewIsPremiumBorder = isPremiumBorder(previewBorder);
+
+  const hoveredTitle = hoveredItem?.category === 'title' ? hoveredItem : null;
 
   const currentItems: ShopItem[] = catalog?.[activeTab] ?? [];
 
@@ -136,17 +140,23 @@ const Shop: React.FC = () => {
       <div className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${previewBorder}`}>
-            <span className="text-gray-400 text-xs">?</span>
-          </div>
+          {previewIsPremiumBorder ? (
+            <div className={previewBorder}>
+              <div className="flair-border-inner w-10 h-10 bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-400 text-xs">?</span>
+              </div>
+            </div>
+          ) : (
+            <div className={`w-10 h-10 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${previewBorder}`}>
+              <span className="text-gray-400 text-xs">?</span>
+            </div>
+          )}
           <span className={`font-medium text-gray-900 ${previewNameColor}`}>
             {previewIcon && <span className="mr-1 text-sm">{previewIcon}</span>}
             Your Name
           </span>
-          {hoveredItem?.category === 'title' && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-              {hoveredItem.value}
-            </span>
+          {hoveredTitle && (
+            <TitleBadge value={hoveredTitle.value} tier={hoveredTitle.tier} />
           )}
         </div>
       </div>
@@ -193,12 +203,16 @@ const Shop: React.FC = () => {
                     <span className="text-2xl">{item.value}</span>
                   )}
                   {item.category === 'profileBorder' && (
-                    <div className={`w-8 h-8 rounded-full bg-gray-300 ${item.value}`} />
+                    item.tier === 'premium' ? (
+                      <div className={item.value}>
+                        <div className="flair-border-inner w-8 h-8 bg-gray-300" />
+                      </div>
+                    ) : (
+                      <div className={`w-8 h-8 rounded-full bg-gray-300 ${item.value}`} />
+                    )
                   )}
                   {item.category === 'title' && (
-                    <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-                      {item.value}
-                    </span>
+                    <TitleBadge value={item.value} tier={item.tier} />
                   )}
                   <span className="font-medium text-gray-900 text-sm">{item.name}</span>
                 </div>
@@ -245,6 +259,24 @@ const Shop: React.FC = () => {
         </div>
       )}
     </div>
+  );
+};
+
+const TitleBadge: React.FC<{ value: string; tier: ShopItem['tier'] }> = ({ value, tier }) => {
+  if (tier === 'premium') {
+    const premiumClass = getPremiumTitleClass(value);
+    const emoji = getPremiumTitleEmoji(value);
+    return (
+      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${premiumClass}`}>
+        {emoji && <span className="mr-1">{emoji}</span>}
+        {value}
+      </span>
+    );
+  }
+  return (
+    <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+      {value}
+    </span>
   );
 };
 

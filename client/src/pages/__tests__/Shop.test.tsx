@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Shop from '../Shop';
+import { ShopItem, PurchasedItem, EquippedFlair } from '../../services/api';
 
 jest.mock('react-router-dom', () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
@@ -30,19 +31,19 @@ const { useApi } = require('../../hooks/useApi');
 
 const mockCatalog = {
   nameColor: [
-    { _id: 'item1', name: 'Jade Green', description: 'A jade green', category: 'nameColor', cost: 200, value: 'text-emerald-600', sortOrder: 1, isActive: true },
-    { _id: 'item2', name: 'Crimson', description: 'A crimson color', category: 'nameColor', cost: 200, value: 'text-red-600', sortOrder: 2, isActive: true },
+    { _id: 'item1', name: 'Jade Green', description: 'A jade green', category: 'nameColor', cost: 250, value: 'text-emerald-600', tier: 'mid', sortOrder: 4, isActive: true } as ShopItem,
+    { _id: 'item2', name: 'Crimson Dragon', description: 'A crimson color', category: 'nameColor', cost: 600, value: 'text-red-600', tier: 'premium', sortOrder: 7, isActive: true } as ShopItem,
   ],
   nameIcon: [
-    { _id: 'item3', name: 'Dragon', description: 'A dragon', category: 'nameIcon', cost: 150, value: '🐉', sortOrder: 1, isActive: true },
+    { _id: 'item3', name: 'Dragon', description: 'A dragon', category: 'nameIcon', cost: 300, value: '🐉', tier: 'mid', sortOrder: 6, isActive: true } as ShopItem,
   ],
   profileBorder: [],
   title: [],
 };
 
 const mockInventory = {
-  purchasedItems: [],
-  equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: null },
+  purchasedItems: [] as PurchasedItem[],
+  equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: null } as EquippedFlair,
   pointsBalance: 500,
 };
 
@@ -82,7 +83,7 @@ describe('Shop page', () => {
     render(<Shop />);
 
     expect(screen.getByText('Jade Green')).toBeInTheDocument();
-    expect(screen.getByText('Crimson')).toBeInTheDocument();
+    expect(screen.getByText('Crimson Dragon')).toBeInTheDocument();
   });
 
   test('switches to Icons tab and shows icon items', () => {
@@ -105,13 +106,14 @@ describe('Shop page', () => {
 
     const buyButtons = screen.getAllByRole('button', { name: /buy/i });
     expect(buyButtons.length).toBeGreaterThan(0);
-    expect(screen.getAllByText('200')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('250')[0]).toBeInTheDocument();
   });
 
   test('shows Equip button for owned unequipped items', () => {
+    const ownedItem = mockCatalog.nameColor[0];
     mockShopUseApi(mockCatalog, {
       ...mockInventory,
-      purchasedItems: [{ item: { _id: 'item1', name: 'Jade Green', category: 'nameColor', cost: 200, value: 'text-emerald-600' }, purchasedAt: '2026-01-01' }],
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
     });
 
     render(<Shop />);
@@ -120,10 +122,11 @@ describe('Shop page', () => {
   });
 
   test('shows Equipped badge for currently equipped item', () => {
+    const ownedItem = mockCatalog.nameColor[0];
     mockShopUseApi(mockCatalog, {
       ...mockInventory,
-      purchasedItems: [{ item: { _id: 'item1', name: 'Jade Green', category: 'nameColor', cost: 200, value: 'text-emerald-600' }, purchasedAt: '2026-01-01' }],
-      equippedFlair: { nameColor: 'item1', nameIcon: null, profileBorder: null, title: null },
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+      equippedFlair: { nameColor: ownedItem._id, nameIcon: null, profileBorder: null, title: null },
     });
 
     render(<Shop />);

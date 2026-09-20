@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { EquippedFlair } from '../../services/api';
+import { isPremiumBorder } from '../../utils/flairUtils';
 
 interface UserAvatarProps {
   user: {
@@ -39,14 +40,37 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
     user.avatar = undefined;
   }
   const sizeClass = sizeClasses[size];
+  const iconSizeClass = iconSizeClasses[size];
   const displayName = user.displayName || 'User';
   const altText = `${displayName}'s avatar`;
   const avatar = user.avatar;
   const isPrivate = user.privateMode === true;
   const borderClass = (!isPrivate && user.equippedFlair?.profileBorder) || '';
+  const premiumBorder = isPremiumBorder(borderClass);
+
+  if (premiumBorder) {
+    const inner = !isPrivate && avatar ? (
+      <img
+        src={avatar}
+        alt={altText}
+        className={`flair-border-inner ${sizeClass} object-cover`}
+        onError={(e) => {
+          e.currentTarget.style.display = 'none';
+        }}
+      />
+    ) : (
+      <div className={`flair-border-inner ${sizeClass} bg-gray-200 flex items-center justify-center`}>
+        <UserIcon className={`${iconSizeClass} text-gray-400`} />
+      </div>
+    );
+    return (
+      <div className={`${borderClass} ${className}`}>
+        {inner}
+      </div>
+    );
+  }
 
   if (isPrivate || !avatar) {
-    const iconSizeClass = iconSizeClasses[size];
     return (
       <div className={`${sizeClass} rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${borderClass} ${className}`}>
         <UserIcon className={`${iconSizeClass} text-gray-400`} />
@@ -67,4 +91,3 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
 };
 
 export default UserAvatar;
-
