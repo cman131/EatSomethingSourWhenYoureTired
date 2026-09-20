@@ -282,10 +282,7 @@ async function generateRoundPairingsTieredPointsOnly(tournament, roundNumber, ac
     return pairings.map(assignSeats);
   }
 
-  // Round 2+: need UMA — populate games then compute
-  if (tournament.rounds && tournament.rounds.length > 0) {
-    await tournament.populate('rounds.pairings.game');
-  }
+  // Round 2+: need UMA computed from pre-populated game data (caller is responsible for populating)
   const umaMap = computePlayerUmaMap(tournament, false);
 
   const sortedByUma = [...activePlayerIds].sort((a, b) => (umaMap.get(b) ?? 0) - (umaMap.get(a) ?? 0));

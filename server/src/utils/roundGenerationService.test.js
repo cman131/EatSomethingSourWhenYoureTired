@@ -99,3 +99,56 @@ describe('generateRoundPairings - wheel strategy with dropped players', () => {
     round1Players.forEach(id => expect(ids).toContain(id));
   });
 });
+
+describe('generateRoundPairings - TieredPointsOnly strategy', () => {
+  test('round 2 uses pre-populated game data without calling tournament.populate', async () => {
+    const playerIds = makePlayerIds(8);
+
+    const round1 = {
+      roundNumber: 1,
+      pairings: [
+        {
+          tableNumber: 1,
+          players: playerIds.slice(0, 4).map(id => ({ player: id })),
+          game: {
+            verified: true,
+            players: [
+              { player: playerIds[0], score: 50000, rank: 1 },
+              { player: playerIds[1], score: 30000, rank: 2 },
+              { player: playerIds[2], score: 20000, rank: 3 },
+              { player: playerIds[3], score: 20000, rank: 4 }
+            ]
+          }
+        },
+        {
+          tableNumber: 2,
+          players: playerIds.slice(4).map(id => ({ player: id })),
+          game: {
+            verified: true,
+            players: [
+              { player: playerIds[4], score: 45000, rank: 1 },
+              { player: playerIds[5], score: 32000, rank: 2 },
+              { player: playerIds[6], score: 18000, rank: 3 },
+              { player: playerIds[7], score: 25000, rank: 4 }
+            ]
+          }
+        }
+      ]
+    };
+
+    const tournament = {
+      roundStrategy: 'TieredPointsOnly',
+      maxRounds: 4,
+      players: playerIds.map(id => ({ player: id, dropped: false })),
+      rounds: [round1]
+      // No populate method — if the service calls it, this test will throw
+    };
+
+    const pairings = await generateRoundPairings(tournament, 2);
+
+    expect(pairings).toHaveLength(2);
+    const ids = allPairedIds(pairings);
+    expect(new Set(ids).size).toBe(8);
+    playerIds.forEach(id => expect(ids).toContain(id));
+  });
+});
