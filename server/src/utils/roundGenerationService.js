@@ -409,7 +409,19 @@ async function generateRoundPairings(tournament, roundNumber) {
     // Use wheel system for large tournaments
     const firstRound = tournament.rounds.find(r => r.roundNumber === 1);
     const firstRoundPairings = firstRound ? firstRound.pairings : null;
-    pairings = await generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings);
+
+    // Fall back to optimized if any round-1 player has since dropped — their ID
+    // would still appear in the reconstructed wheel lists but is no longer active.
+    const activeSet = new Set(activePlayerIds);
+    const round1HasDropped = firstRoundPairings && firstRoundPairings.some(p =>
+      p.players.some(pl => !activeSet.has(pl.player.toString()))
+    );
+
+    if (!round1HasDropped) {
+      pairings = await generatePairingsWheel(activePlayerIds, roundNumber, firstRoundPairings);
+    } else {
+      pairings = await generatePairingsOptimized(activePlayerIds, opponentHistory);
+    }
   } else {
     pairings = await generatePairingsOptimized(activePlayerIds, opponentHistory);
   }
