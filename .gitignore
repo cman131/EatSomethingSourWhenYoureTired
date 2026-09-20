@@ -18,7 +18,6 @@ pids
 *.seed
 *.pid.lock
 
-docs/*
 !docs/superpowers/
 !docs/superpowers/**
 .superpowers/
