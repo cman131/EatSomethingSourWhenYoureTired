@@ -40,6 +40,8 @@ export interface User {
     url: string;
     type: 'youtube' | 'spotify';
   } | null;
+  pointsBalance?: number;
+  totalPointsEarned?: number;
 }
 
 export interface GamePlayer {
@@ -702,6 +704,44 @@ export const rankedLeaguesApi = {
     return apiRequest<ApiResponse<{ league: RankedLeague }>>('/ranked-leagues/current/join', {
       method: 'POST',
     });
+  },
+};
+
+// Points API
+export interface PointTransaction {
+  _id: string;
+  user: string;
+  type: string;
+  amount: number;
+  metadata: {
+    gameId?: string | null;
+    tournamentId?: string | null;
+    leagueId?: string | null;
+    placement?: number | null;
+  };
+  createdAt: string;
+}
+
+export interface PointsSummary {
+  balance: number;
+  totalEarned: number;
+  recentTransactions: PointTransaction[];
+}
+
+export interface PointsHistory {
+  items: PointTransaction[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export const pointsApi = {
+  getSummary: async () => {
+    return apiRequest<ApiResponse<PointsSummary>>('/points/me');
+  },
+
+  getHistory: async (page = 1, limit = 20) => {
+    return apiRequest<ApiResponse<PointsHistory>>(`/points/me/history?page=${page}&limit=${limit}`);
   },
 };
 

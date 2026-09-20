@@ -24,6 +24,7 @@ import TournamentGamesAdmin from './pages/TournamentGamesAdmin';
 import TournamentWaitlist from './pages/TournamentWaitlist';
 import PenaltiesSearch from './pages/PenaltiesSearch';
 import RoundTimer from './pages/RoundTimer';
+import Points from './pages/Points';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/games/:id" element={<GameDetail />} />
                 <Route path="/tournaments" element={<TournamentsList />} />
                 <Route path="/ranked" element={<RankedLeague />} />
+                <Route path="/points" element={<Points />} />
                 <Route path="/resources" element={<Resources />} />
                 <Route path="/penalties" element={<PenaltiesSearch />} />
                 <Route path="/calculator" element={<ScoreCalculator />} />

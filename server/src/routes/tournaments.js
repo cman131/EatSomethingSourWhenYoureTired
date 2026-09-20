@@ -9,6 +9,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { generateRoundPairings, getFinalsMatchCount } = require('../utils/roundGenerationService');
 const { createGame } = require('../utils/gameService');
 const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
+const { awardTournamentPoints } = require('../utils/pointsService');
 
 /** Populate rounds.pairings.game when tournament has rounds so player.uma virtual can compute from games. */
 async function prepareTournamentForResponse(tournament) {
@@ -1272,6 +1273,14 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
 
     // Round is complete
     await tournament.save();
+
+    if (tournament.status === 'Completed') {
+      try {
+        await awardTournamentPoints(tournament);
+      } catch (err) {
+        console.error('Failed to award tournament points:', err);
+      }
+    }
 
     await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
     await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);

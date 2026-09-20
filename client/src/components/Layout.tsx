@@ -15,6 +15,7 @@ import {
   TrophyIcon,
   ScaleIcon,
   StarIcon,
+  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup } from 'react-icons/fa';
 
@@ -37,8 +38,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Ranked', href: '/ranked', icon: StarIcon },
     ...(isAuthenticated ? [
       { name: 'Games', href: '/games', icon: ChartBarIcon },
+      { name: 'Points', href: '/points', icon: CurrencyDollarIcon },
     ] : []),
   ];
+
 
   const resourceLinks = [
     { name: 'Calculator', href: '/calculator', icon: CalculatorIcon },

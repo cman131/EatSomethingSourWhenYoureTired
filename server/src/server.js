@@ -14,6 +14,7 @@ const discardQuizRoutes = require('./routes/discardQuizzes');
 const decisionQuizRoutes = require('./routes/decisionQuizzes');
 const tournamentRoutes = require('./routes/tournaments');
 const rankedLeagueRoutes = require('./routes/rankedLeagues');
+const pointsRoutes = require('./routes/points');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -87,6 +88,7 @@ app.use('/api/discard-quizzes', authenticateToken, discardQuizRoutes);
 app.use('/api/decision-quizzes', authenticateToken, decisionQuizRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/ranked-leagues', authenticateToken, rankedLeagueRoutes);
+app.use('/api/points', authenticateToken, pointsRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

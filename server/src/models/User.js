@@ -148,7 +148,15 @@ const userSchema = new mongoose.Schema({
       enum: ['youtube', 'spotify'],
       default: 'spotify'
     }
-  }
+  },
+  pointsBalance: {
+    type: Number,
+    default: 0,
+  },
+  totalPointsEarned: {
+    type: Number,
+    default: 0,
+  },
 }, {
   timestamps: true
 });

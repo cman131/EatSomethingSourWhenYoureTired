@@ -7,6 +7,7 @@ const { validateGameCreation, validateMongoId } = require('../middleware/validat
 const { sendNewCommentNotificationEmail } = require('../utils/emailService');
 const { createGame } = require('../utils/gameService');
 const { getCurrentLeague, updateRankedPoints } = require('../utils/rankedLeagueService');
+const { awardGamePoints } = require('../utils/pointsService');
 
 const router = express.Router();
 
@@ -296,6 +297,12 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
     game.verifiedAt = new Date();
 
     await game.save();
+
+    try {
+      await awardGamePoints(game, req.user._id);
+    } catch (err) {
+      console.error('Failed to award game points:', err);
+    }
 
     if (game.isRanked) {
       try {
