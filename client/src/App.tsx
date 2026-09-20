@@ -24,41 +24,47 @@ import TournamentGameSubmission from './pages/TournamentGameSubmission';
 import TournamentGamesAdmin from './pages/TournamentGamesAdmin';
 import TournamentWaitlist from './pages/TournamentWaitlist';
 import PenaltiesSearch from './pages/PenaltiesSearch';
+import RoundTimer from './pages/RoundTimer';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/events" element={<Navigate to="/" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/submit-game" element={<GameSubmission />} />
-            <Route path="/profile/:id" element={<Profile />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/games" element={<GamesList />} />
-            <Route path="/games/:id" element={<GameDetail />} />
-            <Route path="/tournaments" element={<TournamentsList />} />
-            <Route path="/ranked" element={<RankedLeague />} />
-            <Route path="/achievements" element={<AchievementsList />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/penalties" element={<PenaltiesSearch />} />
-            <Route path="/calculator" element={<ScoreCalculator />} />
-            <Route path="/discard-quiz/:discardQuizId" element={<DiscardQuiz />} />
-            <Route path="/discard-quiz" element={<DiscardQuiz />} />
-            <Route path="/decision-quiz/:decisionQuizId" element={<DecisionQuiz />} />
-            <Route path="/decision-quiz" element={<DecisionQuiz />} />
-            <Route path="/create-tournament" element={<TournamentSubmission />} />
-            <Route path="/tournaments/:id/games" element={<TournamentGamesAdmin />} />
-            <Route path="/tournaments/:id/waitlist" element={<TournamentWaitlist />} />
-            <Route path="/tournaments/:id" element={<TournamentDetail />} />
-            <Route path="/tournaments/:tournamentId/submit-game/:roundNumber/:tableNumber" element={<TournamentGameSubmission />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/round-timer" element={<RoundTimer />} />
+          <Route path="*" element={
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/events" element={<Navigate to="/" replace />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/submit-game" element={<GameSubmission />} />
+                <Route path="/profile/:id" element={<Profile />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/games" element={<GamesList />} />
+                <Route path="/games/:id" element={<GameDetail />} />
+                <Route path="/tournaments" element={<TournamentsList />} />
+                <Route path="/ranked" element={<RankedLeague />} />
+                <Route path="/achievements" element={<AchievementsList />} />
+                <Route path="/resources" element={<Resources />} />
+                <Route path="/penalties" element={<PenaltiesSearch />} />
+                <Route path="/calculator" element={<ScoreCalculator />} />
+                <Route path="/discard-quiz/:discardQuizId" element={<DiscardQuiz />} />
+                <Route path="/discard-quiz" element={<DiscardQuiz />} />
+                <Route path="/decision-quiz/:decisionQuizId" element={<DecisionQuiz />} />
+                <Route path="/decision-quiz" element={<DecisionQuiz />} />
+                <Route path="/create-tournament" element={<TournamentSubmission />} />
+                <Route path="/tournaments/:id/games" element={<TournamentGamesAdmin />} />
+                <Route path="/tournaments/:id/waitlist" element={<TournamentWaitlist />} />
+                <Route path="/tournaments/:id" element={<TournamentDetail />} />
+                <Route path="/tournaments/:tournamentId/submit-game/:roundNumber/:tableNumber" element={<TournamentGameSubmission />} />
+              </Routes>
+            </Layout>
+          } />
+        </Routes>
       </Router>
     </AuthProvider>
   );
