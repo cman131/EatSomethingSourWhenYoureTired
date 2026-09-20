@@ -82,14 +82,7 @@ const Shop: React.FC = () => {
     _id: 'preview',
     displayName: 'Your Name',
     equippedFlair: hoveredItem
-      ? {
-          ...equippedFlair,
-          [hoveredItem.category]: hoveredItem.category === 'nameColor'
-            ? hoveredItem.value
-            : hoveredItem.category === 'nameIcon'
-            ? hoveredItem.value
-            : equippedFlair[hoveredItem.category],
-        }
+      ? { ...equippedFlair, [hoveredItem.category]: hoveredItem.value }
       : equippedFlair,
   };
 

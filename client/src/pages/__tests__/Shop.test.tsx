@@ -133,4 +133,41 @@ describe('Shop page', () => {
 
     expect(screen.getByText(/equipped/i)).toBeInTheDocument();
   });
+
+  describe('hover preview', () => {
+    test('hovering a profileBorder item applies its class to the preview avatar', () => {
+      const catalogWithBorder = {
+        ...mockCatalog,
+        profileBorder: [
+          {
+            _id: 'border1',
+            name: 'Jade Ring',
+            description: 'A jade ring',
+            category: 'profileBorder' as const,
+            cost: 200,
+            value: 'flair-ring-jade',
+            tier: 'entry' as const,
+            sortOrder: 1,
+            isActive: true,
+          } as ShopItem,
+        ],
+      };
+      mockShopUseApi(catalogWithBorder);
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /borders/i }));
+
+      // Before hover — preview avatar has no border class
+      const nameSpan = screen.getByText('Your Name');
+      const avatarDiv = nameSpan.previousElementSibling as HTMLElement;
+      expect(avatarDiv).not.toHaveClass('flair-ring-jade');
+
+      // Fire hover
+      const itemCard = screen.getByText('Jade Ring').closest('div.bg-white') as HTMLElement;
+      fireEvent.mouseEnter(itemCard);
+
+      // After hover — preview avatar has the border class
+      expect(avatarDiv).toHaveClass('flair-ring-jade');
+    });
+  });
 });
