@@ -20,7 +20,7 @@ const Home: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
 
   const getTournaments = React.useCallback(
-    () => tournamentsApi.getTournaments(1, 20),
+    () => tournamentsApi.getTournaments(1, 100),
     []
   );
   const { data: tournamentsResponse } = useApi<PaginatedResponse<Tournament>>(getTournaments);
@@ -47,7 +47,7 @@ const Home: React.FC = () => {
     },
     [isAuthenticated]
   );
-  const { data: games, loading: gamesLoading } = usePaginatedApi<Game>(getGames, 1, 10);
+  const { data: games, loading: gamesLoading } = usePaginatedApi<Game>(getGames, 1, 5);
 
   if (isAuthenticated) {
     return (
@@ -251,6 +251,7 @@ const Home: React.FC = () => {
             src={photo.src}
             alt={photo.alt}
             className="w-full h-28 object-cover"
+            loading="lazy"
           />
         ))}
       </div>
