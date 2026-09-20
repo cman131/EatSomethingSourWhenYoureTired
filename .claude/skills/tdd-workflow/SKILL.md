@@ -39,7 +39,7 @@ ALWAYS write tests first, then implement code to make tests pass.
 - Message queue / event-bus handlers
 - External API / OAuth integration flows
 
-See `profiles/<your-stack>/rules-addendum.md` for this stack's actual integration surfaces (specific data store, message bus, and external adapters).
+For this project: MongoDB (Mongoose ODM) for data store, no message bus, OAuth for external integrations.
 
 ## TDD Workflow Steps
 
@@ -116,7 +116,7 @@ Business logic buried behind the most restrictive visibility modifier (e.g. `pri
 - Failures are ambiguous — did the test fail because of your logic or the boilerplate?
 
 ### The Solution: Widen Just Enough to Test Directly
-Give business-logic methods the narrowest visibility that still lets the test project call them directly — the exact mechanism is stack-specific (C#'s `internal` + `InternalsVisibleTo`, Kotlin's `internal`, Java/Kotlin package-private with tests in the same package, TypeScript's lack of true internal visibility meaning exported-but-undocumented or a dedicated `internal/` barrel). See `profiles/<your-stack>/rules-addendum.md` for the concrete pattern this project uses.
+Give business-logic methods the narrowest visibility that still lets the test project call them directly — for TypeScript, this means exported-but-undocumented helpers or a dedicated `internal/` barrel export that tests can reach directly.
 
 ```text
 // ✅ CORRECT: Business logic has the narrowest testable visibility
@@ -321,7 +321,7 @@ Jest test: ProcessOrderAsync_WhenCalledTwice_ProducesSameResult
 
 Test files mirror the source tree: one test class/module per production class/module, grouped by the same feature folders (e.g. business-logic, infrastructure/data-access, controllers) inside each test project/module.
 
-`client` — see `profiles/<your-stack>/commands-test-addendum.md` for this project's actual test projects/modules and naming convention.
+`client` — Jest test files (co-located with source or in `__tests__/` directories) using the pattern `*.test.ts` or `*.test.tsx`.
 
 ## Mock Setup Rules
 

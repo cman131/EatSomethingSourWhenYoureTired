@@ -32,7 +32,7 @@ For each target file, identify these scan units:
 
 ### Debt Signals
 
-Each signal has a **weight** (1-5) and a **scope** (method or class). These are the stack-neutral signals every project scans for; see `profiles/<your-stack>/tech-debt-scorer-addendum.md` for language-specific signals (specific linter rules, analyzer warnings) to add to this list.
+Each signal has a **weight** (1-5) and a **scope** (method or class). These are the stack-neutral signals every project scans for. For TypeScript/React: add ESLint rule violations (`complexity`, `max-lines-per-function`, `no-console` abuse) to supplement these core signals.
 
 #### Method-Level Signals (scored per method)
 
@@ -150,7 +150,7 @@ Based on invocation context:
 - **On-demand** (`/tech-debt scan File.ext:MethodName`): Score only that method.
 - **Post-improve**: Run `git diff -U0` to get per-file hunks with changed line ranges. Parse the `@@ -a,b +c,d @@` headers to extract modified line ranges, then match those ranges against method/constructor boundaries (by signature line) to identify which methods were touched. Score only those methods.
 
-Filter to `**/*.{ts,tsx,js}` files in `src/` only (see `profiles/<your-stack>/tech-debt-scorer-addendum.md` for this stack's exact glob). Exclude auto-generated files and build-output directories (e.g. `obj/`, `bin/`, `dist/`, `node_modules/`).
+Filter to `**/*.{ts,tsx,js}` files in `src/` only. Exclude auto-generated files and build-output directories (e.g. `dist/`, `node_modules/`).
 
 ### Step 2: Quick Pass — Score Methods and Constructor
 
@@ -174,7 +174,7 @@ Tag each signal in the top 3 with a debt category:
 | Category | Signals |
 |----------|---------|
 | **Design debt** | God class, deep nesting, method length, duplicated logic |
-| **Architecture debt** | See `profiles/<your-stack>/tech-debt-scorer-addendum.md` for this stack's architecture-boundary signals (e.g. persistence/domain types leaking through an API response) |
+| **Architecture debt** | Persistence/domain types leaking through API responses; mixing concerns across layers (services calling direct database queries instead of repositories) |
 | **Test debt** | Missing test coverage |
 | **Maintainability debt** | File size, constructor deps, constructor logic, TODO/FIXME density |
 | **Safety debt** | High churn + high complexity overlap |
@@ -245,7 +245,7 @@ Invoke directly to audit a specific file or class:
 
 - **Top 3 cap** — never report more than 3 items. Rank, cut, move on.
 - **Don't re-read files** already in context — use what you have
-- **Quick method scan** — identify methods by this stack's function/method signature pattern (see `profiles/<your-stack>/tech-debt-scorer-addendum.md` for the exact regex), estimate line count by brace/block matching. Don't parse every line of every method.
+- **Quick method scan** — identify TypeScript methods by `(async )?(\w+)\s*\(` signature pattern, estimate line count by brace/block matching. Don't parse every line of every method.
 - **Skip small methods** — methods under 15 lines get no method-level signals. Only check class-level signals for them.
 - **Batch Grep** — detect multiple signals in one pass where patterns overlap (e.g., `TODO|FIXME|HACK` as one regex)
 - **Stop early** — if the file is under 100 lines with ≤3 constructor deps, report "Clean" immediately
