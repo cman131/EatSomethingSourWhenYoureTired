@@ -17,17 +17,25 @@ async function spendPoints(userId, amount, metadata = {}) {
   await User.findByIdAndUpdate(userId, { $inc: { pointsBalance: -amount } });
 }
 
+const GAME_PLACEMENT_TYPES = {
+  1: 'game_placement_1',
+  2: 'game_placement_2',
+  3: 'game_placement_3',
+  4: 'game_placement_4',
+};
+
+const GAME_PLACEMENT_AMOUNTS = { 1: 8, 2: 5, 3: 3, 4: 1 };
+
 async function awardGamePoints(game, verifierId) {
   const gameId = game._id;
 
-  const playerAwards = game.players.map(({ player }) =>
-    awardPoints(player, 'game_played', 5, { gameId })
+  const playerAwards = game.players.map(({ player, rank }) =>
+    awardPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], { gameId })
   );
   await Promise.all(playerAwards);
 
-  await awardPoints(game.submittedBy, 'game_submitted', 10, { gameId });
-
-  await awardPoints(verifierId, 'game_verified', 5, { gameId });
+  await awardPoints(game.submittedBy, 'game_submitted', 5, { gameId });
+  await awardPoints(verifierId, 'game_verified', 2, { gameId });
 }
 
 const TOURNAMENT_PLACEMENT_TYPES = [

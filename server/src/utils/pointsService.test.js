@@ -107,63 +107,87 @@ describe('awardGamePoints', () => {
     ]);
   });
 
-  test('awards game_played to all players in the game', async () => {
+  test('awards correct placement type and amount to each player', async () => {
     const game = {
       _id: new mongoose.Types.ObjectId(),
       players: [
-        { player: p1._id },
-        { player: p2._id },
-        { player: p3._id },
-        { player: p4._id },
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
       ],
       submittedBy: p1._id,
     };
 
     await awardGamePoints(game, p2._id);
 
-    const txP3 = await PointTransaction.find({ user: p3._id, type: 'game_played' });
-    expect(txP3).toHaveLength(1);
-    expect(txP3[0].amount).toBe(5);
+    const cases = [
+      { user: p1._id, type: 'game_placement_1', amount: 8 },
+      { user: p2._id, type: 'game_placement_2', amount: 5 },
+      { user: p3._id, type: 'game_placement_3', amount: 3 },
+      { user: p4._id, type: 'game_placement_4', amount: 1 },
+    ];
+
+    for (const { user, type, amount } of cases) {
+      const tx = await PointTransaction.findOne({ user, type });
+      expect(tx).not.toBeNull();
+      expect(tx.amount).toBe(amount);
+    }
   });
 
-  test('awards game_submitted to the submitter', async () => {
+  test('awards game_submitted (+5) to the submitter', async () => {
     const game = {
       _id: new mongoose.Types.ObjectId(),
-      players: [{ player: p1._id }, { player: p2._id }, { player: p3._id }, { player: p4._id }],
+      players: [
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
+      ],
       submittedBy: p1._id,
     };
 
     await awardGamePoints(game, p2._id);
 
-    const tx = await PointTransaction.find({ user: p1._id, type: 'game_submitted' });
-    expect(tx).toHaveLength(1);
-    expect(tx[0].amount).toBe(10);
+    const tx = await PointTransaction.findOne({ user: p1._id, type: 'game_submitted' });
+    expect(tx).not.toBeNull();
+    expect(tx.amount).toBe(5);
   });
 
-  test('awards game_verified to the verifier', async () => {
+  test('awards game_verified (+2) to the verifier', async () => {
     const game = {
       _id: new mongoose.Types.ObjectId(),
-      players: [{ player: p1._id }, { player: p2._id }, { player: p3._id }, { player: p4._id }],
+      players: [
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
+      ],
       submittedBy: p1._id,
     };
 
     await awardGamePoints(game, p2._id);
 
-    const tx = await PointTransaction.find({ user: p2._id, type: 'game_verified' });
-    expect(tx).toHaveLength(1);
-    expect(tx[0].amount).toBe(5);
+    const tx = await PointTransaction.findOne({ user: p2._id, type: 'game_verified' });
+    expect(tx).not.toBeNull();
+    expect(tx.amount).toBe(2);
   });
 
-  test('submitter gets both game_played and game_submitted', async () => {
+  test('submitter who finishes 1st gets game_placement_1 and game_submitted (total 13)', async () => {
     const game = {
       _id: new mongoose.Types.ObjectId(),
-      players: [{ player: p1._id }, { player: p2._id }, { player: p3._id }, { player: p4._id }],
+      players: [
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
+      ],
       submittedBy: p1._id,
     };
 
     await awardGamePoints(game, p2._id);
 
     const updated = await User.findById(p1._id);
-    expect(updated.pointsBalance).toBe(15); // 5 (played) + 10 (submitted)
+    expect(updated.pointsBalance).toBe(13); // 8 (placement_1) + 5 (submitted)
   });
 });
