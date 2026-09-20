@@ -2,12 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePaginatedApi, useApi } from '../hooks/useApi';
-import { gamesApi, Game, tournamentsApi, Tournament, PaginatedResponse } from '../services/api';
+import { gamesApi, Game, tournamentsApi, Tournament, PaginatedResponse, rankedLeaguesApi, RankedLeague, RankedLeaguePlayer, ApiResponse } from '../services/api';
 import UserDisplay from '../components/user/UserDisplay';
 import { CalculatorIcon } from '@heroicons/react/24/outline';
 
 const MEETUP_URL = 'https://www.meetup.com/charleston-riichi-mahjong/events/';
 const DISCORD_URL = 'https://discord.gg/xhZtZZF3Jk';
+const RANKED_GAMES_THRESHOLD = 6;
 const PLAYER_SEATS = ['East', 'South', 'West', 'North'];
 
 const CLUB_PHOTOS = [
@@ -48,6 +49,36 @@ const Home: React.FC = () => {
     [isAuthenticated]
   );
   const { data: games, loading: gamesLoading } = usePaginatedApi<Game>(getGames, 1, 5);
+
+  const getLeague = React.useCallback(
+    () => rankedLeaguesApi.getCurrent(),
+    []
+  );
+  const { data: leagueResponse, loading: leagueLoading } = useApi<ApiResponse<{ league: RankedLeague }>>(getLeague);
+
+  const league = leagueResponse?.data?.league ?? null;
+
+  const isRegistered = league && user
+    ? league.players.some((p: RankedLeaguePlayer) => p.player._id === user._id)
+    : false;
+
+  const userEntry: RankedLeaguePlayer | null = league && user
+    ? league.players.find((p: RankedLeaguePlayer) => p.player._id === user._id) ?? null
+    : null;
+
+  const daysRemaining: number | null = league
+    ? Math.max(0, 90 - Math.floor((Date.now() - new Date(league.startDate).getTime()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  const rankedPlayers: RankedLeaguePlayer[] = league
+    ? league.players
+        .filter((p: RankedLeaguePlayer) => p.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+        .sort((a: RankedLeaguePlayer, b: RankedLeaguePlayer) => b.rankedPoints - a.rankedPoints)
+    : [];
+
+  const userRank: number | null = userEntry && userEntry.gamesPlayed >= RANKED_GAMES_THRESHOLD
+    ? rankedPlayers.findIndex((p: RankedLeaguePlayer) => p.player._id === user!._id) + 1
+    : null;
 
   if (isAuthenticated) {
     return (
@@ -104,7 +135,33 @@ const Home: React.FC = () => {
             <div className="card flex items-center justify-between">
               <div>
                 <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Ranked League</div>
-                <div className="font-semibold text-gray-900">Current Season</div>
+                {leagueLoading || !league ? (
+                  <div className="font-semibold text-gray-900">Current Season</div>
+                ) : !isRegistered ? (
+                  <>
+                    <div className="font-semibold text-gray-900">Not registered</div>
+                    {daysRemaining !== null && (
+                      <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
+                    )}
+                    <Link to="/ranked" className="text-sm text-primary-600 font-semibold hover:text-primary-700 mt-1 inline-block">
+                      Join →
+                    </Link>
+                  </>
+                ) : userEntry && userEntry.gamesPlayed < RANKED_GAMES_THRESHOLD ? (
+                  <>
+                    <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / 6 games complete</div>
+                    {daysRemaining !== null && (
+                      <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="font-semibold text-gray-900">Ranked — #{userRank} · {userEntry!.gamesPlayed} games played</div>
+                    {daysRemaining !== null && (
+                      <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
+                    )}
+                  </>
+                )}
               </div>
               <Link to="/ranked" className="text-sm text-primary-600 font-semibold hover:text-primary-700">
                 View →
