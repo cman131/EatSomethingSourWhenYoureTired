@@ -12,7 +12,6 @@ const gameRoutes = require('./routes/games');
 const tileRoutes = require('./routes/tiles');
 const discardQuizRoutes = require('./routes/discardQuizzes');
 const decisionQuizRoutes = require('./routes/decisionQuizzes');
-const achievementRoutes = require('./routes/achievements');
 const tournamentRoutes = require('./routes/tournaments');
 const rankedLeagueRoutes = require('./routes/rankedLeagues');
 
@@ -86,7 +85,6 @@ app.use('/api/games', authenticateToken, gameRoutes);
 app.use('/api/tiles', authenticateToken, tileRoutes);
 app.use('/api/discard-quizzes', authenticateToken, discardQuizRoutes);
 app.use('/api/decision-quizzes', authenticateToken, decisionQuizRoutes);
-app.use('/api/achievements', authenticateToken, achievementRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/ranked-leagues', authenticateToken, rankedLeagueRoutes);
 

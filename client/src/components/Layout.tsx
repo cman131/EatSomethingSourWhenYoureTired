@@ -17,7 +17,7 @@ import {
   ScaleIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
-import { FaFacebook, FaInstagram, FaDiscord, FaMeetup, FaMedal } from 'react-icons/fa';
+import { FaFacebook, FaInstagram, FaDiscord, FaMeetup } from 'react-icons/fa';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -42,7 +42,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const communityLinks = isAuthenticated ? [
     { name: 'Games', href: '/games', icon: ChartBarIcon },
-    { name: 'Achievements', href: '/achievements', icon: FaMedal },
   ] : [];
 
   const resourceLinks = [

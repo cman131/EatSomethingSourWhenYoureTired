@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { usersApi, Game, User } from '../services/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import AchievementsSection from '../components/profile/AchievementsSection';
 import StatisticsSection from '../components/profile/StatisticsSection';
 import GameHistorySection from '../components/profile/GameHistorySection';
 import HeadToHeadSection from '../components/profile/HeadToHeadSection';
@@ -135,9 +134,6 @@ const Profile: React.FC = () => {
             allGamesLoading={allGamesLoading}
             isOwnProfile={isOwnProfile}
           />
-
-          {/* Achievements */}
-          {profileUserId && <AchievementsSection userId={profileUserId} />}
 
           {/* Tournament Results */}
           {profileUserId && <TournamentResultsSection profileUserId={profileUserId} />}
