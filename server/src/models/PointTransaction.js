@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 
 const POINT_TRANSACTION_TYPES = [
-  'game_played',
+  'game_played',       // legacy — kept for existing DB records
+  'game_placement_1',
+  'game_placement_2',
+  'game_placement_3',
+  'game_placement_4',
   'game_submitted',
   'game_verified',
   'tournament_participated',
