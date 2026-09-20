@@ -1451,8 +1451,8 @@ router.put('/:id/reconcile-active-round', authenticateToken, validateMongoId('id
 // @access  Private
 router.post('/:id/signup', authenticateToken, validateMongoId('id'), async (req, res) => {
   try {
-    const tournament = await Tournament.findById(req.params.id);
-    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+    const tournament = await Tournament.findById(req.params.id)
+      .populate('createdBy', PLAYER_POPULATE_FIELDS);
 
     if (!tournament) {
       return res.status(404).json({
