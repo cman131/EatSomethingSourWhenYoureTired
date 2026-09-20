@@ -102,71 +102,73 @@ const Home: React.FC = () => {
               View all →
             </Link>
           </div>
-          <div className="space-y-3">
-            <div className="card">
-              {nextTournament ? (
-                <>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Upcoming</div>
-                      <div className="font-semibold text-gray-900">{nextTournament.name}</div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {new Date(nextTournament.date).toLocaleDateString('en-US', {
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                        {nextTournament.location &&
-                          ` · ${nextTournament.location.city}, ${nextTournament.location.state}`}
-                      </div>
+          <div className="card">
+            {nextTournament ? (
+              <>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Upcoming</div>
+                    <div className="font-semibold text-gray-900">{nextTournament.name}</div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      {new Date(nextTournament.date).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                      {nextTournament.location &&
+                        ` · ${nextTournament.location.city}, ${nextTournament.location.state}`}
                     </div>
                   </div>
-                  <Link
-                    to={`/tournaments/${nextTournament._id}`}
-                    className="text-sm text-primary-600 font-semibold mt-3 inline-block hover:text-primary-700"
-                  >
-                    View details →
-                  </Link>
-                </>
-              ) : (
-                <p className="text-gray-400 text-sm">No upcoming tournaments</p>
-              )}
-            </div>
-            <div className="card flex items-center justify-between">
-              <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Ranked League</div>
-                {leagueLoading || !league ? (
-                  <div className="font-semibold text-gray-900">Current Season</div>
-                ) : !isRegistered ? (
-                  <>
-                    <div className="font-semibold text-gray-900">Not registered</div>
-                    {daysRemaining !== null && (
-                      <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
-                    )}
-                    <Link to="/ranked" className="text-sm text-primary-600 font-semibold hover:text-primary-700 mt-1 inline-block">
-                      Join →
-                    </Link>
-                  </>
-                ) : userEntry && userEntry.gamesPlayed < RANKED_GAMES_THRESHOLD ? (
-                  <>
-                    <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / 6 games complete</div>
-                    {daysRemaining !== null && (
-                      <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div className="font-semibold text-gray-900">Ranked — #{userRank} · {userEntry!.gamesPlayed} games played</div>
-                    {daysRemaining !== null && (
-                      <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
-                    )}
-                  </>
+                </div>
+                <Link
+                  to={`/tournaments/${nextTournament._id}`}
+                  className="text-sm text-primary-600 font-semibold mt-3 inline-block hover:text-primary-700"
+                >
+                  View details →
+                </Link>
+              </>
+            ) : (
+              <p className="text-gray-400 text-sm">No upcoming tournaments</p>
+            )}
+          </div>
+        </div>
+
+        {/* Ranked League */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-gray-900">Ranked League</h2>
+            <Link to="/ranked" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+              View all →
+            </Link>
+          </div>
+          <div className="card">
+            {leagueLoading || !league ? (
+              <div className="font-semibold text-gray-900">Current Season</div>
+            ) : !isRegistered ? (
+              <>
+                <div className="font-semibold text-gray-900">Not registered</div>
+                {daysRemaining !== null && (
+                  <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
                 )}
-              </div>
-              <Link to="/ranked" className="text-sm text-primary-600 font-semibold hover:text-primary-700">
-                View →
-              </Link>
-            </div>
+                <Link to="/ranked" className="text-sm text-primary-600 font-semibold hover:text-primary-700 mt-1 inline-block">
+                  Join →
+                </Link>
+              </>
+            ) : userEntry && userEntry.gamesPlayed < RANKED_GAMES_THRESHOLD ? (
+              <>
+                <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / 6 games complete</div>
+                {daysRemaining !== null && (
+                  <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="font-semibold text-gray-900">Ranked — #{userRank} · {userEntry!.gamesPlayed} games played</div>
+                {daysRemaining !== null && (
+                  <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

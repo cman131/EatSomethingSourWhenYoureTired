@@ -150,10 +150,17 @@ describe('Home ranked league card', () => {
     expect(screen.queryByText(/days remaining/)).not.toBeInTheDocument();
   });
 
-  test('always shows "View →" link to /ranked', () => {
+  test('shows "Ranked League" as an h2 section header', () => {
     setupAuthenticatedWithLeague(makeLeagueData([]));
     render(<Home />);
-    const viewLink = screen.getByRole('link', { name: 'View →' });
-    expect(viewLink).toHaveAttribute('href', '/ranked');
+    expect(screen.getByRole('heading', { name: 'Ranked League', level: 2 })).toBeInTheDocument();
+  });
+
+  test('shows "View all →" link to /ranked in the section header', () => {
+    setupAuthenticatedWithLeague(makeLeagueData([]));
+    render(<Home />);
+    const links = screen.getAllByRole('link', { name: 'View all →' });
+    const rankedLink = links.find(l => l.getAttribute('href') === '/ranked');
+    expect(rankedLink).toBeInTheDocument();
   });
 });
