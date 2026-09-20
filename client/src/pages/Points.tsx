@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useApi } from '../hooks/useApi';
 import { pointsApi, PointsSummary, PointsHistory } from '../services/api';
+import PointsHelpModal from '../components/PointsHelpModal';
 
 const POINT_TYPE_LABELS: Record<string, string> = {
   game_played: 'Game Played',
+  game_placement_1: 'Game 1st Place',
+  game_placement_2: 'Game 2nd Place',
+  game_placement_3: 'Game 3rd Place',
+  game_placement_4: 'Game 4th Place',
   game_submitted: 'Game Submitted',
   game_verified: 'Game Verified',
   tournament_participated: 'Tournament Participated',
@@ -22,6 +27,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
 
 const Points: React.FC = () => {
   useRequireAuth();
+  const [modalOpen, setModalOpen] = useState(false);
 
   const { data: summaryResponse, loading: summaryLoading } = useApi<{ data: PointsSummary }>(
     pointsApi.getSummary,
@@ -46,7 +52,16 @@ const Points: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-gray-900">Club Points</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-3xl font-bold text-gray-900">Club Points</h1>
+        <button
+          onClick={() => setModalOpen(true)}
+          aria-label="How to earn points"
+          className="text-gray-400 hover:text-indigo-600 transition-colors text-xl font-bold leading-none"
+        >
+          ?
+        </button>
+      </div>
 
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -94,6 +109,8 @@ const Points: React.FC = () => {
           </div>
         )}
       </div>
+
+      {modalOpen && <PointsHelpModal onClose={() => setModalOpen(false)} />}
     </div>
   );
 };
