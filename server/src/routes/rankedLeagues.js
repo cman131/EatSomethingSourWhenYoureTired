@@ -1,6 +1,7 @@
 const express = require('express');
 const { getCurrentLeague } = require('../utils/rankedLeagueService');
 const { PLAYER_POPULATE_FIELDS } = require('../models/User');
+const { awardPoints } = require('../utils/pointsService');
 
 const router = express.Router();
 
@@ -37,6 +38,11 @@ router.post('/current/join', async (req, res) => {
     if (!alreadyJoined) {
       league.players.push({ player: req.user._id, rankedPoints: 500 });
       await league.save();
+      try {
+        await awardPoints(req.user._id, 'ranked_league_qualified', 10, { leagueId: league._id });
+      } catch (err) {
+        console.error('Failed to award ranked league qualification points:', err);
+      }
     }
 
     await league.populate('players.player', PLAYER_POPULATE_FIELDS);

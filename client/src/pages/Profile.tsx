@@ -12,6 +12,7 @@ import HeadToHeadSection from '../components/profile/HeadToHeadSection';
 import RecentGamePerformanceSection from '../components/profile/RecentGamePerformanceSection';
 import TournamentResultsSection from '../components/profile/TournamentResultsSection';
 import UserInfoSection from '../components/profile/UserInfoSection';
+import PointsSection from '../components/profile/PointsSection';
 
 const Profile: React.FC = () => {
   useRequireAuth();
@@ -126,6 +127,9 @@ const Profile: React.FC = () => {
       {/* Only show other sections if user is not in private mode */}
       {!user?.privateMode && (
         <>
+          {/* Club Points */}
+          <PointsSection user={user} isOwnProfile={isOwnProfile} />
+
           {/* Head-to-Head Statistics */}
           <HeadToHeadSection
             currentUser={currentUser}
