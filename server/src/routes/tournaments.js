@@ -1359,7 +1359,14 @@ router.put('/:id/rounds/:roundNumber/reset', authenticateToken, validateMongoId(
       });
     }
 
-    // Reset pairings - clear all pairings for this round
+    if (round.startDate) {
+      return res.status(400).json({ success: false, message: 'Cannot reset a round that has already been started' });
+    }
+
+    if (round.pairings.some(p => p.game)) {
+      return res.status(400).json({ success: false, message: 'Cannot reset a round that has pairings with associated games' });
+    }
+
     round.pairings = [];
 
     await tournament.save();
