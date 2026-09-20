@@ -8,7 +8,7 @@ import { CalculatorIcon } from '@heroicons/react/24/outline';
 
 const MEETUP_URL = 'https://www.meetup.com/charleston-riichi-mahjong/events/';
 const DISCORD_URL = 'https://discord.gg/xhZtZZF3Jk';
-const RANKED_GAMES_THRESHOLD = 6;
+const RANKED_GAMES_THRESHOLD = 3;
 const PLAYER_SEATS = ['East', 'South', 'West', 'North'];
 
 const CLUB_PHOTOS = [
@@ -117,7 +117,7 @@ const Home: React.FC = () => {
               </>
             ) : userEntry && userEntry.gamesPlayed < RANKED_GAMES_THRESHOLD ? (
               <>
-                <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / 6 games complete</div>
+                <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / {RANKED_GAMES_THRESHOLD} games complete</div>
                 {daysRemaining !== null && (
                   <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
                 )}

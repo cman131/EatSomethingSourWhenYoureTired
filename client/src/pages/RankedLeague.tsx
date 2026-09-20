@@ -6,7 +6,7 @@ import { rankedLeaguesApi, RankedLeague as RankedLeagueType } from '../services/
 import UserDisplay from '../components/user/UserDisplay';
 import { StarIcon } from '@heroicons/react/24/outline';
 
-const RANKED_GAMES_THRESHOLD = 6;
+const RANKED_GAMES_THRESHOLD = 3;
 
 const RankedLeague: React.FC = () => {
   useRequireAuth();

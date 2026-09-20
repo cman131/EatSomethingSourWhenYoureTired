@@ -121,12 +121,12 @@ describe('Home ranked league card', () => {
     expect(joinLink).toHaveAttribute('href', '/ranked');
   });
 
-  test('shows qualifying status when user has fewer than 6 games', () => {
+  test('shows qualifying status when user has fewer than 3 games', () => {
     setupAuthenticatedWithLeague(makeLeagueData([
-      { _id: 'user1', displayName: 'Tester', gamesPlayed: 3, rankedPoints: 0 },
+      { _id: 'user1', displayName: 'Tester', gamesPlayed: 2, rankedPoints: 0 },
     ]));
     render(<Home />);
-    expect(screen.getByText('Qualifying — 3 / 6 games complete')).toBeInTheDocument();
+    expect(screen.getByText('Qualifying — 2 / 3 games complete')).toBeInTheDocument();
   });
 
   test('shows ranked status with correct position when user has 6 or more games', () => {
