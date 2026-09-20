@@ -1,0 +1,46 @@
+@keyframes flair-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes flair-spin-reverse {
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+
+.flair-border-rainbow {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+  background: conic-gradient(#facc15, #fb923c, #f87171, #e879f9, #818cf8, #34d399, #facc15);
+  animation: flair-spin 3s linear infinite;
+}
+
+.flair-border-dragon {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+  background: conic-gradient(#34d399, #059669, #065f46, #059669, #34d399, #6ee7b7, #34d399);
+  animation: flair-spin-reverse 4s linear infinite;
+}
+
+.flair-border-inner {
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.flair-title-chicken {
+  background: linear-gradient(135deg, #fef08a, #fde68a, #fbbf24);
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.flair-title-chombo {
+  background: linear-gradient(135deg, #f87171, #e879f9, #c026d3);
+  color: white;
+  border: 1px solid #ec4899;
+  box-shadow: 0 0 8px rgba(232, 121, 249, 0.4);
+}

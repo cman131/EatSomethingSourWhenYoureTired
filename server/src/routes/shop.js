@@ -117,24 +117,43 @@ router.post('/equip', async (req, res) => {
 });
 
 const SEED_ITEMS = [
-  { name: 'Jade Green', description: 'A calming jade green name color', category: 'nameColor', cost: 200, value: 'text-emerald-600', sortOrder: 1 },
-  { name: 'Crimson', description: 'A bold crimson name color', category: 'nameColor', cost: 200, value: 'text-red-600', sortOrder: 2 },
-  { name: 'Royal Purple', description: 'A regal purple name color', category: 'nameColor', cost: 200, value: 'text-purple-600', sortOrder: 3 },
-  { name: 'Ocean Blue', description: 'A deep ocean blue name color', category: 'nameColor', cost: 200, value: 'text-blue-600', sortOrder: 4 },
-  { name: 'Mahjong Gold', description: 'The golden color of a winning hand', category: 'nameColor', cost: 350, value: 'text-yellow-500', sortOrder: 5 },
-  { name: 'Dragon', description: 'A fearsome dragon icon', category: 'nameIcon', cost: 150, value: '🐉', sortOrder: 1 },
-  { name: 'Cherry Blossom', description: 'A delicate cherry blossom', category: 'nameIcon', cost: 150, value: '🌸', sortOrder: 2 },
-  { name: 'Mahjong Tile', description: 'The iconic mahjong tile', category: 'nameIcon', cost: 150, value: '🀄', sortOrder: 3 },
-  { name: 'Lucky Star', description: 'A lucky star for lucky players', category: 'nameIcon', cost: 150, value: '⭐', sortOrder: 4 },
-  { name: 'Bamboo', description: 'A bamboo stalk', category: 'nameIcon', cost: 150, value: '🎋', sortOrder: 5 },
-  { name: 'Flame', description: 'You are on fire', category: 'nameIcon', cost: 250, value: '🔥', sortOrder: 6 },
-  { name: 'Gold Ring', description: 'A gleaming gold ring border', category: 'profileBorder', cost: 300, value: 'ring-2 ring-yellow-400', sortOrder: 1 },
-  { name: 'Dragon Scale', description: 'Shimmering dragon scale border', category: 'profileBorder', cost: 400, value: 'ring-2 ring-emerald-500 ring-offset-1', sortOrder: 2 },
-  { name: 'Sakura', description: 'A delicate pink sakura border', category: 'profileBorder', cost: 300, value: 'ring-2 ring-pink-400', sortOrder: 3 },
-  { name: 'Newcomer', description: 'For those just starting out', category: 'title', cost: 50, value: 'Newcomer', sortOrder: 1 },
-  { name: 'Dragon (Title)', description: 'A title for those who dominate', category: 'title', cost: 300, value: 'Dragon', sortOrder: 2 },
-  { name: 'Champion', description: 'A title for tournament champions', category: 'title', cost: 400, value: 'Champion', sortOrder: 3 },
-  { name: 'Riichi Master', description: 'A title for seasoned riichi players', category: 'title', cost: 500, value: 'Riichi Master', sortOrder: 4 },
+  // nameColor — 8 items
+  { name: 'Sakura Pink',    description: 'Delicate cherry blossom pink',            category: 'nameColor',     cost: 100, tier: 'entry',   value: 'text-pink-500',    sortOrder: 1 },
+  { name: 'Sea Teal',       description: 'Inspired by the East China Sea',           category: 'nameColor',     cost: 100, tier: 'entry',   value: 'text-teal-600',    sortOrder: 2 },
+  { name: 'Amber',          description: 'Warm amber glow',                          category: 'nameColor',     cost: 150, tier: 'entry',   value: 'text-amber-600',   sortOrder: 3 },
+  { name: 'Jade Green',     description: 'Classic jade green',                       category: 'nameColor',     cost: 250, tier: 'mid',     value: 'text-emerald-600', sortOrder: 4 },
+  { name: 'Ocean Blue',     description: 'A deep ocean blue',                        category: 'nameColor',     cost: 250, tier: 'mid',     value: 'text-blue-600',    sortOrder: 5 },
+  { name: 'Royal Purple',   description: 'Regal and commanding',                     category: 'nameColor',     cost: 300, tier: 'mid',     value: 'text-purple-600',  sortOrder: 6 },
+  { name: 'Crimson Dragon', description: 'The fierce red of a dragon',               category: 'nameColor',     cost: 600, tier: 'premium', value: 'text-red-600',     sortOrder: 7 },
+  { name: 'Mahjong Gold',   description: 'The golden color of a winning hand',       category: 'nameColor',     cost: 700, tier: 'premium', value: 'text-yellow-600',  sortOrder: 8 },
+
+  // nameIcon — 8 items
+  { name: 'Cherry Blossom', description: 'A delicate sakura bloom',                  category: 'nameIcon',      cost: 100, tier: 'entry',   value: '🌸', sortOrder: 1 },
+  { name: 'Bamboo',         description: 'A lucky bamboo stalk',                     category: 'nameIcon',      cost: 100, tier: 'entry',   value: '🎋', sortOrder: 2 },
+  { name: 'Lucky Star',     description: 'For lucky players',                        category: 'nameIcon',      cost: 150, tier: 'entry',   value: '⭐', sortOrder: 3 },
+  { name: 'Red Lantern',    description: 'A traditional festival lantern',           category: 'nameIcon',      cost: 200, tier: 'mid',     value: '🏮', sortOrder: 4 },
+  { name: 'Mahjong Tile',   description: 'The iconic mahjong tile',                  category: 'nameIcon',      cost: 250, tier: 'mid',     value: '🀄', sortOrder: 5 },
+  { name: 'Dragon',         description: 'A fearsome dragon',                        category: 'nameIcon',      cost: 300, tier: 'mid',     value: '🐉', sortOrder: 6 },
+  { name: 'Flame',          description: 'You are on fire',                          category: 'nameIcon',      cost: 500, tier: 'premium', value: '🔥', sortOrder: 7 },
+  { name: 'Crown',          description: 'Royalty at the table',                     category: 'nameIcon',      cost: 600, tier: 'premium', value: '👑', sortOrder: 8 },
+
+  // profileBorder — 7 items
+  { name: 'Blush',         description: 'A soft pink ring',                          category: 'profileBorder', cost: 100, tier: 'entry',   value: 'ring-2 ring-pink-300',    sortOrder: 1 },
+  { name: 'Pebble',        description: 'A simple stone-grey ring',                  category: 'profileBorder', cost: 100, tier: 'entry',   value: 'ring-2 ring-gray-400',    sortOrder: 2 },
+  { name: 'Jade Ring',     description: 'Rich jade border',                          category: 'profileBorder', cost: 250, tier: 'mid',     value: 'ring-2 ring-emerald-500', sortOrder: 3 },
+  { name: 'Cobalt Ring',   description: 'Deep cobalt border',                        category: 'profileBorder', cost: 250, tier: 'mid',     value: 'ring-2 ring-blue-500',    sortOrder: 4 },
+  { name: 'Sakura Ring',   description: 'Cherry blossom pink border',                category: 'profileBorder', cost: 300, tier: 'mid',     value: 'ring-2 ring-pink-400',    sortOrder: 5 },
+  { name: 'Rainbow Halo',  description: 'Slowly spinning rainbow conic gradient',    category: 'profileBorder', cost: 600, tier: 'premium', value: 'flair-border-rainbow',    sortOrder: 6 },
+  { name: 'Dragon Scale',  description: 'Spinning emerald gradient — shimmering scales', category: 'profileBorder', cost: 700, tier: 'premium', value: 'flair-border-dragon', sortOrder: 7 },
+
+  // title — 7 items
+  { name: 'Regular',       description: 'A familiar face at the table',              category: 'title',         cost: 100, tier: 'entry',   value: 'Regular',       sortOrder: 1 },
+  { name: 'Tenpai',        description: 'Always one tile away from winning',         category: 'title',         cost: 150, tier: 'entry',   value: 'Tenpai',        sortOrder: 2 },
+  { name: 'East Wind',     description: "The dealer's seat — a position of prestige", category: 'title',        cost: 250, tier: 'mid',     value: 'East Wind',     sortOrder: 3 },
+  { name: 'Dragon Slayer', description: 'Defeated more than a few big hands',        category: 'title',         cost: 300, tier: 'mid',     value: 'Dragon Slayer', sortOrder: 4 },
+  { name: 'Dora Hunter',   description: 'Always chasing bonus tiles',                category: 'title',         cost: 350, tier: 'mid',     value: 'Dora Hunter',   sortOrder: 5 },
+  { name: 'Chicken Farmer', description: "Wins without a single yaku. Honkaku's nemesis.", category: 'title',  cost: 600, tier: 'premium', value: 'Chicken Farmer', sortOrder: 6 },
+  { name: 'Chombo Chaser', description: 'A dedicated student of the penalty sheet.', category: 'title',         cost: 700, tier: 'premium', value: 'Chombo Chaser', sortOrder: 7 },
 ];
 
 // POST /api/shop/seed — admin only, idempotent catalog seeding
@@ -144,11 +163,22 @@ router.post('/seed', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Admin only' });
     }
 
+    const catalogNames = SEED_ITEMS.map(item => item.name);
+
+    // Deactivate items no longer in the catalog
+    await ShopItem.updateMany(
+      { name: { $nin: catalogNames } },
+      { $set: { isActive: false } }
+    );
+
     const results = await Promise.all(
-      SEED_ITEMS.map(item =>
+      SEED_ITEMS.map(({ name, category, cost, tier, description, value, sortOrder }) =>
         ShopItem.findOneAndUpdate(
-          { name: item.name },
-          { $setOnInsert: item },
+          { name },
+          {
+            $set: { cost, tier, description, value, sortOrder },
+            $setOnInsert: { name, category, isActive: true },
+          },
           { upsert: true, new: true }
         )
       )
