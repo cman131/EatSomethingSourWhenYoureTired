@@ -88,24 +88,13 @@ const Home: React.FC = () => {
                         ` · ${nextTournament.location.city}, ${nextTournament.location.state}`}
                     </div>
                   </div>
-                  <span className="text-xs bg-green-100 text-green-800 font-semibold px-2 py-1 rounded-full whitespace-nowrap">
-                    Open
-                  </span>
                 </div>
-                <div className="flex gap-2 mt-3">
-                  <Link
-                    to={`/tournaments/${nextTournament._id}`}
-                    className="flex-1 text-center text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 py-2 rounded-md transition-colors"
-                  >
-                    Details
-                  </Link>
-                  <Link
-                    to={`/tournaments/${nextTournament._id}`}
-                    className="flex-1 text-center text-sm text-white bg-primary-600 hover:bg-primary-700 py-2 rounded-md transition-colors font-medium"
-                  >
-                    Register
-                  </Link>
-                </div>
+                <Link
+                  to={`/tournaments/${nextTournament._id}`}
+                  className="text-sm text-primary-600 font-semibold mt-3 inline-block hover:text-primary-700"
+                >
+                  View details →
+                </Link>
               </div>
             )}
             <div className="card flex items-center justify-between">
@@ -191,7 +180,7 @@ const Home: React.FC = () => {
                           )}
                         </p>
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-                          {game.players
+                          {[...game.players]
                             .sort((a, b) => b.score - a.score)
                             .map((player) => (
                               <div key={player.player._id} className="bg-gray-50 rounded-md p-3">
