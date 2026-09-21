@@ -18,7 +18,7 @@ const GAME_PLACEMENT_AMOUNTS = { 1: 8, 2: 5, 3: 3, 4: 1 };
 const amounts = [40, 30, 20, 10];   // tournament placement
 ```
 
-Target: game placement 10/7/4/2; tournament placement 200/100/70/50. Participation (15, line 53), game submitted (2, line 37), game verified (1, line 38) and ranked qualified (10) are not being changed. The mid flair tier costs 200–350 (`server/scripts/seedShop.js:11-13, 21-23, 30-32, 39-41`), so 200 for 1st place buys the cheapest mid item.
+Target: game placement 10/7/4/2; tournament placement 200/100/70/50. Participation (15, line 53), game submitted (2, line 37), game verified (1, line 38) and ranked qualified (10) are not being changed. The mid flair tier costs 200–350 (`server/scripts/seedShop.js:11-13, 21-23, 30-32, 39-41`), so 200 for 1st place buys the cheapest mid item. (Superseded 2026-09-21: the flair catalog expansion halved every shop price; mid items now cost 100–175, so a 200-point first place buys any mid item.)
 
 **Ranked qualification paid on join, not on qualifying** — `server/src/routes/rankedLeagues.js:38-46`
 
