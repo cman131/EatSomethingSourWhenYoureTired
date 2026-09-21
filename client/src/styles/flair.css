@@ -1,77 +1,268 @@
+/* ==========================================================================
+   Flair styles. Class names are the `value` strings stored on users
+   (see server/src/data/shopCatalog.js) and must not be renamed for existing items.
+   Design rules: docs/flair-style-guide.md
+   ========================================================================== */
+
 @keyframes flair-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
 
-@keyframes flair-spin-reverse {
-  from { transform: rotate(360deg); }
-  to   { transform: rotate(0deg); }
+@keyframes flair-flow {
+  from { background-position: 0% 50%; }
+  to   { background-position: 300% 50%; }
+}
+
+@keyframes flair-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  40%, 60% { opacity: 1; transform: scale(1) rotate(25deg); }
+}
+
+@keyframes flair-flicker {
+  0%, 100% { transform: scale(1) rotate(-3deg); filter: drop-shadow(0 0 4px #f97316) brightness(1); }
+  30%      { transform: scale(1.12) rotate(3deg) translateY(-1px); filter: drop-shadow(0 0 9px #fbbf24) brightness(1.15); }
+  60%      { transform: scale(0.96) rotate(-2deg); filter: drop-shadow(0 0 5px #f97316) brightness(1.05); }
+}
+
+@keyframes flair-sway {
+  0%, 100% { transform: rotate(-9deg) translateY(0); }
+  50%      { transform: rotate(9deg) translateY(-2px); }
+}
+
+@keyframes flair-burst {
+  0%, 100% { transform: scale(0.92); filter: drop-shadow(0 0 3px #f472b6) hue-rotate(0deg); }
+  50%      { transform: scale(1.18); filter: drop-shadow(0 0 10px #facc15) hue-rotate(40deg) brightness(1.15); }
+}
+
+@keyframes flair-roll {
+  0%, 100% { transform: translateY(1px) rotate(-7deg) skewX(-4deg); }
+  50%      { transform: translateY(-3px) rotate(7deg) skewX(4deg); }
+}
+
+@keyframes flair-vanish {
+  0%, 58%, 100% { opacity: 1; transform: translateX(0); filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.8)) blur(0); }
+  64%           { opacity: 0.08; transform: translateX(8px); filter: blur(2px); }
+  72%           { opacity: 0.08; transform: translateX(-8px); filter: blur(2px); }
+  80%           { opacity: 1; transform: translateX(0) scale(1.15); filter: drop-shadow(0 0 9px rgba(99, 102, 241, 1)) blur(0); }
+}
+
+/* ==========================================================================
+   Profile borders
+   ========================================================================== */
+
+/* Entry: flat ring applied directly to the avatar element */
+.flair-ring-blush     { box-shadow: 0 0 0 2px #f9a8d4; }
+.flair-ring-pebble    { box-shadow: 0 0 0 2px #9ca3af; }
+.flair-ring-manzu     { box-shadow: 0 0 0 2px #ef4444; }
+.flair-ring-pinzu     { box-shadow: 0 0 0 2px #38bdf8; }
+.flair-ring-souzu     { box-shadow: 0 0 0 2px #22c55e; }
+.flair-ring-persimmon { box-shadow: 0 0 0 2px #fb923c; }
+
+/* Legacy values: these items were seeded as flair-ring-* before moving to flair-mid-*.
+   Equipped values are copied onto users at equip time, so users who equipped them earlier
+   may still have these stored. Keep them. */
+.flair-ring-jade   { box-shadow: 0 0 0 2px #10b981; }
+.flair-ring-cobalt { box-shadow: 0 0 0 2px #3b82f6; }
+.flair-ring-sakura { box-shadow: 0 0 0 2px #f472b6; }
+
+/* Mid: static multi-stop gradient wrapper */
+.flair-mid-jade,
+.flair-mid-cobalt,
+.flair-mid-sakura,
+.flair-mid-torii,
+.flair-mid-wisteria {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+}
+
+.flair-mid-jade     { background: linear-gradient(135deg, #10b981, #059669, #34d399, #065f46, #10b981); }
+.flair-mid-cobalt   { background: linear-gradient(135deg, #3b82f6, #1d4ed8, #93c5fd, #1e40af, #3b82f6); }
+.flair-mid-sakura   { background: linear-gradient(135deg, #f472b6, #ec4899, #fbcfe8, #be185d, #f472b6); }
+.flair-mid-torii    { background: linear-gradient(135deg, #ef4444, #dc2626, #fb923c, #991b1b, #ef4444); }
+.flair-mid-wisteria { background: linear-gradient(135deg, #a78bfa, #7c3aed, #ddd6fe, #5b21b6, #a78bfa); }
+
+/* Premium: spinning conic-gradient ring. Only the ::before layer rotates; the avatar
+   (.flair-border-inner) sits above it and stays still. */
+.flair-border-rainbow,
+.flair-border-dragon,
+.flair-border-hanabi,
+.flair-border-kitsune,
+.flair-border-yozakura {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+}
+
+.flair-border-rainbow::before,
+.flair-border-dragon::before,
+.flair-border-hanabi::before,
+.flair-border-kitsune::before,
+.flair-border-yozakura::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--flair-conic);
+  animation: flair-spin var(--flair-spin-duration, 3s) linear infinite;
+  animation-direction: var(--flair-spin-direction, normal);
 }
 
 .flair-border-rainbow {
-  position: relative;
-  display: inline-flex;
-  border-radius: 9999px;
-  padding: 3px;
-  background: conic-gradient(#facc15, #fb923c, #f87171, #e879f9, #818cf8, #34d399, #facc15);
-  animation: flair-spin 3s linear infinite;
+  --flair-conic: conic-gradient(#facc15, #fb923c, #f87171, #e879f9, #818cf8, #34d399, #facc15);
+  --flair-spin-duration: 3s;
 }
 
 .flair-border-dragon {
-  position: relative;
-  display: inline-flex;
-  border-radius: 9999px;
-  padding: 3px;
-  background: conic-gradient(#34d399, #059669, #065f46, #059669, #34d399, #6ee7b7, #34d399);
-  animation: flair-spin-reverse 4s linear infinite;
+  --flair-conic: conic-gradient(#34d399, #059669, #065f46, #059669, #34d399, #6ee7b7, #34d399);
+  --flair-spin-duration: 4s;
+  --flair-spin-direction: reverse;
+}
+
+.flair-border-hanabi {
+  --flair-conic: conic-gradient(#1e1b4b, #f472b6, #facc15, #1e1b4b, #38bdf8, #f472b6, #1e1b4b);
+  --flair-spin-duration: 3s;
+}
+
+.flair-border-kitsune {
+  --flair-conic: conic-gradient(#f97316, #fde047, #ffffff, #fde047, #ef4444, #7f1d1d, #f97316);
+  --flair-spin-duration: 2.6s;
+  --flair-spin-direction: reverse;
+}
+
+.flair-border-yozakura {
+  --flair-conic: conic-gradient(#f9a8d4, #a78bfa, #1e3a8a, #a78bfa, #f9a8d4, #ffffff, #f9a8d4);
+  --flair-spin-duration: 4s;
 }
 
 .flair-border-inner {
+  position: relative;
+  z-index: 1;
   border-radius: 9999px;
   overflow: hidden;
 }
 
-/* Profile border flair (mid-tier — gradient wrapper, no animation) */
-.flair-mid-jade {
-  position: relative;
-  display: inline-flex;
-  border-radius: 9999px;
-  padding: 3px;
-  background: linear-gradient(135deg, #10b981, #059669, #34d399, #065f46, #10b981);
+/* ==========================================================================
+   Name colors
+   Entry: flat color. Mid: static two-hue gradient text. Premium: flowing multi-hue
+   gradient text plus sparkles. Gradient classes use background-image, never the
+   `background:` shorthand, which would reset background-clip: text.
+   ========================================================================== */
+
+/* Entry */
+.flair-color-pink     { color: #ec4899; }
+.flair-color-teal     { color: #0d9488; }
+.flair-color-amber    { color: #d97706; }
+.flair-color-matcha   { color: #65a30d; }
+.flair-color-aizome   { color: #4f46e5; }
+.flair-color-umeboshi { color: #be123c; }
+.flair-color-sumi     { color: #334155; }
+
+/* Mid + premium share the text-clip mechanics */
+.flair-color-emerald,
+.flair-color-blue,
+.flair-color-purple,
+.flair-color-fuji,
+.flair-color-moonlit,
+.flair-color-gold,
+.flair-color-red,
+.flair-color-neon,
+.flair-color-tanabata {
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
-.flair-mid-cobalt {
-  position: relative;
-  display: inline-flex;
-  border-radius: 9999px;
-  padding: 3px;
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #93c5fd, #1e40af, #3b82f6);
+/* Mid */
+.flair-color-emerald { background-image: linear-gradient(90deg, #047857, #65a30d); }
+.flair-color-blue    { background-image: linear-gradient(90deg, #1e3a8a, #0891b2, #14b8a6); }
+.flair-color-purple  { background-image: linear-gradient(90deg, #5b21b6, #9333ea, #ec4899); }
+.flair-color-fuji    { background-image: linear-gradient(90deg, #f97316, #c026d3); }
+.flair-color-moonlit { background-image: linear-gradient(90deg, #0d9488, #4f46e5); }
+
+/* Premium */
+.flair-color-gold     { background-image: linear-gradient(90deg, #b45309, #f59e0b, #fde047, #f59e0b, #b45309); }
+.flair-color-red      { background-image: linear-gradient(90deg, #b91c1c, #ef4444, #64748b, #334155, #b91c1c); }
+.flair-color-neon     { background-image: linear-gradient(90deg, #0891b2, #22d3ee, #e879f9, #818cf8, #0891b2); }
+.flair-color-tanabata { background-image: linear-gradient(90deg, #1e3a8a, #7c3aed, #a5b4fc, #7c3aed, #1e3a8a); }
+
+.flair-color-gold,
+.flair-color-red,
+.flair-color-neon,
+.flair-color-tanabata {
+  background-size: 300% 100%;
+  animation: flair-flow 4s linear infinite;
 }
 
-.flair-mid-sakura {
+/* Premium name sparkles: siblings of the clipped name span (not children), so they keep
+   their own color. Sized in em so they scale with the name. */
+.flair-sparkle-wrap {
   position: relative;
-  display: inline-flex;
-  border-radius: 9999px;
-  padding: 3px;
-  background: linear-gradient(135deg, #f472b6, #ec4899, #fbcfe8, #be185d, #f472b6);
+  display: inline-block;
 }
 
-/* Name color flair */
-.flair-color-pink    { color: #ec4899; }
-.flair-color-teal    { color: #0d9488; }
-.flair-color-amber   { color: #d97706; }
-.flair-color-emerald { color: #059669; }
-.flair-color-blue    { color: #2563eb; }
-.flair-color-purple  { color: #9333ea; }
-.flair-color-red     { color: #dc2626; }
-.flair-color-gold    { color: #ca8a04; }
+.flair-sparkle {
+  position: absolute;
+  pointer-events: none;
+  line-height: 1;
+  animation: flair-twinkle 2.4s ease-in-out infinite;
+}
 
-/* Profile border flair (non-premium — applied directly to avatar element) */
-.flair-ring-blush  { box-shadow: 0 0 0 2px #f9a8d4; }
-.flair-ring-pebble { box-shadow: 0 0 0 2px #9ca3af; }
-.flair-ring-jade   { box-shadow: 0 0 0 2px #10b981; }
-.flair-ring-cobalt { box-shadow: 0 0 0 2px #3b82f6; }
-.flair-ring-sakura { box-shadow: 0 0 0 2px #f472b6; }
+.flair-sparkle-tr { top: -0.45em; right: -0.35em; font-size: 0.62em; }
+.flair-sparkle-bl { bottom: -0.3em; left: -0.3em; font-size: 0.5em; animation-delay: 0.9s; }
+.flair-sparkle-tm { top: -0.5em; left: 38%; font-size: 0.4em; animation-delay: 1.6s; }
+
+.flair-sparkles-gold     { color: #fde047; text-shadow: 0 0 3px #f59e0b, 0 0 6px #f59e0b; }
+.flair-sparkles-crimson  { color: #fee2e2; text-shadow: 0 0 3px #dc2626, 0 0 7px #ef4444; }
+.flair-sparkles-neon     { color: #a5f3fc; text-shadow: 0 0 3px #06b6d4, 0 0 6px #22d3ee; }
+.flair-sparkles-tanabata { color: #e0e7ff; text-shadow: 0 0 3px #6366f1, 0 0 6px #818cf8; }
+
+/* ==========================================================================
+   Name icons
+   Entry: plain emoji (no class). Mid: soft static golden glow. Premium: the emoji
+   moves, with a colored glow.
+   ========================================================================== */
+
+.flair-icon,
+.flair-icon-glyph {
+  display: inline-block;
+}
+
+.flair-icon-glow .flair-icon-glyph {
+  filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.75));
+}
+
+.flair-icon-flame .flair-icon-glyph {
+  animation: flair-flicker 1.1s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+.flair-icon-blossom .flair-icon-glyph {
+  animation: flair-sway 2.6s ease-in-out infinite;
+  transform-origin: 50% 20%;
+  filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.8));
+}
+
+.flair-icon-firework .flair-icon-glyph {
+  animation: flair-burst 1.4s ease-in-out infinite;
+}
+
+.flair-icon-wave .flair-icon-glyph {
+  animation: flair-roll 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(14, 165, 233, 0.85));
+}
+
+.flair-icon-ninja .flair-icon-glyph {
+  animation: flair-vanish 3.4s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Title badges (mid shares one silver badge; premium titles each get their own)
+   ========================================================================== */
 
 .flair-title-chicken {
   background: linear-gradient(135deg, #fef08a, #fde68a, #fbbf24);
@@ -87,9 +278,49 @@
   box-shadow: 0 0 8px rgba(232, 121, 249, 0.4);
 }
 
+.flair-title-tsumonami {
+  background: linear-gradient(135deg, #67e8f9, #0ea5e9, #1e3a8a);
+  color: white;
+  border: 1px solid #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+}
+
 .flair-title-mid {
   background: linear-gradient(135deg, #e2e8f0, #cbd5e1, #94a3b8, #64748b);
   color: #0f172a;
   border: 1px solid #94a3b8;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================================================
+   Reduced motion: stop every flair animation. Premium items keep their static look.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .flair-border-rainbow::before,
+  .flair-border-dragon::before,
+  .flair-border-hanabi::before,
+  .flair-border-kitsune::before,
+  .flair-border-yozakura::before {
+    animation: none;
+  }
+
+  .flair-color-gold,
+  .flair-color-red,
+  .flair-color-neon,
+  .flair-color-tanabata {
+    animation: none;
+    background-size: 100% 100%;
+  }
+
+  .flair-sparkle {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .flair-icon-flame .flair-icon-glyph     { animation: none; filter: drop-shadow(0 0 5px #f97316); }
+  .flair-icon-blossom .flair-icon-glyph   { animation: none; }
+  .flair-icon-firework .flair-icon-glyph  { animation: none; filter: drop-shadow(0 0 6px #f472b6); }
+  .flair-icon-wave .flair-icon-glyph      { animation: none; }
+  .flair-icon-ninja .flair-icon-glyph     { animation: none; filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.8)); }
 }
