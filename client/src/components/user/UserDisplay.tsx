@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import UserAvatar from './UserAvatar';
 import { EquippedFlair } from '../../services/api';
-import { getPremiumTitleClass, getPremiumTitleEmoji } from '../../utils/flairUtils';
+import { getPremiumTitleClass, getPremiumTitleEmoji, getMidTierTitleClass } from '../../utils/flairUtils';
 
 interface UserDisplayProps {
   user: {
@@ -104,6 +104,14 @@ const TitleBadge: React.FC<{ value: string }> = ({ value }) => {
     return (
       <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${premiumClass}`}>
         {emoji && <span className="mr-0.5">{emoji}</span>}
+        {value}
+      </span>
+    );
+  }
+  const midClass = getMidTierTitleClass(value);
+  if (midClass) {
+    return (
+      <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${midClass}`}>
         {value}
       </span>
     );
