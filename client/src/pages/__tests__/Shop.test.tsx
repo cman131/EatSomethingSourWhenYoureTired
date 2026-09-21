@@ -158,12 +158,11 @@ describe('Shop page', () => {
       fireEvent.click(screen.getByRole('button', { name: /borders/i }));
 
       // Before hover — preview avatar has no border class
-      const nameSpan = screen.getByText('Your Name');
-      const avatarDiv = nameSpan.previousElementSibling as HTMLElement;
+      const avatarDiv = screen.getByTestId('preview-avatar');
       expect(avatarDiv).not.toHaveClass('flair-ring-jade');
 
       // Fire hover
-      const itemCard = screen.getByText('Jade Ring').closest('div.bg-white') as HTMLElement;
+      const itemCard = screen.getByTestId('flair-item-card-border1');
       fireEvent.mouseEnter(itemCard);
 
       // After hover — preview avatar has the border class

@@ -134,13 +134,13 @@ const Shop: React.FC = () => {
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
         <div className="flex items-center gap-3">
           {previewIsPremiumBorder ? (
-            <div className={previewBorder}>
+            <div className={previewBorder} data-testid="preview-avatar">
               <div className="flair-border-inner w-10 h-10 bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-400 text-xs">?</span>
               </div>
             </div>
           ) : (
-            <div className={`w-10 h-10 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${previewBorder}`}>
+            <div className={`w-10 h-10 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${previewBorder}`} data-testid="preview-avatar">
               <span className="text-gray-400 text-xs">?</span>
             </div>
           )}
@@ -183,6 +183,7 @@ const Shop: React.FC = () => {
             return (
               <div
                 key={item._id}
+                data-testid={`flair-item-card-${item._id}`}
                 className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
                 onMouseEnter={() => setHoveredItem(item)}
                 onMouseLeave={() => setHoveredItem(null)}
