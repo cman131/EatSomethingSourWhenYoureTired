@@ -3,6 +3,7 @@ const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
 const { spendPoints } = require('../utils/pointsService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
+const { validateMongoIdBody, validateOptionalMongoIdBody } = require('../middleware/validation');
 
 const router = express.Router();
 
@@ -45,12 +46,9 @@ router.get('/inventory', async (req, res) => {
 });
 
 // POST /api/shop/purchase — body: { itemId }
-router.post('/purchase', async (req, res) => {
+router.post('/purchase', validateMongoIdBody('itemId'), async (req, res) => {
   try {
     const { itemId } = req.body;
-    if (!itemId) {
-      return res.status(400).json({ success: false, message: 'itemId is required' });
-    }
 
     const item = await ShopItem.findById(itemId);
     if (!item || !item.isActive) {
@@ -81,7 +79,7 @@ router.post('/purchase', async (req, res) => {
 });
 
 // POST /api/shop/equip — body: { itemId, slot }
-router.post('/equip', async (req, res) => {
+router.post('/equip', validateOptionalMongoIdBody('itemId'), async (req, res) => {
   try {
     const { itemId, slot } = req.body;
 
@@ -105,6 +103,10 @@ router.post('/equip', async (req, res) => {
     const item = await ShopItem.findById(itemId);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
+    if (item.category !== slot) {
+      return res.status(400).json({ success: false, message: 'Item does not belong in this slot' });
     }
 
     await User.findByIdAndUpdate(req.user._id, {

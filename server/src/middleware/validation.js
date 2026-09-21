@@ -163,6 +163,35 @@ const validateMongoId = (paramName) => [
   handleValidationErrors
 ];
 
+// Body-field equivalent of validateMongoId. isString() rejects arrays and objects (e.g. { $gt: '' })
+// before isMongoId sees them.
+const validateMongoIdBody = (fieldName) => [
+  body(fieldName)
+    .exists({ values: 'null' })
+    .withMessage(`${fieldName} is required`)
+    .bail()
+    .isString()
+    .withMessage(`Invalid ${fieldName} ID`)
+    .bail()
+    .isMongoId()
+    .withMessage(`Invalid ${fieldName} ID`),
+
+  handleValidationErrors
+];
+
+// For fields where null, undefined or '' means "clear this value"; anything else must be a Mongo id.
+const validateOptionalMongoIdBody = (fieldName) => [
+  body(fieldName)
+    .if((value) => value !== null && value !== undefined && value !== '')
+    .isString()
+    .withMessage(`Invalid ${fieldName} ID`)
+    .bail()
+    .isMongoId()
+    .withMessage(`Invalid ${fieldName} ID`),
+
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -171,6 +200,8 @@ module.exports = {
   validateGameCreation,
   validateForgotPassword,
   validateResetPassword,
-  validateMongoId
+  validateMongoId,
+  validateMongoIdBody,
+  validateOptionalMongoIdBody
 };
 
