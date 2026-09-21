@@ -118,20 +118,27 @@ describe('UserDisplay flair rendering', () => {
     expect(container.querySelectorAll('.flair-sparkle')).toHaveLength(3);
   });
 
-  test('icons get their tier class', () => {
-    // eslint-disable-next-line testing-library/render-result-naming-convention -- the result is only used for unmount() between the two renders
-    const mid = render(
-      <UserDisplay user={{ ...baseUser, equippedFlair: { nameColor: null, nameIcon: '🐉', profileBorder: null, title: null } }} />
-    );
-    // eslint-disable-next-line testing-library/no-node-access -- the icon wrapper is decorative (aria-hidden), so its tier class is only reachable via the parent
-    expect(screen.getByText('🐉').parentElement).toHaveClass('flair-icon-glow');
-    mid.unmount();
+  test('keeps the flair color class off the link and on the name span', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: 'flair-color-pink', nameIcon: null, profileBorder: null, title: null },
+    };
 
+    render(<UserDisplay user={user} />);
+
+    expect(screen.getByText('Alice')).toHaveClass('flair-color-pink');
+    expect(screen.getByRole('link', { name: 'Alice' })).not.toHaveClass('flair-color-pink');
+  });
+
+  test.each([
+    ['🐉', 'flair-icon-glow'],
+    ['🔥', 'flair-icon-flame'],
+  ])('icon %s gets the %s class', (icon, tierClass) => {
     render(
-      <UserDisplay user={{ ...baseUser, equippedFlair: { nameColor: null, nameIcon: '🔥', profileBorder: null, title: null } }} />
+      <UserDisplay user={{ ...baseUser, equippedFlair: { nameColor: null, nameIcon: icon, profileBorder: null, title: null } }} />
     );
     // eslint-disable-next-line testing-library/no-node-access -- the icon wrapper is decorative (aria-hidden), so its tier class is only reachable via the parent
-    expect(screen.getByText('🔥').parentElement).toHaveClass('flair-icon-flame');
+    expect(screen.getByText(icon).parentElement).toHaveClass(tierClass);
   });
 
   test('renders a new premium title with its badge class', () => {
