@@ -106,7 +106,10 @@
 .flair-border-yozakura::before {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   border-radius: inherit;
   background: var(--flair-conic);
   animation: flair-spin var(--flair-spin-duration, 3s) linear infinite;

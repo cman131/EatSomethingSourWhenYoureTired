@@ -206,6 +206,19 @@ describe('GET /api/shop/inventory', () => {
 });
 
 describe('POST /api/shop/seed', () => {
+  // The seed endpoint deactivates every non-catalog ShopItem and upserts the real catalog,
+  // so it must only ever run against a dedicated test database.
+  const seedAsAdmin = async () => {
+    expect(mongoose.connection.name).toMatch(/test/);
+    return request(buildTestApp({ _id: user._id, isAdmin: true })).post('/api/shop/seed');
+  };
+
+  afterAll(async () => {
+    if (/test/.test(mongoose.connection.name)) {
+      await ShopItem.deleteMany({ name: { $in: SHOP_CATALOG.map(i => i.name) } });
+    }
+  });
+
   test('returns 403 for non-admin users', async () => {
     const res = await request(app).post('/api/shop/seed');
 
@@ -213,8 +226,6 @@ describe('POST /api/shop/seed', () => {
   });
 
   test('seeds the shared catalog, updating stale rows in place and deactivating removed items', async () => {
-    expect(mongoose.connection.name).toMatch(/test/);
-
     const catalogNames = SHOP_CATALOG.map(i => i.name);
     const catalogJade = SHOP_CATALOG.find(i => i.name === 'Jade Green');
     await ShopItem.deleteMany({ name: { $in: ['Jade Green', 'Hanabi'] } });
@@ -226,9 +237,8 @@ describe('POST /api/shop/seed', () => {
       tier: 'entry',
       value: 'stale-value',
     });
-    const adminApp = buildTestApp({ _id: user._id, isAdmin: true });
 
-    const res = await request(adminApp).post('/api/shop/seed');
+    const res = await seedAsAdmin();
 
     expect(res.status).toBe(200);
     expect(await ShopItem.countDocuments({ name: { $in: catalogNames } })).toBe(SHOP_CATALOG.length);
@@ -251,10 +261,9 @@ describe('POST /api/shop/seed', () => {
 
   test('seeding twice does not create duplicates', async () => {
     const catalogNames = SHOP_CATALOG.map(i => i.name);
-    const adminApp = buildTestApp({ _id: user._id, isAdmin: true });
 
-    await request(adminApp).post('/api/shop/seed');
-    const res = await request(adminApp).post('/api/shop/seed');
+    await seedAsAdmin();
+    const res = await seedAsAdmin();
 
     expect(res.status).toBe(200);
     expect(await ShopItem.countDocuments({ name: { $in: catalogNames } })).toBe(SHOP_CATALOG.length);
