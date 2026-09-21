@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { SparklesIcon } from '@heroicons/react/24/outline';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useApi } from '../hooks/useApi';
-import { pointsApi, PointsSummary, PointsHistory } from '../services/api';
+import { pointsApi, PointsSummary, PointsHistory, PointTransactionContext } from '../services/api';
 import PointsHelpModal from '../components/PointsHelpModal';
 
 const POINT_TYPE_LABELS: Record<string, string> = {
@@ -26,21 +26,90 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   shop_purchase: 'Shop Purchase',
 };
 
+const CONTEXT_KIND_NAMES: Record<PointTransactionContext['kind'], string> = {
+  game: 'Game',
+  tournament: 'Tournament',
+  rankedSeason: 'Ranked season',
+  shopItem: 'Item',
+};
+
+const buildContextLink = (context: PointTransactionContext): string => {
+  switch (context.kind) {
+    case 'game':
+      return `/games/${context.id}`;
+    case 'tournament':
+      return `/tournaments/${context.id}`;
+    case 'rankedSeason':
+      return '/ranked';
+    case 'shopItem':
+      return '/shop';
+  }
+};
+
+const TransactionContext: React.FC<{ context?: PointTransactionContext | null }> = ({ context }) => {
+  if (!context) {
+    return null;
+  }
+
+  if (context.missing || !context.label) {
+    return (
+      <p className="text-xs text-gray-400">{CONTEXT_KIND_NAMES[context.kind]} no longer available</p>
+    );
+  }
+
+  return (
+    <Link to={buildContextLink(context)} className="text-xs text-indigo-600 hover:text-indigo-800">
+      {context.label}
+    </Link>
+  );
+};
+
+interface HistoryPagerProps {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+const HistoryPager: React.FC<HistoryPagerProps> = ({ page, totalPages, onPageChange }) => (
+  <div className="flex items-center justify-between pt-4">
+    <button
+      onClick={() => onPageChange(page - 1)}
+      disabled={page <= 1}
+      className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Previous
+    </button>
+    <span className="text-sm text-gray-500">Page {page} of {totalPages}</span>
+    <button
+      onClick={() => onPageChange(page + 1)}
+      disabled={page >= totalPages}
+      className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      Next
+    </button>
+  </div>
+);
+
+const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
+  <p role="alert" className="text-red-600 text-center py-4">{message}</p>
+);
+
 const Points: React.FC = () => {
   useRequireAuth();
   const [modalOpen, setModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const { data: summaryResponse, loading: summaryLoading } = useApi<{ data: PointsSummary }>(
+  const { data: summaryResponse, loading: summaryLoading, error: summaryError } = useApi<{ data: PointsSummary }>(
     pointsApi.getSummary,
     []
   );
 
-  const { data: historyResponse, loading: historyLoading } = useApi<{ data: PointsHistory }>(
-    pointsApi.getHistory,
-    []
+  const { data: historyResponse, loading: historyLoading, error: historyError } = useApi<{ data: PointsHistory }>(
+    () => pointsApi.getHistory(page),
+    [page]
   );
 
-  if (summaryLoading || historyLoading) {
+  if (summaryLoading) {
     return (
       <div className="space-y-8">
         <p className="text-gray-500 text-center py-8">Loading points...</p>
@@ -73,6 +142,8 @@ const Points: React.FC = () => {
         </Link>
       </div>
 
+      {summaryError && <ErrorMessage message={summaryError} />}
+
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="card text-center">
@@ -88,7 +159,11 @@ const Points: React.FC = () => {
 
       <div className="card">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Transaction History</h2>
-        {!history || history.items.length === 0 ? (
+        {historyError ? (
+          <ErrorMessage message={historyError} />
+        ) : historyLoading ? (
+          <p className="text-gray-500 text-center py-4">Loading transactions...</p>
+        ) : !history || history.items.length === 0 ? (
           <p className="text-gray-500 text-center py-4">No transactions yet</p>
         ) : (
           <div className="overflow-x-auto">
@@ -104,7 +179,8 @@ const Points: React.FC = () => {
                 {history.items.map(tx => (
                   <tr key={tx._id}>
                     <td className="px-4 py-3 text-sm text-gray-900">
-                      {POINT_TYPE_LABELS[tx.type] ?? tx.type}
+                      <p>{POINT_TYPE_LABELS[tx.type] ?? tx.type}</p>
+                      <TransactionContext context={tx.context} />
                     </td>
                     <td className={`px-4 py-3 text-sm text-right font-medium ${tx.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
@@ -117,6 +193,9 @@ const Points: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
+        {history && history.totalPages > 1 && !historyError && (
+          <HistoryPager page={page} totalPages={history.totalPages} onPageChange={setPage} />
         )}
       </div>
 
