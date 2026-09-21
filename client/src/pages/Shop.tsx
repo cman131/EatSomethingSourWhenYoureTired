@@ -9,7 +9,7 @@ import {
   FlairCategory,
 } from '../services/api';
 import { SparklesIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
-import { isPremiumBorder, getPremiumTitleClass, getPremiumTitleEmoji } from '../utils/flairUtils';
+import { isPremiumBorder, isMidTierBorder, getPremiumTitleClass, getPremiumTitleEmoji, getMidTierTitleClass } from '../utils/flairUtils';
 
 type Tab = { key: FlairCategory; label: string };
 
@@ -89,7 +89,7 @@ const Shop: React.FC = () => {
   const previewNameColor = previewUser.equippedFlair.nameColor ?? null;
   const previewIcon = previewUser.equippedFlair.nameIcon ?? '';
   const previewBorder = previewUser.equippedFlair.profileBorder ?? '';
-  const previewIsPremiumBorder = isPremiumBorder(previewBorder);
+  const previewNeedsGradientBorder = isPremiumBorder(previewBorder) || isMidTierBorder(previewBorder);
 
   const previewTitleValue = previewUser.equippedFlair.title;
   const previewTitleItem = previewTitleValue
@@ -136,7 +136,7 @@ const Shop: React.FC = () => {
       <div data-testid="preview-box" className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
         <div className="flex items-center gap-3">
-          {previewIsPremiumBorder ? (
+          {previewNeedsGradientBorder ? (
             <div className={previewBorder} data-testid="preview-avatar">
               <div className="flair-border-inner w-10 h-10 bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-400 text-xs">?</span>
@@ -202,7 +202,7 @@ const Shop: React.FC = () => {
                     <span className="text-2xl">{item.value}</span>
                   )}
                   {item.category === 'profileBorder' && (
-                    item.tier === 'premium' ? (
+                    (isPremiumBorder(item.value) || isMidTierBorder(item.value)) ? (
                       <div className={item.value}>
                         <div className="flair-border-inner w-8 h-8 bg-gray-300" />
                       </div>
@@ -268,6 +268,14 @@ const TitleBadge: React.FC<{ value: string; tier: ShopItem['tier'] }> = ({ value
     return (
       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${premiumClass}`}>
         {emoji && <span className="mr-1">{emoji}</span>}
+        {value}
+      </span>
+    );
+  }
+  if (tier === 'mid') {
+    const midClass = getMidTierTitleClass(value);
+    return (
+      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${midClass}`}>
         {value}
       </span>
     );

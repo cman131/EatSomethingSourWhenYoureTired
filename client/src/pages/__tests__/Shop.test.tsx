@@ -161,10 +161,10 @@ describe('Shop page', () => {
             name: 'Jade Ring',
             description: 'A jade ring',
             category: 'profileBorder' as const,
-            cost: 200,
-            value: 'flair-ring-jade',
-            tier: 'entry' as const,
-            sortOrder: 1,
+            cost: 250,
+            value: 'flair-mid-jade',
+            tier: 'mid' as const,
+            sortOrder: 3,
             isActive: true,
           } as ShopItem,
         ],
@@ -174,16 +174,16 @@ describe('Shop page', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /borders/i }));
 
-      // Before hover — preview avatar has no border class
+      // Before hover — preview avatar wrapper has no border class
       const avatarDiv = screen.getByTestId('preview-avatar');
-      expect(avatarDiv).not.toHaveClass('flair-ring-jade');
+      expect(avatarDiv).not.toHaveClass('flair-mid-jade');
 
       // Fire hover
       const itemCard = screen.getByTestId('flair-item-card-border1');
       fireEvent.mouseEnter(itemCard);
 
-      // After hover — preview avatar has the border class
-      expect(avatarDiv).toHaveClass('flair-ring-jade');
+      // After hover — preview avatar wrapper has the gradient border class
+      expect(avatarDiv).toHaveClass('flair-mid-jade');
     });
 
     test('shows equipped title in preview without hovering a title item', () => {
@@ -243,6 +243,34 @@ describe('Shop page', () => {
       fireEvent.mouseEnter(itemCard);
 
       expect(screen.queryByTestId('preview-title-badge')).toBeInTheDocument();
+    });
+
+    test('mid-tier title item renders with silver metallic badge in item grid', () => {
+      const catalogWithMidTitle = {
+        ...mockCatalog,
+        title: [
+          {
+            _id: 'title-mid1',
+            name: 'East Wind',
+            description: 'The dealer seat',
+            category: 'title' as const,
+            cost: 250,
+            value: 'East Wind',
+            tier: 'mid' as const,
+            sortOrder: 3,
+            isActive: true,
+          } as ShopItem,
+        ],
+      };
+      mockShopUseApi(catalogWithMidTitle);
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /titles/i }));
+
+      const itemCard = screen.getByTestId('flair-item-card-title-mid1');
+      const badge = itemCard.querySelector('.flair-title-mid');
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent('East Wind');
     });
   });
 });
