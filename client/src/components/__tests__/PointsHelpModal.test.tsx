@@ -3,6 +3,12 @@ import { render, screen, within, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import PointsHelpModal from '../PointsHelpModal';
 
+function expectRowPoints(sectionName: string, label: string, points: string) {
+  const section = screen.getByRole('region', { name: sectionName });
+  const row = within(section).getByText(label).closest('tr') as HTMLElement;
+  expect(within(row).getByText(points)).toBeInTheDocument();
+}
+
 describe('PointsHelpModal', () => {
   test('renders the modal heading', () => {
     render(<PointsHelpModal onClose={jest.fn()} />);
@@ -16,43 +22,33 @@ describe('PointsHelpModal', () => {
     expect(screen.getByRole('heading', { name: 'Ranked League' })).toBeInTheDocument();
   });
 
-  test('Games section shows correct point values', () => {
+  test.each([
+    ['1st place', '+10'],
+    ['2nd place', '+7'],
+    ['3rd place', '+4'],
+    ['4th place', '+2'],
+    ['Submit a game', '+2'],
+    ['Verify a game', '+1'],
+  ])('Games section: %s awards %s', (label, points) => {
     render(<PointsHelpModal onClose={jest.fn()} />);
-    const gamesSection = screen.getByRole('region', { name: 'Games' });
-    expect(within(gamesSection).getByText('+8')).toBeInTheDocument();
-    expect(within(gamesSection).getByText('+3')).toBeInTheDocument();
-    expect(within(gamesSection).getAllByText('+1')).toHaveLength(2); // 4th place and Verify
-    expect(within(gamesSection).getByText('Submit a game')).toBeInTheDocument();
-    expect(within(gamesSection).getByText('Verify a game')).toBeInTheDocument();
+    expectRowPoints('Games', label, points);
   });
 
-  test('Tournaments section shows correct point values', () => {
+  test.each([
+    ['Participate', '+15'],
+    ['1st place', '+200'],
+    ['2nd place', '+100'],
+    ['3rd place', '+70'],
+    ['4th place', '+50'],
+  ])('Tournaments section: %s awards %s', (label, points) => {
     render(<PointsHelpModal onClose={jest.fn()} />);
-    const tourSection = screen.getByRole('region', { name: 'Tournaments' });
-    expect(within(tourSection).getByText('Participate')).toBeInTheDocument();
-    expect(within(tourSection).getByText('+15')).toBeInTheDocument();
-    expect(within(tourSection).getByText('+40')).toBeInTheDocument();
+    expectRowPoints('Tournaments', label, points);
   });
 
-  test('Ranked League section shows qualify points', () => {
+  test('Ranked League section awards qualify points for reaching the leaderboard, not for joining', () => {
     render(<PointsHelpModal onClose={jest.fn()} />);
-    const leagueSection = screen.getByRole('region', { name: 'Ranked League' });
-    expect(within(leagueSection).getByText('Qualify (join league)')).toBeInTheDocument();
-    expect(within(leagueSection).getByText('+10')).toBeInTheDocument();
-  });
-
-  test('Submit a game shows +2 bonus', () => {
-    render(<PointsHelpModal onClose={jest.fn()} />);
-    const gamesSection = screen.getByRole('region', { name: 'Games' });
-    const submitRow = within(gamesSection).getByText('Submit a game').closest('tr');
-    expect(within(submitRow as HTMLElement).getByText('+2')).toBeInTheDocument();
-  });
-
-  test('Verify a game shows +1 bonus', () => {
-    render(<PointsHelpModal onClose={jest.fn()} />);
-    const gamesSection = screen.getByRole('region', { name: 'Games' });
-    const verifyRow = within(gamesSection).getByText('Verify a game').closest('tr');
-    expect(within(verifyRow as HTMLElement).getByText('+1')).toBeInTheDocument();
+    expectRowPoints('Ranked League', 'Qualify for the leaderboard', '+10');
+    expect(screen.queryByText(/join league/i)).not.toBeInTheDocument();
   });
 
   test('Ranked League section does not show Coming soon', () => {

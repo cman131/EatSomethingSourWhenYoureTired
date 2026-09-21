@@ -213,6 +213,7 @@ export interface RankedLeaguePlayer {
 export interface RankedLeague {
   _id: string;
   startDate: string;
+  rankedGamesThreshold: number;
   players: RankedLeaguePlayer[];
   createdAt: string;
   updatedAt: string;

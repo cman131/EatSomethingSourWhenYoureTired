@@ -33,13 +33,15 @@ import { useAuth } from '../../contexts/AuthContext';
 const mockRankedLeaguesApi = rankedLeaguesApi as jest.Mocked<typeof rankedLeaguesApi>;
 const mockUseAuth = useAuth as jest.Mock;
 
-function buildLeague() {
+function buildLeague(overrides: object = {}) {
   return {
     _id: 'league-1',
     startDate: new Date().toISOString(),
+    rankedGamesThreshold: 3,
     players: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    ...overrides,
   };
 }
 
@@ -47,6 +49,26 @@ beforeEach(() => {
   jest.clearAllMocks();
   localStorage.clear();
   mockUseAuth.mockReturnValue({ user: { _id: 'user-1' } });
+});
+
+describe('RankedLeague qualification threshold', () => {
+  it('keeps players below the league-provided threshold unranked', async () => {
+    mockRankedLeaguesApi.getCurrent.mockResolvedValue({
+      data: {
+        league: buildLeague({
+          rankedGamesThreshold: 5,
+          players: [{ player: { _id: 'user-2', displayName: 'Other' }, gamesPlayed: 4, rankedPoints: 520 }],
+        }),
+      },
+    } as any);
+
+    render(<RankedLeague />);
+
+    expect(await screen.findByText('No players have qualified yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Less than 5 games — not yet eligible for the leaderboard')
+    ).toBeInTheDocument();
+  });
 });
 
 describe('RankedLeague rules and etiquette', () => {

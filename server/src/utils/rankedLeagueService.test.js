@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const RankedLeague = require('../models/RankedLeague');
-const { getCurrentLeague, updateRankedPoints } = require('./rankedLeagueService');
+const User = require('../models/User');
+const PointTransaction = require('../models/PointTransaction');
+const { getCurrentLeague, updateRankedPoints, RANKED_GAMES_THRESHOLD } = require('./rankedLeagueService');
 
 beforeAll(async () => {
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/mahjong-test';
@@ -127,5 +129,105 @@ describe('updateRankedPoints', () => {
     const find = (id) => league.players.find(p => p.player.toString() === id.toString());
     expect(find(p2Id).gamesPlayed).toBe(1);
     expect(find(outsiderId)).toBeUndefined(); // outsider was never added to the league
+  });
+});
+
+describe('ranked league qualification points', () => {
+  let players;
+  let league;
+
+  beforeEach(async () => {
+    // Scoped to this suite's users: Jest runs suites in parallel against the same database
+    const staleUsers = await User.find({ displayName: /^test-ranked/ }).select('_id');
+    await PointTransaction.deleteMany({ user: { $in: staleUsers.map(u => u._id) } });
+    await RankedLeague.deleteMany({});
+    await User.deleteMany({ displayName: /^test-ranked/ });
+
+    players = await User.create([1, 2, 3, 4].map(n => ({
+      displayName: `test-ranked-p${n}`,
+      email: `ranked-p${n}@example.com`,
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    })));
+
+    league = await RankedLeague.create({
+      startDate: new Date(),
+      players: players.map(p => ({ player: p._id, rankedPoints: 500, gamesPlayed: 0 })),
+    });
+  });
+
+  afterAll(async () => {
+    await User.deleteMany({ displayName: /^test-ranked/ });
+  });
+
+  function playGame() {
+    return updateRankedPoints({
+      players: players.map((p, index) => ({ player: p._id, score: 25000, rank: index + 1 })),
+    });
+  }
+
+  const qualificationTransactions = user =>
+    PointTransaction.find({ user: user._id, type: 'ranked_league_qualified' });
+
+  test('the qualification threshold is 3 games', () => {
+    expect(RANKED_GAMES_THRESHOLD).toBe(3);
+  });
+
+  test('awards nothing before a player reaches the threshold', async () => {
+    await playGame();
+    await playGame();
+
+    const playerIds = players.map(p => p._id);
+    expect(
+      await PointTransaction.countDocuments({ user: { $in: playerIds }, type: 'ranked_league_qualified' })
+    ).toBe(0);
+  });
+
+  test('awards 10 points to each player when they reach the threshold', async () => {
+    await playGame();
+    await playGame();
+    await playGame();
+
+    for (const player of players) {
+      const transactions = await qualificationTransactions(player);
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].amount).toBe(10);
+      expect(transactions[0].metadata.leagueId.toString()).toBe(league._id.toString());
+      expect((await User.findById(player._id)).pointsBalance).toBe(10);
+    }
+  });
+
+  test('does not award again on games after the threshold', async () => {
+    for (let i = 0; i < RANKED_GAMES_THRESHOLD + 2; i++) {
+      await playGame();
+    }
+
+    for (const player of players) {
+      expect(await qualificationTransactions(player)).toHaveLength(1);
+    }
+  });
+
+  test('awards only the players who cross the threshold in that game', async () => {
+    league.players[0].gamesPlayed = RANKED_GAMES_THRESHOLD - 1;
+    await league.save();
+
+    await playGame();
+
+    expect(await qualificationTransactions(players[0])).toHaveLength(1);
+    expect(await qualificationTransactions(players[1])).toHaveLength(0);
+  });
+
+  test('still records ranked points when the qualification award fails', async () => {
+    league.players[0].gamesPlayed = RANKED_GAMES_THRESHOLD - 1;
+    await league.save();
+    const createSpy = jest.spyOn(PointTransaction, 'create').mockRejectedValueOnce(new Error('db down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(playGame()).resolves.not.toThrow();
+
+    const saved = await RankedLeague.findById(league._id);
+    expect(saved.players[0].gamesPlayed).toBe(RANKED_GAMES_THRESHOLD);
+    createSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 });

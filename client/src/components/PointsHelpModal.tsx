@@ -5,20 +5,20 @@ interface Props {
 }
 
 const GAME_ROWS: [string, string][] = [
-  ['1st place', '+8'],
-  ['2nd place', '+5'],
-  ['3rd place', '+3'],
-  ['4th place', '+1'],
+  ['1st place', '+10'],
+  ['2nd place', '+7'],
+  ['3rd place', '+4'],
+  ['4th place', '+2'],
   ['Submit a game', '+2'],
   ['Verify a game', '+1'],
 ];
 
 const TOURNAMENT_ROWS: [string, string][] = [
   ['Participate', '+15'],
-  ['1st place', '+40'],
-  ['2nd place', '+30'],
-  ['3rd place', '+20'],
-  ['4th place', '+10'],
+  ['1st place', '+200'],
+  ['2nd place', '+100'],
+  ['3rd place', '+70'],
+  ['4th place', '+50'],
 ];
 
 function PointsTable({ rows }: { rows: [string, string][] }) {
@@ -70,7 +70,7 @@ const PointsHelpModal: React.FC<Props> = ({ onClose }) => (
           <table className="min-w-full text-sm">
             <tbody className="divide-y divide-gray-100">
               <tr>
-                <td className="py-2 text-gray-700">Qualify (join league)</td>
+                <td className="py-2 text-gray-700">Qualify for the leaderboard</td>
                 <td className="py-2 text-right font-medium text-green-600">+10</td>
               </tr>
             </tbody>
