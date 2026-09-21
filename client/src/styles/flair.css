@@ -76,6 +76,7 @@
   display: inline-flex;
   border-radius: 9999px;
   padding: 3px;
+  isolation: isolate;
 }
 
 .flair-mid-jade     { background: linear-gradient(135deg, #10b981, #059669, #34d399, #065f46, #10b981); }
@@ -95,6 +96,7 @@
   display: inline-flex;
   border-radius: 9999px;
   padding: 3px;
+  isolation: isolate;
 }
 
 .flair-border-rainbow::before,
@@ -174,7 +176,6 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: transparent;
 }
 
 /* Mid */
@@ -198,6 +199,38 @@
   animation: flair-flow 4s linear infinite;
 }
 
+/* Gradient text is invisible when backgrounds are dropped (Windows forced-colors mode, print),
+   because the text fill stays transparent. Fall back to the normal text color. */
+@media (forced-colors: active) {
+  .flair-color-emerald,
+  .flair-color-blue,
+  .flair-color-purple,
+  .flair-color-fuji,
+  .flair-color-moonlit,
+  .flair-color-gold,
+  .flair-color-red,
+  .flair-color-neon,
+  .flair-color-tanabata {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
+@media print {
+  .flair-color-emerald,
+  .flair-color-blue,
+  .flair-color-purple,
+  .flair-color-fuji,
+  .flair-color-moonlit,
+  .flair-color-gold,
+  .flair-color-red,
+  .flair-color-neon,
+  .flair-color-tanabata {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
 /* Premium name sparkles: siblings of the clipped name span (not children), so they keep
    their own color. Sized in em so they scale with the name. */
 .flair-sparkle-wrap {
@@ -210,6 +243,7 @@
   pointer-events: none;
   line-height: 1;
   animation: flair-twinkle 2.4s ease-in-out infinite;
+  user-select: none;
 }
 
 .flair-sparkle-tr { top: -0.45em; right: -0.35em; font-size: 0.62em; }
