@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useApi } from '../hooks/useApi';
 import {
@@ -114,10 +115,14 @@ const Shop: React.FC = () => {
           <SparklesIcon className="h-7 w-7 text-primary-600" />
           <h1 className="text-2xl font-bold text-gray-900">Flair Shop</h1>
         </div>
-        <div className="flex items-center gap-1 text-sm font-medium text-gray-700">
+        <Link
+          to="/points"
+          className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+        >
           <CurrencyDollarIcon className="h-5 w-5 text-yellow-500" />
           <span>You have <span className="font-bold text-yellow-600">{inventory?.pointsBalance ?? 0}</span> points</span>
-        </div>
+          <span className="text-primary-600">· Points history →</span>
+        </Link>
       </div>
 
       {/* Feedback */}

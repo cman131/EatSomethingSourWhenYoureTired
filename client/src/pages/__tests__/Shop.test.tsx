@@ -101,6 +101,14 @@ describe('Shop page', () => {
     expect(screen.getByText(/500/)).toBeInTheDocument();
   });
 
+  test('links the points balance to the points history page', () => {
+    render(<Shop />);
+
+    const link = screen.getByRole('link', { name: /points history/i });
+    expect(link).toHaveAttribute('href', '/points');
+    expect(link).toHaveTextContent('500');
+  });
+
   test('shows Buy button with cost for unowned items', () => {
     render(<Shop />);
 
