@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import UserAvatar from './UserAvatar';
 import TitleBadge from './TitleBadge';
+import FlairName from './FlairName';
+import FlairIcon from './FlairIcon';
 import { EquippedFlair } from '../../services/api';
 
 interface UserDisplayProps {
@@ -48,14 +50,13 @@ const UserDisplay: React.FC<UserDisplayProps> = ({
   const shouldShowLink = showLink && !isPrivate && !isGuest;
 
   const flair = user.equippedFlair;
-  const nameColorClass = flair?.nameColor || '';
   const nameIcon = flair?.nameIcon || null;
   const title = (!isPrivate && flair?.title) || null;
 
   const nameContent = (
     <>
-      {nameIcon && <span className="mr-1 text-sm" aria-hidden="true">{nameIcon}</span>}
-      {displayName}
+      {nameIcon && <FlairIcon value={nameIcon} className="mr-1 text-sm" />}
+      <FlairName name={displayName} colorValue={flair?.nameColor} />
       {shouldShowYouIndicator && (
         <span className="ml-2 text-xs text-primary-600 font-normal">(You)</span>
       )}
@@ -65,12 +66,12 @@ const UserDisplay: React.FC<UserDisplayProps> = ({
   const nameElement = shouldShowLink ? (
     <Link
       to={`/profile/${user._id}`}
-      className={`font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors ${nameColorClass} ${nameClassName}`}
+      className={`font-medium text-gray-900 hover:text-primary-600 hover:underline transition-colors ${nameClassName}`}
     >
       {nameContent}
     </Link>
   ) : (
-    <span className={`font-medium text-gray-900 ${nameColorClass} ${nameClassName}`}>
+    <span className={`font-medium text-gray-900 ${nameClassName}`}>
       {nameContent}
     </span>
   );
