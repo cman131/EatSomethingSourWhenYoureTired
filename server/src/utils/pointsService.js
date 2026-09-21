@@ -34,8 +34,8 @@ async function awardGamePoints(game, verifierId) {
   );
   await Promise.all(playerAwards);
 
-  await awardPoints(game.submittedBy, 'game_submitted', 5, { gameId });
-  await awardPoints(verifierId, 'game_verified', 2, { gameId });
+  await awardPoints(game.submittedBy, 'game_submitted', 2, { gameId });
+  await awardPoints(verifierId, 'game_verified', 1, { gameId });
 }
 
 const TOURNAMENT_PLACEMENT_TYPES = [

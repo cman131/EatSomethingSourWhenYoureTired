@@ -9,8 +9,8 @@ const GAME_ROWS: [string, string][] = [
   ['2nd place', '+5'],
   ['3rd place', '+3'],
   ['4th place', '+1'],
-  ['Submit a game', '+5'],
-  ['Verify a game', '+2'],
+  ['Submit a game', '+2'],
+  ['Verify a game', '+1'],
 ];
 
 const TOURNAMENT_ROWS: [string, string][] = [
@@ -72,10 +72,6 @@ const PointsHelpModal: React.FC<Props> = ({ onClose }) => (
               <tr>
                 <td className="py-2 text-gray-700">Qualify (join league)</td>
                 <td className="py-2 text-right font-medium text-green-600">+10</td>
-              </tr>
-              <tr>
-                <td className="py-2 text-gray-700">Season placements</td>
-                <td className="py-2 text-right font-medium text-gray-400">Coming soon</td>
               </tr>
             </tbody>
           </table>
