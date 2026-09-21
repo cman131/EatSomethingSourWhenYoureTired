@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
+const Game = require('../models/Game');
 const { RANKED_GAMES_THRESHOLD } = require('./rankedLeagueConstants');
 
 const DUPLICATE_KEY_ERROR = 11000;
@@ -30,7 +31,7 @@ async function recordAward({ userId, type, amount, metadata = {} }) {
   }
 }
 
-// Relies on the unique partial indexes on PointTransaction (per tournament / per league):
+// Relies on the unique partial indexes on PointTransaction (per game / per tournament / per league):
 // a duplicate-key error means this award was already made, so it is skipped.
 async function recordAwardOnce(award) {
   try {
@@ -84,21 +85,40 @@ const GAME_PLACEMENT_AMOUNTS = { 1: 10, 2: 7, 3: 4, 4: 2 };
 const GAME_SUBMITTED_AMOUNT = 2;
 const GAME_VERIFIED_AMOUNT = 1;
 
-async function awardGamePoints(game, verifierId) {
+function buildGameAwards(game, verifierId) {
   const metadata = { gameId: game._id };
 
-  const placementAwards = game.players.map(({ player, rank }) => ({
+  const awards = game.players.map(({ player, rank }) => ({
     userId: player,
     type: GAME_PLACEMENT_TYPES[rank],
     amount: GAME_PLACEMENT_AMOUNTS[rank],
     metadata,
   }));
+  awards.push({ userId: game.submittedBy, type: 'game_submitted', amount: GAME_SUBMITTED_AMOUNT, metadata });
+  if (verifierId) {
+    awards.push({ userId: verifierId, type: 'game_verified', amount: GAME_VERIFIED_AMOUNT, metadata });
+  }
+  return awards;
+}
 
-  await awardAll([
-    ...placementAwards,
-    { userId: game.submittedBy, type: 'game_submitted', amount: GAME_SUBMITTED_AMOUNT, metadata },
-    { userId: verifierId, type: 'game_verified', amount: GAME_VERIFIED_AMOUNT, metadata },
-  ]);
+// Safe to call repeatedly for the same game: the unique per-game index on PointTransaction makes each
+// award land at most once, and one failing award never stops the others. Throws an AggregateError
+// listing every failure once all awards were attempted.
+async function awardGamePoints(game, verifierId) {
+  const awards = buildGameAwards(game, verifierId);
+  const eligibleAwards = await excludeGuestAwards(awards);
+
+  const results = await Promise.allSettled(eligibleAwards.map(recordAwardOnce));
+
+  const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+  if (failures.length > 0) {
+    throw new AggregateError(
+      failures,
+      `Failed to award ${failures.length} of ${eligibleAwards.length} points for game ${game._id}`
+    );
+  }
+
+  await Game.updateOne({ _id: game._id }, { $set: { pointsAwardedAt: new Date() } });
 }
 
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;

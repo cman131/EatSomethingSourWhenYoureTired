@@ -57,6 +57,10 @@ pointTransactionSchema.index(
   { user: 1, type: 1, 'metadata.leagueId': 1 },
   { unique: true, partialFilterExpression: { 'metadata.leagueId': { $type: 'objectId' } } }
 );
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.gameId': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.gameId': { $type: 'objectId' } } }
+);
 
 module.exports = mongoose.model('PointTransaction', pointTransactionSchema);
 module.exports.POINT_TRANSACTION_TYPES = POINT_TRANSACTION_TYPES;

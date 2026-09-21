@@ -306,17 +306,19 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
       });
     }
 
+    // The game stays verified if an award fails; it keeps no pointsAwardedAt marker, so
+    // `node scripts/replayGamePoints.js --game=<id>` can safely finish the missing awards.
     try {
       await awardGamePoints(verifiedGame, req.user._id);
     } catch (err) {
-      console.error('Failed to award game points:', err);
+      console.error(`Failed to award game points for game ${verifiedGame._id}:`, err);
     }
 
     if (verifiedGame.isRanked) {
       try {
         await updateRankedPoints(verifiedGame);
       } catch (err) {
-        console.error('Failed to update ranked points:', err);
+        console.error(`Failed to update ranked points for game ${verifiedGame._id}:`, err);
       }
     }
 
