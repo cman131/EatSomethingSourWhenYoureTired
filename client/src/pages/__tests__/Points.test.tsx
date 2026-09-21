@@ -93,6 +93,26 @@ describe('Points page', () => {
     expect(screen.getByText('How to Earn Points')).toBeInTheDocument();
   });
 
+  test('renders raw type key for ranked_league_placement_1 when it appears in history', () => {
+    let callCount = 0;
+    useApi.mockImplementation(() => {
+      callCount += 1;
+      if (callCount % 2 === 1) return { data: { data: mockSummary }, loading: false };
+      return {
+        data: {
+          data: {
+            items: [{ _id: 'tx-rl', type: 'ranked_league_placement_1', amount: 20, metadata: {}, createdAt: '2026-01-01T00:00:00Z' }],
+            total: 1, page: 1, totalPages: 1,
+          },
+        },
+        loading: false,
+      };
+    });
+    render(<Points />);
+    expect(screen.getByText('ranked_league_placement_1')).toBeInTheDocument();
+    expect(screen.queryByText('Ranked League 1st Place')).not.toBeInTheDocument();
+  });
+
   test('closes the help modal when the X button is clicked', () => {
     renderLoaded();
     fireEvent.click(screen.getByRole('button', { name: /how to earn points/i }));

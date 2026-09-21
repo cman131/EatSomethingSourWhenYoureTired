@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const POINT_TRANSACTION_TYPES = [
-  'game_played',       // legacy — kept for existing DB records
+  'game_played',       // retirement pending — run a one-time migration to confirm no active user holds this type before removing
   'game_placement_1',
   'game_placement_2',
   'game_placement_3',
@@ -14,10 +14,6 @@ const POINT_TRANSACTION_TYPES = [
   'tournament_placement_3',
   'tournament_placement_4',
   'ranked_league_qualified',
-  'ranked_league_placement_1',
-  'ranked_league_placement_2',
-  'ranked_league_placement_3',
-  'ranked_league_placement_4',
   'shop_purchase',
 ];
 

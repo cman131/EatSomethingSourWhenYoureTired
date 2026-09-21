@@ -18,10 +18,6 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   tournament_placement_3: 'Tournament 3rd Place',
   tournament_placement_4: 'Tournament 4th Place',
   ranked_league_qualified: 'Ranked League Qualified',
-  ranked_league_placement_1: 'Ranked League 1st Place',
-  ranked_league_placement_2: 'Ranked League 2nd Place',
-  ranked_league_placement_3: 'Ranked League 3rd Place',
-  ranked_league_placement_4: 'Ranked League 4th Place',
   shop_purchase: 'Shop Purchase',
 };
 
