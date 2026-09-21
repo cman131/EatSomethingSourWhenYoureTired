@@ -2,8 +2,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import UserAvatar from './UserAvatar';
+import TitleBadge from './TitleBadge';
 import { EquippedFlair } from '../../services/api';
-import { getPremiumTitleClass, getPremiumTitleEmoji, getMidTierTitleClass } from '../../utils/flairUtils';
 
 interface UserDisplayProps {
   user: {
@@ -92,34 +92,6 @@ const UserDisplay: React.FC<UserDisplayProps> = ({
         )}
       </div>
     </div>
-  );
-};
-
-const PREMIUM_TITLES = new Set(['Chicken Farmer', 'Chombo Chaser']);
-
-const TitleBadge: React.FC<{ value: string }> = ({ value }) => {
-  if (PREMIUM_TITLES.has(value)) {
-    const premiumClass = getPremiumTitleClass(value);
-    const emoji = getPremiumTitleEmoji(value);
-    return (
-      <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${premiumClass}`}>
-        {emoji && <span className="mr-0.5">{emoji}</span>}
-        {value}
-      </span>
-    );
-  }
-  const midClass = getMidTierTitleClass(value);
-  if (midClass) {
-    return (
-      <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${midClass}`}>
-        {value}
-      </span>
-    );
-  }
-  return (
-    <span className="px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-      {value}
-    </span>
   );
 };
 
