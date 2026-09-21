@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserIcon } from '@heroicons/react/24/outline';
 import { EquippedFlair } from '../../services/api';
-import { isPremiumBorder } from '../../utils/flairUtils';
+import { isPremiumBorder, isMidTierBorder } from '../../utils/flairUtils';
 
 interface UserAvatarProps {
   user: {
@@ -46,9 +46,9 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   const avatar = user.avatar;
   const isPrivate = user.privateMode === true;
   const borderClass = (!isPrivate && user.equippedFlair?.profileBorder) || '';
-  const premiumBorder = isPremiumBorder(borderClass);
+  const useGradientWrapper = isPremiumBorder(borderClass) || isMidTierBorder(borderClass);
 
-  if (premiumBorder) {
+  if (useGradientWrapper) {
     const inner = !isPrivate && avatar ? (
       <img
         src={avatar}
