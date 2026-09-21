@@ -1,6 +1,8 @@
 const RankedLeague = require('../models/RankedLeague');
+const { awardRankedQualificationPoints } = require('./pointsService');
 
 const SEASON_DURATION_DAYS = 90;
+const RANKED_GAMES_THRESHOLD = 3;
 const RANKED_STARTING_POINT = 30000;
 const RANK_UMA_BONUS = { 1: 30, 2: 10, 3: -10, 4: -30 };
 
@@ -20,8 +22,19 @@ async function getCurrentLeague() {
   return latestLeague;
 }
 
+async function awardQualificationPoints(playerIds, leagueId) {
+  for (const playerId of playerIds) {
+    try {
+      await awardRankedQualificationPoints(playerId, leagueId);
+    } catch (err) {
+      console.error('Failed to award ranked league qualification points:', err);
+    }
+  }
+}
+
 async function updateRankedPoints(game) {
   const league = await getCurrentLeague();
+  const newlyQualifiedPlayerIds = [];
 
   for (const gamePlayer of game.players) {
     const playerId = gamePlayer.player.toString ? gamePlayer.player.toString() : String(gamePlayer.player);
@@ -30,12 +43,19 @@ async function updateRankedPoints(game) {
 
     const umaBase = (Number(gamePlayer.score) - RANKED_STARTING_POINT) / 1000;
     const rankBonus = RANK_UMA_BONUS[gamePlayer.rank] ?? 0;
+    const gamesPlayedBefore = leaguePlayer.gamesPlayed;
     leaguePlayer.rankedPoints += umaBase + rankBonus;
     leaguePlayer.gamesPlayed += 1;
+
+    if (gamesPlayedBefore < RANKED_GAMES_THRESHOLD && leaguePlayer.gamesPlayed >= RANKED_GAMES_THRESHOLD) {
+      newlyQualifiedPlayerIds.push(leaguePlayer.player);
+    }
   }
 
   league.markModified('players');
   await league.save();
+
+  await awardQualificationPoints(newlyQualifiedPlayerIds, league._id);
 }
 
-module.exports = { getCurrentLeague, updateRankedPoints };
+module.exports = { getCurrentLeague, updateRankedPoints, RANKED_GAMES_THRESHOLD };

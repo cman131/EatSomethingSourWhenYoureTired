@@ -40,11 +40,16 @@ function setupAuthenticatedWithTournaments(tournaments: object[]) {
   usePaginatedApi.mockReturnValue({ data: [], loading: false });
 }
 
-function makeLeagueData(players: { _id: string; displayName: string; gamesPlayed: number; rankedPoints: number }[], daysAgo = 10) {
+function makeLeagueData(
+  players: { _id: string; displayName: string; gamesPlayed: number; rankedPoints: number }[],
+  daysAgo = 10,
+  rankedGamesThreshold = 3
+) {
   return {
     data: {
       league: {
         _id: 'league1',
+        rankedGamesThreshold,
         startDate: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
         players: players.map(p => ({
           player: { _id: p._id, displayName: p.displayName },
@@ -127,6 +132,14 @@ describe('Home ranked league card', () => {
     ]));
     render(<Home />);
     expect(screen.getByText('Qualifying — 2 / 3 games complete')).toBeInTheDocument();
+  });
+
+  test('uses the qualification threshold provided by the league, not a hard-coded one', () => {
+    setupAuthenticatedWithLeague(makeLeagueData([
+      { _id: 'user1', displayName: 'Tester', gamesPlayed: 4, rankedPoints: 0 },
+    ], 10, 5));
+    render(<Home />);
+    expect(screen.getByText('Qualifying — 4 / 5 games complete')).toBeInTheDocument();
   });
 
   test('shows ranked status with correct position when user has 6 or more games', () => {

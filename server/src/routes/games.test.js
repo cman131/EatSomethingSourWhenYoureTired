@@ -16,11 +16,16 @@ jest.mock('../utils/rankedLeagueService', () => ({
   getCurrentLeague: jest.fn(),
   updateRankedPoints: jest.fn(),
 }));
+jest.mock('../utils/pointsService', () => ({
+  awardGamePoints: jest.fn(),
+}));
 
 const request = require('supertest');
 const express = require('express');
 const Game = require('../models/Game');
 const Tournament = require('../models/Tournament');
+const { awardGamePoints } = require('../utils/pointsService');
+const { updateRankedPoints } = require('../utils/rankedLeagueService');
 
 const GAME_ID = '507f1f77bcf86cd799439011';
 const USER_ID = '507f191e810c19729de860ea';
@@ -101,5 +106,65 @@ describe('DELETE /api/games/:id — pairing reference cleanup', () => {
     expect(res.status).toBe(200);
     expect(pairingForOtherGame.game).not.toBeNull();
     expect(tournament.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('PUT /api/games/:id/verify — verification is atomic', () => {
+  const unverifiedGame = () => ({
+    _id: GAME_ID,
+    verified: false,
+    submittedBy: { toString: () => 'someone-else' },
+    players: [{ player: { toString: () => USER_ID } }],
+  });
+
+  const verifiedGame = (overrides = {}) => ({
+    _id: GAME_ID,
+    verified: true,
+    isRanked: false,
+    populate: jest.fn().mockResolvedValue(undefined),
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Game.findById.mockResolvedValue(unverifiedGame());
+    Tournament.findOne.mockReturnValue({ populate: jest.fn().mockResolvedValue(null) });
+  });
+
+  it('flips verified only if the game is still unverified, then awards points for the updated game', async () => {
+    const updated = verifiedGame();
+    Game.findOneAndUpdate.mockResolvedValue(updated);
+
+    const res = await request(buildTestApp()).put(`/api/games/${GAME_ID}/verify`);
+
+    expect(res.status).toBe(200);
+    expect(Game.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: GAME_ID, verified: false },
+      { $set: expect.objectContaining({ verified: true, verifiedAt: expect.any(Date) }) },
+      { new: true }
+    );
+    expect(awardGamePoints).toHaveBeenCalledTimes(1);
+    expect(awardGamePoints).toHaveBeenCalledWith(updated, expect.anything());
+  });
+
+  it('returns 400 and awards nothing when another request verified the game first', async () => {
+    Game.findOneAndUpdate.mockResolvedValue(null);
+
+    const res = await request(buildTestApp()).put(`/api/games/${GAME_ID}/verify`);
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/already verified/i);
+    expect(awardGamePoints).not.toHaveBeenCalled();
+    expect(updateRankedPoints).not.toHaveBeenCalled();
+  });
+
+  it('updates ranked points for a verified ranked game', async () => {
+    const updated = verifiedGame({ isRanked: true });
+    Game.findOneAndUpdate.mockResolvedValue(updated);
+
+    const res = await request(buildTestApp()).put(`/api/games/${GAME_ID}/verify`);
+
+    expect(res.status).toBe(200);
+    expect(updateRankedPoints).toHaveBeenCalledWith(updated);
   });
 });

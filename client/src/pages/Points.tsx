@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useApi } from '../hooks/useApi';
 import { pointsApi, PointsSummary, PointsHistory } from '../services/api';
@@ -48,15 +50,24 @@ const Points: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-bold text-gray-900">Club Points</h1>
-        <button
-          onClick={() => setModalOpen(true)}
-          aria-label="How to earn points"
-          className="text-gray-400 hover:text-indigo-600 transition-colors text-xl font-bold leading-none"
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900">Club Points</h1>
+          <button
+            onClick={() => setModalOpen(true)}
+            aria-label="How to earn points"
+            className="text-gray-400 hover:text-indigo-600 transition-colors text-xl font-bold leading-none"
+          >
+            ?
+          </button>
+        </div>
+        <Link
+          to="/shop"
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
         >
-          ?
-        </button>
+          <SparklesIcon className="h-4 w-4" />
+          Spend points in the Flair Shop
+        </Link>
       </div>
 
       {summary && (

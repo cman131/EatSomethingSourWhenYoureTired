@@ -71,6 +71,12 @@ describe('Points page', () => {
     expect(screen.getByText('100')).toBeInTheDocument();
   });
 
+  test('links to the flair shop to spend points', () => {
+    renderLoaded();
+    const link = screen.getByRole('link', { name: /flair shop/i });
+    expect(link).toHaveAttribute('href', '/shop');
+  });
+
   test('renders transaction rows with placement labels', () => {
     renderLoaded();
     expect(screen.getByText('Game 1st Place')).toBeInTheDocument();
