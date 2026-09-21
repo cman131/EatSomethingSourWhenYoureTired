@@ -3,6 +3,7 @@ const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
 const {
   awardPoints,
+  getRecentEarnings,
   spendPoints,
   awardGamePoints,
   awardTournamentPoints,
@@ -111,6 +112,53 @@ describe('spendPoints', () => {
     await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
 
     await expect(spendPoints(user._id, 20, {})).rejects.toThrow('Insufficient points balance');
+  });
+});
+
+describe('getRecentEarnings', () => {
+  const HOUR = 60 * 60 * 1000;
+  const seed = (type, amount, ageMs) =>
+    PointTransaction.create({ user: user._id, type, amount, createdAt: new Date(Date.now() - ageMs) });
+  const cutoff24h = () => new Date(Date.now() - 24 * HOUR);
+
+  test('sums the given types since the cutoff', async () => {
+    await seed('game_placement_1', 10, HOUR);
+    await seed('game_submitted', 2, 2 * HOUR);
+
+    const total = await getRecentEarnings(user._id, ['game_placement_1', 'game_submitted'], cutoff24h());
+
+    expect(total).toBe(12);
+  });
+
+  test('ignores types that were not asked for', async () => {
+    await seed('game_placement_1', 10, HOUR);
+    await seed('tournament_participated', 15, HOUR);
+
+    const total = await getRecentEarnings(user._id, ['game_placement_1'], cutoff24h());
+
+    expect(total).toBe(10);
+  });
+
+  test('ignores rows older than the cutoff', async () => {
+    await seed('game_placement_1', 10, 25 * HOUR);
+    await seed('game_placement_1', 4, HOUR);
+
+    const total = await getRecentEarnings(user._id, ['game_placement_1'], cutoff24h());
+
+    expect(total).toBe(4);
+  });
+
+  test('ignores negative (spend) rows', async () => {
+    await seed('game_placement_1', 10, HOUR);
+    await seed('shop_purchase', -20, HOUR);
+
+    const total = await getRecentEarnings(user._id, ['game_placement_1', 'shop_purchase'], cutoff24h());
+
+    expect(total).toBe(10);
+  });
+
+  test('returns 0 when the user has no matching rows', async () => {
+    expect(await getRecentEarnings(user._id, ['game_placement_1'], cutoff24h())).toBe(0);
   });
 });
 

@@ -27,6 +27,20 @@ async function awardPointsOnce(userId, type, amount, metadata, dedupeField) {
   await awardPoints(userId, type, amount, metadata);
 }
 
+// Sums a user's positive earn transactions of the given types created at or after `since`.
+async function getRecentEarnings(userId, types, since) {
+  const rows = await PointTransaction.find({
+    user: userId,
+    type: { $in: types },
+    amount: { $gt: 0 },
+    createdAt: { $gte: since },
+  })
+    .select('amount')
+    .lean();
+
+  return rows.reduce((sum, row) => sum + row.amount, 0);
+}
+
 async function spendPoints(userId, amount, metadata = {}) {
   const user = await User.findById(userId).select('pointsBalance');
   if (!user || user.pointsBalance < amount) {
@@ -115,6 +129,7 @@ async function awardRankedQualificationPoints(userId, leagueId) {
 
 module.exports = {
   awardPoints,
+  getRecentEarnings,
   spendPoints,
   awardGamePoints,
   awardTournamentPoints,
