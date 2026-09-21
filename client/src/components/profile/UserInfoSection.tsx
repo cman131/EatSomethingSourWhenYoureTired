@@ -6,6 +6,7 @@ import RiichiMusicModal from '../RiichiMusicModal';
 import EditProfileModal from '../EditProfileModal';
 import RiichiMusicDisplay from './RiichiMusicDisplay';
 import UserAvatar from '../user/UserAvatar';
+import TitleBadge from '../user/TitleBadge';
 import { PencilIcon, BellIcon, MusicalNoteIcon } from '@heroicons/react/24/outline';
 
 interface UserInfoSectionProps {
@@ -108,12 +109,9 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
                 {user?.displayName}
               </h3>
               {user?.equippedFlair?.title && (
-                <span
-                  data-testid="flair-title-badge"
-                  className="mt-1 inline-block px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full"
-                >
-                  {user.equippedFlair.title}
-                </span>
+                <div data-testid="flair-title-badge" className="mt-1">
+                  <TitleBadge value={user.equippedFlair.title} />
+                </div>
               )}
             </div>
           </div>

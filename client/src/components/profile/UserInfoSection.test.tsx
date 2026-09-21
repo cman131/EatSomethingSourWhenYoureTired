@@ -82,6 +82,55 @@ describe('UserInfoSection flair rendering', () => {
     expect(screen.getByText('Dragon')).toBeInTheDocument();
   });
 
+  test('renders premium title badge with premium class and emoji', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: 'Chicken Farmer' },
+    };
+    render(
+      <UserInfoSection
+        user={user}
+        isOwnProfile={false}
+        onUpdateProfile={noopAsync}
+        onRefetchProfile={noopAsync}
+      />
+    );
+    expect(screen.getByText('Chicken Farmer').className).toContain('flair-title-chicken');
+    expect(screen.getByText('🐔')).toBeInTheDocument();
+  });
+
+  test('renders mid-tier title badge with mid-tier class', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: 'East Wind' },
+    };
+    render(
+      <UserInfoSection
+        user={user}
+        isOwnProfile={false}
+        onUpdateProfile={noopAsync}
+        onRefetchProfile={noopAsync}
+      />
+    );
+    expect(screen.getByText('East Wind').className).toContain('flair-title-mid');
+  });
+
+  test('renders standard title badge with default styling', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: 'Dragon' },
+    };
+    render(
+      <UserInfoSection
+        user={user}
+        isOwnProfile={false}
+        onUpdateProfile={noopAsync}
+        onRefetchProfile={noopAsync}
+      />
+    );
+    expect(screen.getByText('Dragon').className).toContain('bg-primary-100');
+  });
+
   test('does not render title badge when title is null', () => {
     const user = {
       ...baseUser,
