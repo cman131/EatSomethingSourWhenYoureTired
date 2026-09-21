@@ -99,7 +99,7 @@ describe('Points page', () => {
     expect(screen.getByText('How to Earn Points')).toBeInTheDocument();
   });
 
-  test('renders raw type key for ranked_league_placement_1 when it appears in history', () => {
+  test('renders the season placement label for ranked_league_placement_1 when it appears in history', () => {
     let callCount = 0;
     useApi.mockImplementation(() => {
       callCount += 1;
@@ -115,8 +115,8 @@ describe('Points page', () => {
       };
     });
     render(<Points />);
-    expect(screen.getByText('ranked_league_placement_1')).toBeInTheDocument();
-    expect(screen.queryByText('Ranked League 1st Place')).not.toBeInTheDocument();
+    expect(screen.getByText('Ranked Season 1st Place')).toBeInTheDocument();
+    expect(screen.queryByText('ranked_league_placement_1')).not.toBeInTheDocument();
   });
 
   test('closes the help modal when the X button is clicked', () => {
