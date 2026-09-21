@@ -82,10 +82,10 @@ describe('User flair fields', () => {
     });
 
     await User.findByIdAndUpdate(user._id, {
-      'equippedFlair.nameColor': item._id.toString(),
+      'equippedFlair.nameColor': item.value,
     });
 
     const found = await User.findById(user._id);
-    expect(found.equippedFlair.nameColor).toBe(item._id.toString());
+    expect(found.equippedFlair.nameColor).toBe(item.value);
   });
 });

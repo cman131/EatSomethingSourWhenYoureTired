@@ -763,6 +763,7 @@ export interface ShopItem {
   isActive: boolean;
 }
 
+// Each slot holds the equipped item's `value` (a CSS class or display text), not its `_id`.
 export interface EquippedFlair {
   nameColor: string | null;
   nameIcon: string | null;

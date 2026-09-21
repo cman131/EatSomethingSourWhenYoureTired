@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Shop from '../Shop';
 import { ShopItem, PurchasedItem, EquippedFlair } from '../../services/api';
@@ -28,6 +28,7 @@ jest.mock('../../services/api', () => ({
 }));
 
 const { useApi } = require('../../hooks/useApi');
+const { shopApi } = require('../../services/api');
 
 const mockCatalog = {
   nameColor: [
@@ -134,12 +135,66 @@ describe('Shop page', () => {
     mockShopUseApi(mockCatalog, {
       ...mockInventory,
       purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
-      equippedFlair: { nameColor: ownedItem._id, nameIcon: null, profileBorder: null, title: null },
+      // The server stores the item's value (not its _id) in equippedFlair.
+      equippedFlair: { nameColor: ownedItem.value, nameIcon: null, profileBorder: null, title: null },
     });
 
     render(<Shop />);
 
     expect(screen.getByText(/equipped/i)).toBeInTheDocument();
+  });
+
+  test('marks only the item whose value is equipped when several are owned in the same category', () => {
+    const [equippedItem, otherItem] = mockCatalog.nameColor;
+    mockShopUseApi(mockCatalog, {
+      ...mockInventory,
+      purchasedItems: [
+        { item: equippedItem, purchasedAt: '2026-01-01' },
+        { item: otherItem, purchasedAt: '2026-01-02' },
+      ],
+      equippedFlair: { nameColor: equippedItem.value, nameIcon: null, profileBorder: null, title: null },
+    });
+
+    render(<Shop />);
+
+    const equippedCard = screen.getByTestId(`flair-item-card-${equippedItem._id}`);
+    const otherCard = screen.getByTestId(`flair-item-card-${otherItem._id}`);
+    expect(within(equippedCard).getByRole('button', { name: /equipped/i })).toBeInTheDocument();
+    expect(within(otherCard).getByRole('button', { name: 'Equip' })).toBeInTheDocument();
+    expect(within(otherCard).queryByRole('button', { name: /equipped/i })).not.toBeInTheDocument();
+  });
+
+  describe('equipping and unequipping', () => {
+    test('clicking Equip on an owned unequipped item equips it by id and shows the Equipped toast', async () => {
+      const ownedItem = mockCatalog.nameColor[0];
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Equip' }));
+
+      expect(await screen.findByText('Equipped Jade Green!')).toBeInTheDocument();
+      expect(shopApi.equip).toHaveBeenCalledWith(ownedItem._id, 'nameColor');
+    });
+
+    test('clicking Equipped on the equipped item unequips it and shows the Unequipped toast', async () => {
+      const ownedItem = mockCatalog.nameColor[0];
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+        equippedFlair: { nameColor: ownedItem.value, nameIcon: null, profileBorder: null, title: null },
+      });
+
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /equipped/i }));
+
+      expect(await screen.findByText('Unequipped Jade Green')).toBeInTheDocument();
+      expect(shopApi.equip).toHaveBeenCalledWith(null, 'nameColor');
+    });
   });
 
   describe('hover preview', () => {
