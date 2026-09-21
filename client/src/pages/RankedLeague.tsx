@@ -4,6 +4,8 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useAuth } from '../contexts/AuthContext';
 import { rankedLeaguesApi, RankedLeague as RankedLeagueType } from '../services/api';
 import UserDisplay from '../components/user/UserDisplay';
+import EtiquetteDisplay from '../components/tournaments/EtiquetteDisplay';
+import RulesDisplay from '../components/tournaments/RulesDisplay';
 import { StarIcon } from '@heroicons/react/24/outline';
 
 const RANKED_GAMES_THRESHOLD = 3;
@@ -174,6 +176,9 @@ const RankedLeague: React.FC = () => {
               </div>
             </div>
           )}
+
+          <EtiquetteDisplay />
+          <RulesDisplay ruleset="WRC2025" />
         </>
       ) : null}
     </div>
