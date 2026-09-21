@@ -212,19 +212,51 @@ describe('POST /api/shop/seed', () => {
     expect(res.status).toBe(403);
   });
 
-  test('seeds the shared catalog with the current prices', async () => {
+  test('seeds the shared catalog, updating stale rows in place and deactivating removed items', async () => {
+    expect(mongoose.connection.name).toMatch(/test/);
+
+    const catalogNames = SHOP_CATALOG.map(i => i.name);
+    const catalogJade = SHOP_CATALOG.find(i => i.name === 'Jade Green');
+    await ShopItem.deleteMany({ name: { $in: ['Jade Green', 'Hanabi'] } });
+    await ShopItem.create({
+      name: 'Jade Green',
+      description: 'stale',
+      category: 'nameColor',
+      cost: 250,
+      tier: 'entry',
+      value: 'stale-value',
+    });
     const adminApp = buildTestApp({ _id: user._id, isAdmin: true });
 
     const res = await request(adminApp).post('/api/shop/seed');
 
     expect(res.status).toBe(200);
-    expect(res.body.count).toBe(SHOP_CATALOG.length);
+    expect(await ShopItem.countDocuments({ name: { $in: catalogNames } })).toBe(SHOP_CATALOG.length);
 
-    const jade = await ShopItem.findOne({ name: 'Jade Green' });
-    expect(jade.cost).toBe(125);
-    expect(jade.value).toBe('flair-color-emerald');
+    const jadeRows = await ShopItem.find({ name: 'Jade Green' });
+    expect(jadeRows).toHaveLength(1);
+    expect(jadeRows[0].cost).toBe(125);
+    expect(jadeRows[0].tier).toBe('mid');
+    expect(jadeRows[0].value).toBe('flair-color-emerald');
+    expect(jadeRows[0].description).toBe(catalogJade.description);
+    expect(jadeRows[0].category).toBe('nameColor');
+
     const hanabi = await ShopItem.findOne({ name: 'Hanabi' });
     expect(hanabi.tier).toBe('premium');
     expect(hanabi.value).toBe('flair-border-hanabi');
+
+    const removed = await ShopItem.findById(item._id);
+    expect(removed.isActive).toBe(false);
+  });
+
+  test('seeding twice does not create duplicates', async () => {
+    const catalogNames = SHOP_CATALOG.map(i => i.name);
+    const adminApp = buildTestApp({ _id: user._id, isAdmin: true });
+
+    await request(adminApp).post('/api/shop/seed');
+    const res = await request(adminApp).post('/api/shop/seed');
+
+    expect(res.status).toBe(200);
+    expect(await ShopItem.countDocuments({ name: { $in: catalogNames } })).toBe(SHOP_CATALOG.length);
   });
 });
