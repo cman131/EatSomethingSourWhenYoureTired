@@ -185,5 +185,66 @@ describe('Shop page', () => {
       // After hover — preview avatar has the border class
       expect(avatarDiv).toHaveClass('flair-ring-jade');
     });
+
+    test('shows equipped title in preview without hovering a title item', () => {
+      const catalogWithTitle = {
+        ...mockCatalog,
+        title: [
+          {
+            _id: 'title1',
+            name: 'Chicken Farmer',
+            description: 'A special title',
+            category: 'title' as const,
+            cost: 500,
+            value: 'Chicken Farmer',
+            tier: 'premium' as const,
+            sortOrder: 1,
+            isActive: true,
+          } as ShopItem,
+        ],
+      };
+      mockShopUseApi(catalogWithTitle, {
+        ...mockInventory,
+        equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: 'Chicken Farmer' },
+      });
+      render(<Shop />);
+
+      // Default tab is nameColor — no title items visible in grid
+      // The equipped title should still appear in the preview box
+      const previewBox = screen.getByTestId('preview-box');
+      expect(previewBox.querySelector('.flair-title-chicken')).toBeInTheDocument();
+    });
+
+    test('hovering a title item shows that title in the preview', () => {
+      const catalogWithTitle = {
+        ...mockCatalog,
+        title: [
+          {
+            _id: 'title2',
+            name: 'Chombo Chaser',
+            description: 'A chaos title',
+            category: 'title' as const,
+            cost: 500,
+            value: 'Chombo Chaser',
+            tier: 'premium' as const,
+            sortOrder: 2,
+            isActive: true,
+          } as ShopItem,
+        ],
+      };
+      mockShopUseApi(catalogWithTitle);
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /titles/i }));
+
+      const previewBox = screen.getByTestId('preview-box');
+      expect(previewBox.querySelector('.flair-title-chombo')).not.toBeInTheDocument();
+
+      // 'Chombo Chaser' appears as the item name in the card (exact text, no emoji)
+      const itemCard = screen.getByTestId('flair-item-card-title2');
+      fireEvent.mouseEnter(itemCard);
+
+      expect(previewBox.querySelector('.flair-title-chombo')).toBeInTheDocument();
+    });
   });
 });

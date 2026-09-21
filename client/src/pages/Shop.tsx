@@ -91,7 +91,10 @@ const Shop: React.FC = () => {
   const previewBorder = previewUser.equippedFlair.profileBorder ?? '';
   const previewIsPremiumBorder = isPremiumBorder(previewBorder);
 
-  const hoveredTitle = hoveredItem?.category === 'title' ? hoveredItem : null;
+  const previewTitleValue = previewUser.equippedFlair.title;
+  const previewTitleItem = previewTitleValue
+    ? (catalog?.title ?? []).find(i => i.value === previewTitleValue) ?? null
+    : null;
 
   const currentItems: ShopItem[] = catalog?.[activeTab] ?? [];
 
@@ -130,7 +133,7 @@ const Shop: React.FC = () => {
       )}
 
       {/* Live preview */}
-      <div className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+      <div data-testid="preview-box" className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
         <div className="flex items-center gap-3">
           {previewIsPremiumBorder ? (
@@ -148,8 +151,8 @@ const Shop: React.FC = () => {
             {previewIcon && <span className="mr-1 text-sm">{previewIcon}</span>}
             Your Name
           </span>
-          {hoveredTitle && (
-            <TitleBadge value={hoveredTitle.value} tier={hoveredTitle.tier} />
+          {previewTitleItem && (
+            <TitleBadge value={previewTitleItem.value} tier={previewTitleItem.tier} />
           )}
         </div>
       </div>
