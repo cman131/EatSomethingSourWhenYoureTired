@@ -25,6 +25,24 @@ describe('PLAYER_POPULATE_FIELDS', () => {
   });
 });
 
+describe('User pointsBalance', () => {
+  const buildUser = pointsBalance => new User({
+    displayName: 'test-flair-balance',
+    email: 'test-flair-balance@example.com',
+    password: 'password123',
+    clubAffiliation: 'Charleston',
+    pointsBalance,
+  });
+
+  test('rejects a negative balance', async () => {
+    await expect(buildUser(-1).validate()).rejects.toThrow(/pointsBalance/);
+  });
+
+  test('accepts a zero balance', async () => {
+    await expect(buildUser(0).validate()).resolves.toBeUndefined();
+  });
+});
+
 describe('User flair fields', () => {
   test('new user has empty purchasedItems and null equippedFlair', async () => {
     const user = await User.create({

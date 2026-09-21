@@ -152,6 +152,7 @@ const userSchema = new mongoose.Schema({
   pointsBalance: {
     type: Number,
     default: 0,
+    min: 0,
   },
   totalPointsEarned: {
     type: Number,

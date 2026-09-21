@@ -13,6 +13,7 @@ afterAll(async () => {
 
 const User = require('../models/User');
 const ShopItem = require('../models/ShopItem');
+const PointTransaction = require('../models/PointTransaction');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
 
 let app, user, item;
@@ -128,6 +129,80 @@ describe('POST /api/shop/purchase', () => {
       .send({ itemId: fakeId.toString() });
 
     expect(res.status).toBe(404);
+  });
+
+  test('returns 400 for a malformed itemId instead of a server error', async () => {
+    const res = await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: 'not-an-object-id' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/invalid/i);
+  });
+
+  test('records a negative shop_purchase ledger row for the item cost', async () => {
+    await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: item._id.toString() });
+
+    const rows = await PointTransaction.find({ user: user._id, type: 'shop_purchase' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].amount).toBe(-200);
+  });
+
+  test('does not record a ledger row when the purchase is rejected', async () => {
+    await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
+
+    await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: item._id.toString() });
+
+    expect(await PointTransaction.countDocuments({ user: user._id })).toBe(0);
+  });
+
+  describe('concurrent purchases', () => {
+    const purchase = itemId =>
+      request(app).post('/api/shop/purchase').send({ itemId: itemId.toString() });
+
+    test('buying the same item in parallel charges once and grants one copy', async () => {
+      const responses = await Promise.all(Array.from({ length: 5 }, () => purchase(item._id)));
+
+      const statuses = responses.map(r => r.status).sort();
+      expect(statuses).toEqual([200, 400, 400, 400, 400]);
+      responses
+        .filter(r => r.status === 400)
+        .forEach(r => expect(r.body.message).toMatch(/already own/i));
+
+      const updated = await User.findById(user._id);
+      expect(updated.pointsBalance).toBe(300);
+      expect(updated.purchasedItems).toHaveLength(1);
+      expect(await PointTransaction.countDocuments({ user: user._id, type: 'shop_purchase' })).toBe(1);
+    });
+
+    test('buying different items in parallel cannot overspend the balance', async () => {
+      await User.findByIdAndUpdate(user._id, { pointsBalance: 300 });
+      const otherItems = await ShopItem.create(
+        [1, 2, 3, 4].map(n => ({
+          name: `test-shop-route-extra-${n}`,
+          description: 'Extra item',
+          category: 'nameColor',
+          cost: 200,
+          value: `text-extra-${n}`,
+        }))
+      );
+
+      const responses = await Promise.all([item, ...otherItems].map(i => purchase(i._id)));
+
+      const succeeded = responses.filter(r => r.status === 200);
+      const rejected = responses.filter(r => r.status === 400);
+      expect(succeeded).toHaveLength(1);
+      expect(rejected).toHaveLength(4);
+      rejected.forEach(r => expect(r.body.message).toMatch(/insufficient/i));
+
+      const updated = await User.findById(user._id);
+      expect(updated.pointsBalance).toBe(100);
+      expect(updated.purchasedItems).toHaveLength(1);
+    });
   });
 });
 

@@ -1,12 +1,25 @@
 const express = require('express');
 const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
-const { spendPoints } = require('../utils/pointsService');
+const { purchaseItem, PurchaseFailure } = require('../utils/shopService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
 
 const router = express.Router();
 
 const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+
+const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
+
+const PURCHASE_FAILURE_RESPONSES = {
+  [PurchaseFailure.UserNotFound]: { status: 404, message: 'User not found' },
+  [PurchaseFailure.AlreadyOwned]: { status: 400, message: 'You already own this item' },
+  [PurchaseFailure.InsufficientBalance]: { status: 400, message: 'Insufficient points balance' },
+};
+
+// typeof check also rejects object bodies like { itemId: { $ne: null } }, which would otherwise reach a query
+function isObjectIdString(value) {
+  return typeof value === 'string' && OBJECT_ID_PATTERN.test(value);
+}
 
 // GET /api/shop — list active items grouped by category
 router.get('/', async (req, res) => {
@@ -51,28 +64,20 @@ router.post('/purchase', async (req, res) => {
     if (!itemId) {
       return res.status(400).json({ success: false, message: 'itemId is required' });
     }
+    if (!isObjectIdString(itemId)) {
+      return res.status(400).json({ success: false, message: 'Invalid itemId' });
+    }
 
     const item = await ShopItem.findById(itemId);
     if (!item || !item.isActive) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
 
-    const user = await User.findById(req.user._id);
-    const alreadyOwns = user.purchasedItems.some(
-      p => p.item.toString() === itemId
-    );
-    if (alreadyOwns) {
-      return res.status(400).json({ success: false, message: 'You already own this item' });
+    const result = await purchaseItem(req.user._id, item);
+    if (!result.purchased) {
+      const failure = PURCHASE_FAILURE_RESPONSES[result.reason];
+      return res.status(failure.status).json({ success: false, message: failure.message });
     }
-
-    if (user.pointsBalance < item.cost) {
-      return res.status(400).json({ success: false, message: 'Insufficient points balance' });
-    }
-
-    await spendPoints(user._id, item.cost, { itemId: item._id });
-    await User.findByIdAndUpdate(user._id, {
-      $push: { purchasedItems: { item: item._id } },
-    });
 
     res.json({ success: true, message: 'Purchase successful' });
   } catch (err) {
