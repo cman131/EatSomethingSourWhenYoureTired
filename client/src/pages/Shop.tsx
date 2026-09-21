@@ -8,6 +8,7 @@ import {
   ShopCatalog,
   ShopInventory,
   FlairCategory,
+  EquippedFlair,
 } from '../services/api';
 import { SparklesIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { isPremiumBorder, isMidTierBorder, getPremiumTitleClass, getPremiumTitleEmoji, getMidTierTitleClass } from '../utils/flairUtils';
@@ -20,6 +21,10 @@ const TABS: Tab[] = [
   { key: 'profileBorder', label: 'Borders' },
   { key: 'title', label: 'Titles' },
 ];
+
+// equippedFlair stores each slot's item `value` (e.g. 'text-emerald-600'), not its `_id`.
+const isItemEquipped = (equippedFlair: EquippedFlair, item: ShopItem): boolean =>
+  equippedFlair[item.category] === item.value;
 
 const Shop: React.FC = () => {
   useRequireAuth();
@@ -69,7 +74,7 @@ const Shop: React.FC = () => {
     setActionError(null);
     setActionSuccess(null);
     const slot = item.category;
-    const isEquipped = equippedFlair[slot] === item._id;
+    const isEquipped = isItemEquipped(equippedFlair, item);
     try {
       await shopApi.equip(isEquipped ? null : item._id, slot);
       setActionSuccess(isEquipped ? `Unequipped ${item.name}` : `Equipped ${item.name}!`);
@@ -188,7 +193,7 @@ const Shop: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {currentItems.map(item => {
             const owned = ownedIds.has(item._id);
-            const equipped = equippedFlair[item.category] === item._id;
+            const equipped = isItemEquipped(equippedFlair, item);
 
             return (
               <div
