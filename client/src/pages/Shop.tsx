@@ -274,11 +274,13 @@ const TitleBadge: React.FC<{ value: string; tier: ShopItem['tier'] }> = ({ value
   }
   if (tier === 'mid') {
     const midClass = getMidTierTitleClass(value);
-    return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${midClass}`}>
-        {value}
-      </span>
-    );
+    if (midClass) {
+      return (
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${midClass}`}>
+          {value}
+        </span>
+      );
+    }
   }
   return (
     <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
