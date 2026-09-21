@@ -31,6 +31,31 @@
   overflow: hidden;
 }
 
+/* Profile border flair (mid-tier — gradient wrapper, no animation) */
+.flair-mid-jade {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+  background: linear-gradient(135deg, #10b981, #059669, #34d399, #065f46, #10b981);
+}
+
+.flair-mid-cobalt {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8, #93c5fd, #1e40af, #3b82f6);
+}
+
+.flair-mid-sakura {
+  position: relative;
+  display: inline-flex;
+  border-radius: 9999px;
+  padding: 3px;
+  background: linear-gradient(135deg, #f472b6, #ec4899, #fbcfe8, #be185d, #f472b6);
+}
+
 /* Name color flair */
 .flair-color-pink    { color: #ec4899; }
 .flair-color-teal    { color: #0d9488; }
@@ -60,4 +85,11 @@
   color: white;
   border: 1px solid #ec4899;
   box-shadow: 0 0 8px rgba(232, 121, 249, 0.4);
+}
+
+.flair-title-mid {
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1, #94a3b8, #64748b);
+  color: #0f172a;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }

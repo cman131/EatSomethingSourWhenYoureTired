@@ -13,3 +13,14 @@ export function getPremiumTitleEmoji(titleValue: string): string {
   if (titleValue === 'Chombo Chaser') return '⚡';
   return '';
 }
+
+export function isMidTierBorder(borderValue: string): boolean {
+  return borderValue.startsWith('flair-mid-');
+}
+
+export function getMidTierTitleClass(titleValue: string): string {
+  if (titleValue === 'East Wind') return 'flair-title-mid';
+  if (titleValue === 'Dragon Slayer') return 'flair-title-mid';
+  if (titleValue === 'Dora Hunter') return 'flair-title-mid';
+  return '';
+}
