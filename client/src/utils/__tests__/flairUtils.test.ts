@@ -109,7 +109,7 @@ describe('getIconStyle / getIconClass', () => {
     ['🎋', 'mid'],
     ['👑', 'mid'],
     ['🐉', 'mid'],
-    ['⛩️', 'mid'],
+    ['\u26E9\uFE0F', 'mid'],
     ['🦊', 'mid'],
     ['🔥', 'premium'],
     ['🌸', 'premium'],
@@ -122,7 +122,7 @@ describe('getIconStyle / getIconClass', () => {
 
   test('mid icons share the glow class', () => {
     expect(getIconClass('👑')).toBe('flair-icon-glow');
-    expect(getIconClass('⛩️')).toBe('flair-icon-glow');
+    expect(getIconClass('\u26E9\uFE0F')).toBe('flair-icon-glow');
     expect(getIconClass('🦊')).toBe('flair-icon-glow');
   });
 

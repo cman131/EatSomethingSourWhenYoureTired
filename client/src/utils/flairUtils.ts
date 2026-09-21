@@ -57,7 +57,7 @@ const ICON_STYLES: Record<string, IconStyle> = {
   '👑': MID_ICON,
   '🐉': MID_ICON,
   // Torii gate is stored with its emoji variation selector (U+FE0F); the key must match exactly.
-  '⛩️': MID_ICON,
+  '\u26E9\uFE0F': MID_ICON,
   '🦊': MID_ICON,
   '🔥': { tier: 'premium', className: 'flair-icon-flame' },
   '🌸': { tier: 'premium', className: 'flair-icon-blossom' },
