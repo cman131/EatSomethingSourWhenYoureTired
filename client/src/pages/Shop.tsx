@@ -86,7 +86,7 @@ const Shop: React.FC = () => {
       : equippedFlair,
   };
 
-  const previewNameColor = previewUser.equippedFlair.nameColor ?? '';
+  const previewNameColor = previewUser.equippedFlair.nameColor ?? null;
   const previewIcon = previewUser.equippedFlair.nameIcon ?? '';
   const previewBorder = previewUser.equippedFlair.profileBorder ?? '';
   const previewIsPremiumBorder = isPremiumBorder(previewBorder);
@@ -144,7 +144,7 @@ const Shop: React.FC = () => {
               <span className="text-gray-400 text-xs">?</span>
             </div>
           )}
-          <span className={`font-medium ${previewNameColor || 'text-gray-900'}`}>
+          <span className={`font-medium ${previewNameColor ?? 'text-gray-900'}`}>
             {previewIcon && <span className="mr-1 text-sm">{previewIcon}</span>}
             Your Name
           </span>
