@@ -310,6 +310,24 @@ describe('POST /api/shop/equip', () => {
     }
   );
 
+  test('lets an owner equip and unequip an item that has been retired', async () => {
+    await ShopItem.findByIdAndUpdate(item._id, { isActive: false });
+
+    const equipRes = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: item._id.toString(), slot: 'nameColor' });
+
+    expect(equipRes.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.nameColor).toBe(item.value);
+
+    const unequipRes = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: null, slot: 'nameColor' });
+
+    expect(unequipRes.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.nameColor).toBeNull();
+  });
+
   test('returns 400 for a malformed itemId', async () => {
     const res = await request(app)
       .post('/api/shop/equip')
@@ -352,6 +370,38 @@ describe('GET /api/shop/inventory', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.purchasedItems).toHaveLength(1);
     expect(res.body.data.equippedFlair.nameColor).toBe(item.value);
+  });
+
+  test('returns owned items that have been retired', async () => {
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: item._id } } });
+    await ShopItem.findByIdAndUpdate(item._id, { isActive: false });
+
+    const res = await request(app).get('/api/shop/inventory');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.purchasedItems).toHaveLength(1);
+    expect(res.body.data.purchasedItems[0].item.name).toBe('test-shop-route-jade');
+    expect(res.body.data.purchasedItems[0].item.isActive).toBe(false);
+  });
+
+  test('omits purchases whose item no longer exists', async () => {
+    const orphan = await ShopItem.create({
+      name: 'test-shop-route-orphan',
+      description: 'Will be deleted',
+      category: 'title',
+      cost: 100,
+      value: 'flair-title-orphan',
+    });
+    await User.findByIdAndUpdate(user._id, {
+      $push: { purchasedItems: { $each: [{ item: item._id }, { item: orphan._id }] } },
+    });
+    await ShopItem.deleteOne({ _id: orphan._id });
+
+    const res = await request(app).get('/api/shop/inventory');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.purchasedItems).toHaveLength(1);
+    expect(res.body.data.purchasedItems[0].item.name).toBe('test-shop-route-jade');
   });
 });
 
@@ -407,6 +457,26 @@ describe('POST /api/shop/seed', () => {
 
     const removed = await ShopItem.findById(item._id);
     expect(removed.isActive).toBe(false);
+  });
+
+  test('reactivates a catalog item that was previously retired', async () => {
+    await ShopItem.deleteMany({ name: 'Jade Green' });
+    await ShopItem.create({
+      name: 'Jade Green',
+      description: 'retired',
+      category: 'nameColor',
+      cost: 125,
+      tier: 'mid',
+      value: 'flair-color-emerald',
+      isActive: false,
+    });
+
+    const res = await seedAsAdmin();
+
+    expect(res.status).toBe(200);
+    const jade = await ShopItem.findOne({ name: 'Jade Green' });
+    expect(jade.isActive).toBe(true);
+    expect(jade.category).toBe('nameColor');
   });
 
   test('seeding twice does not create duplicates', async () => {

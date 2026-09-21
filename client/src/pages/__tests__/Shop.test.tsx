@@ -257,6 +257,141 @@ describe('Shop page', () => {
     expect(card.querySelector('.flair-icon-glow')).toBeInTheDocument();
   });
 
+  describe('retired items', () => {
+    const retiredColor = { _id: 'retired1', name: 'Old Teal', description: 'No longer sold', category: 'nameColor', cost: 150, value: 'text-teal-600', tier: 'mid', sortOrder: 9, isActive: false } as ShopItem;
+    const retiredTitle = { _id: 'retiredTitle1', name: 'Founding Player', description: 'No longer sold', category: 'title', cost: 500, value: 'Founding Player', tier: 'premium', sortOrder: 9, isActive: false } as ShopItem;
+    const noFlair: EquippedFlair = { nameColor: null, nameIcon: null, profileBorder: null, title: null };
+
+    test('lists an owned item missing from the catalog under "Owned (retired)" with Equip and no Buy', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredColor, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+
+      expect(screen.getByRole('heading', { name: /owned \(retired\)/i })).toBeInTheDocument();
+      const card = screen.getByTestId('flair-item-card-retired1');
+      expect(card).toHaveTextContent('Old Teal');
+      expect(screen.getAllByRole('button', { name: /^equip$/i })).toHaveLength(1);
+      // Only the two catalog items are buyable
+      expect(screen.getAllByRole('button', { name: /^buy$/i })).toHaveLength(2);
+    });
+
+    test('equips a retired item by id', async () => {
+      shopApi.equip.mockReset();
+      shopApi.equip.mockResolvedValue({});
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredColor, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+      await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('retired1', 'nameColor'));
+      expect(await screen.findByText('Equipped Old Teal!')).toBeInTheDocument();
+    });
+
+    test('unequips an equipped retired item', async () => {
+      shopApi.equip.mockReset();
+      shopApi.equip.mockResolvedValue({});
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredColor, purchasedAt: '2026-01-01' }],
+        equippedFlair: { ...noFlair, nameColor: retiredColor.value },
+      });
+
+      render(<Shop />);
+      fireEvent.click(screen.getByRole('button', { name: /equipped/i }));
+
+      await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith(null, 'nameColor'));
+      expect(await screen.findByText('Unequipped Old Teal')).toBeInTheDocument();
+    });
+
+    test('only shows retired items that belong to the active tab', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredTitle, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+
+      expect(screen.queryByRole('heading', { name: /owned \(retired\)/i })).not.toBeInTheDocument();
+      expect(screen.queryByTestId('flair-item-card-retiredTitle1')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /titles/i }));
+
+      expect(screen.getByRole('heading', { name: /owned \(retired\)/i })).toBeInTheDocument();
+      expect(screen.getByTestId('flair-item-card-retiredTitle1')).toBeInTheDocument();
+    });
+
+    test('shows the retired item instead of the empty message when the catalog tab is empty', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredTitle, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      fireEvent.click(screen.getByRole('button', { name: /titles/i }));
+
+      expect(screen.queryByText(/no items available/i)).not.toBeInTheDocument();
+    });
+
+    test('does not list an owned catalog item as retired', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: mockCatalog.nameColor[0], purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+
+      expect(screen.queryByRole('heading', { name: /owned \(retired\)/i })).not.toBeInTheDocument();
+      expect(screen.getAllByText('Jade Green')).toHaveLength(1);
+    });
+
+    test('tolerates a purchase whose item no longer exists', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [
+          { item: null, purchasedAt: '2026-01-01' } as unknown as PurchasedItem,
+          { item: mockCatalog.nameColor[0], purchasedAt: '2026-01-01' },
+        ],
+      });
+
+      render(<Shop />);
+
+      expect(screen.getByRole('button', { name: /^equip$/i })).toBeInTheDocument();
+    });
+
+    test('shows an equipped retired title in the preview', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredTitle, purchasedAt: '2026-01-01' }],
+        equippedFlair: { ...noFlair, title: retiredTitle.value },
+      });
+
+      render(<Shop />);
+
+      expect(screen.getByTestId('preview-title-badge')).toBeInTheDocument();
+    });
+
+    test('hovering a retired item previews it', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: retiredColor, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      const nameSpan = screen.getByText('Your Name');
+      expect(nameSpan).not.toHaveClass('text-teal-600');
+
+      fireEvent.mouseEnter(screen.getByTestId('flair-item-card-retired1'));
+
+      expect(nameSpan).toHaveClass('text-teal-600');
+    });
+  });
+
   describe('hover preview', () => {
     test('hovering a nameColor item applies the color class and removes text-gray-900 from the preview name', () => {
       mockShopUseApi(); // default catalog: nameColor[0] has value 'text-emerald-600'

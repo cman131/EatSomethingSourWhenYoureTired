@@ -14,6 +14,9 @@ const POINT_TRANSACTION_TYPES = [
   'tournament_placement_3',
   'tournament_placement_4',
   'ranked_league_qualified',
+  'ranked_league_placement_1',
+  'ranked_league_placement_2',
+  'ranked_league_placement_3',
   'shop_purchase',
 ];
 

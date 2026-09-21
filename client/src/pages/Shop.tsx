@@ -24,6 +24,95 @@ const TABS: Tab[] = [
   { key: 'title', label: 'Titles' },
 ];
 
+interface FlairItemCardProps {
+  item: ShopItem;
+  owned: boolean;
+  equipped: boolean;
+  canAfford: boolean;
+  onBuy: (item: ShopItem) => void;
+  onEquip: (item: ShopItem) => void;
+  onHover: (item: ShopItem | null) => void;
+}
+
+const FlairItemCard: React.FC<FlairItemCardProps> = ({
+  item,
+  owned,
+  equipped,
+  canAfford,
+  onBuy,
+  onEquip,
+  onHover,
+}) => (
+  <div
+    data-testid={`flair-item-card-${item._id}`}
+    className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+    onMouseEnter={() => onHover(item)}
+    onMouseLeave={() => onHover(null)}
+  >
+    {/* Item preview */}
+    <div className="flex items-center gap-2 mb-3">
+      {item.category === 'nameColor' && (
+        <span className="font-semibold text-base">
+          <FlairName name="Aa" colorValue={item.value} />
+        </span>
+      )}
+      {item.category === 'nameIcon' && (
+        <FlairIcon value={item.value} className="text-2xl" />
+      )}
+      {item.category === 'profileBorder' && (
+        (isPremiumBorder(item.value) || isMidTierBorder(item.value)) ? (
+          <div className={item.value}>
+            <div className="flair-border-inner w-8 h-8 bg-gray-300" />
+          </div>
+        ) : (
+          <div className={`w-8 h-8 rounded-full bg-gray-300 ${item.value}`} />
+        )
+      )}
+      {item.category === 'title' && (
+        <TitleBadge value={item.value} />
+      )}
+      <span className="font-medium text-gray-900 text-sm">{item.name}</span>
+    </div>
+
+    <p className="text-xs text-gray-500 mb-4">{item.description}</p>
+
+    {/* Action button */}
+    <div className="flex items-center justify-between">
+      {!owned && (
+        <>
+          <span className="flex items-center gap-1 text-sm text-gray-700">
+            <CurrencyDollarIcon className="h-4 w-4 text-yellow-500" />
+            {item.cost}
+          </span>
+          <button
+            onClick={() => onBuy(item)}
+            disabled={!canAfford}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md transition-colors"
+          >
+            Buy
+          </button>
+        </>
+      )}
+      {owned && equipped && (
+        <button
+          onClick={() => onEquip(item)}
+          className="w-full px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+        >
+          Equipped ✓
+        </button>
+      )}
+      {owned && !equipped && (
+        <button
+          onClick={() => onEquip(item)}
+          className="w-full px-3 py-1.5 text-sm font-medium text-primary-700 border border-primary-300 hover:bg-primary-50 rounded-md transition-colors"
+        >
+          Equip
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 const Shop: React.FC = () => {
   useRequireAuth();
 
@@ -49,9 +138,10 @@ const Shop: React.FC = () => {
 
   const isLoading = catalogLoading || inventoryLoading;
 
-  const ownedIds = new Set(
-    (inventory?.purchasedItems ?? []).map(p => p.item._id)
-  );
+  // A purchase can reference a ShopItem that no longer exists; skip those.
+  const ownedItems = (inventory?.purchasedItems ?? []).flatMap(p => (p.item ? [p.item] : []));
+  const ownedIds = new Set(ownedItems.map(item => item._id));
+  const catalogIds = new Set(TABS.flatMap(tab => catalog?.[tab.key] ?? []).map(item => item._id));
   const equippedFlair = inventory?.equippedFlair ?? { nameColor: null, nameIcon: null, profileBorder: null, title: null };
 
   const refreshInventory = () => setInventoryKey(k => k + 1);
@@ -96,11 +186,29 @@ const Shop: React.FC = () => {
   const previewNeedsGradientBorder = isPremiumBorder(previewBorder) || isMidTierBorder(previewBorder);
 
   const previewTitleValue = previewUser.equippedFlair.title;
+  const knownTitleItems = [
+    ...(catalog?.title ?? []),
+    ...ownedItems.filter(i => i.category === 'title' && !catalogIds.has(i._id)),
+  ];
   const previewTitleItem = previewTitleValue
-    ? (catalog?.title ?? []).find(i => i.value === previewTitleValue) ?? null
+    ? knownTitleItems.find(i => i.value === previewTitleValue) ?? null
     : null;
 
   const currentItems: ShopItem[] = catalog?.[activeTab] ?? [];
+  const retiredItems = ownedItems.filter(i => i.category === activeTab && !catalogIds.has(i._id));
+
+  const renderCard = (item: ShopItem) => (
+    <FlairItemCard
+      key={item._id}
+      item={item}
+      owned={ownedIds.has(item._id)}
+      equipped={isFlairEquipped(equippedFlair, item)}
+      canAfford={(inventory?.pointsBalance ?? 0) >= item.cost}
+      onBuy={handlePurchase}
+      onEquip={handleEquip}
+      onHover={setHoveredItem}
+    />
+  );
 
   if (isLoading) {
     return (
@@ -185,87 +293,26 @@ const Shop: React.FC = () => {
       </div>
 
       {/* Item grid */}
-      {currentItems.length === 0 ? (
+      {currentItems.length === 0 && retiredItems.length === 0 && (
         <div className="text-center py-12 text-gray-500">No items available in this category.</div>
-      ) : (
+      )}
+      {currentItems.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {currentItems.map(item => {
-            const owned = ownedIds.has(item._id);
-            const equipped = isFlairEquipped(equippedFlair, item);
-
-            return (
-              <div
-                key={item._id}
-                data-testid={`flair-item-card-${item._id}`}
-                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
-                onMouseEnter={() => setHoveredItem(item)}
-                onMouseLeave={() => setHoveredItem(null)}
-              >
-                {/* Item preview */}
-                <div className="flex items-center gap-2 mb-3">
-                  {item.category === 'nameColor' && (
-                    <span className="font-semibold text-base">
-                      <FlairName name="Aa" colorValue={item.value} />
-                    </span>
-                  )}
-                  {item.category === 'nameIcon' && (
-                    <FlairIcon value={item.value} className="text-2xl" />
-                  )}
-                  {item.category === 'profileBorder' && (
-                    (isPremiumBorder(item.value) || isMidTierBorder(item.value)) ? (
-                      <div className={item.value}>
-                        <div className="flair-border-inner w-8 h-8 bg-gray-300" />
-                      </div>
-                    ) : (
-                      <div className={`w-8 h-8 rounded-full bg-gray-300 ${item.value}`} />
-                    )
-                  )}
-                  {item.category === 'title' && (
-                    <TitleBadge value={item.value} />
-                  )}
-                  <span className="font-medium text-gray-900 text-sm">{item.name}</span>
-                </div>
-
-                <p className="text-xs text-gray-500 mb-4">{item.description}</p>
-
-                {/* Action button */}
-                <div className="flex items-center justify-between">
-                  {!owned && (
-                    <>
-                      <span className="flex items-center gap-1 text-sm text-gray-700">
-                        <CurrencyDollarIcon className="h-4 w-4 text-yellow-500" />
-                        {item.cost}
-                      </span>
-                      <button
-                        onClick={() => handlePurchase(item)}
-                        disabled={(inventory?.pointsBalance ?? 0) < item.cost}
-                        className="px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-md transition-colors"
-                      >
-                        Buy
-                      </button>
-                    </>
-                  )}
-                  {owned && equipped && (
-                    <button
-                      onClick={() => handleEquip(item)}
-                      className="w-full px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
-                    >
-                      Equipped ✓
-                    </button>
-                  )}
-                  {owned && !equipped && (
-                    <button
-                      onClick={() => handleEquip(item)}
-                      className="w-full px-3 py-1.5 text-sm font-medium text-primary-700 border border-primary-300 hover:bg-primary-50 rounded-md transition-colors"
-                    >
-                      Equip
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {currentItems.map(renderCard)}
         </div>
+      )}
+
+      {/* Owned items that are no longer sold — still equippable, never buyable */}
+      {retiredItems.length > 0 && (
+        <section className={currentItems.length > 0 ? 'mt-8' : undefined}>
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">Owned (retired)</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            These items are no longer sold, but you can still equip or unequip them.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {retiredItems.map(renderCard)}
+          </div>
+        </section>
       )}
     </div>
   );

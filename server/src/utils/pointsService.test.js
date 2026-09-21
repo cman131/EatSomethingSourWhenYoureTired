@@ -7,6 +7,7 @@ const {
   awardGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,
+  awardRankedSeasonPlacementPoints,
 } = require('./pointsService');
 
 beforeAll(async () => {
@@ -415,5 +416,104 @@ describe('awardRankedQualificationPoints', () => {
     await awardRankedQualificationPoints(user._id, new mongoose.Types.ObjectId());
 
     expect((await User.findById(user._id)).pointsBalance).toBe(20);
+  });
+});
+
+describe('awardRankedSeasonPlacementPoints', () => {
+  let players;
+
+  beforeEach(async () => {
+    players = await User.create([1, 2, 3, 4, 5].map(n => ({
+      displayName: `test-points-season-p${n}`,
+      email: `points-season-p${n}@example.com`,
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    })));
+  });
+
+  const standing = (player, rankedPoints, gamesPlayed = 3) => ({
+    player: player._id,
+    rankedPoints,
+    gamesPlayed,
+  });
+  const makeLeague = (leaguePlayers) => ({
+    _id: new mongoose.Types.ObjectId(),
+    players: leaguePlayers,
+  });
+  const balanceOf = async (player) => (await User.findById(player._id)).pointsBalance;
+
+  test('pays the top three qualified players 150/100/50', async () => {
+    const league = makeLeague([
+      standing(players[0], 480),
+      standing(players[1], 560),
+      standing(players[2], 520),
+      standing(players[3], 510),
+    ]);
+
+    await awardRankedSeasonPlacementPoints(league);
+
+    expect(await balanceOf(players[1])).toBe(150);
+    expect(await balanceOf(players[2])).toBe(100);
+    expect(await balanceOf(players[3])).toBe(50);
+    expect(await balanceOf(players[0])).toBe(0);
+  });
+
+  test('records the placement type, placement number and league id', async () => {
+    const league = makeLeague([standing(players[0], 560), standing(players[1], 520)]);
+
+    await awardRankedSeasonPlacementPoints(league);
+
+    const tx = await PointTransaction.findOne({ user: players[1]._id, type: 'ranked_league_placement_2' });
+    expect(tx.amount).toBe(100);
+    expect(tx.metadata.placement).toBe(2);
+    expect(tx.metadata.leagueId.toString()).toBe(league._id.toString());
+  });
+
+  test('ignores players below the qualification threshold', async () => {
+    const league = makeLeague([
+      standing(players[0], 900, 2),
+      standing(players[1], 560),
+      standing(players[2], 520),
+    ]);
+
+    await awardRankedSeasonPlacementPoints(league);
+
+    expect(await balanceOf(players[0])).toBe(0);
+    expect(await balanceOf(players[1])).toBe(150);
+    expect(await balanceOf(players[2])).toBe(100);
+  });
+
+  test('pays tied players the same placement and skips the shadowed placement', async () => {
+    const league = makeLeague([
+      standing(players[0], 560),
+      standing(players[1], 560),
+      standing(players[2], 540),
+      standing(players[3], 520),
+    ]);
+
+    await awardRankedSeasonPlacementPoints(league);
+
+    expect(await balanceOf(players[0])).toBe(150);
+    expect(await balanceOf(players[1])).toBe(150);
+    expect(await balanceOf(players[2])).toBe(50);
+    expect(await balanceOf(players[3])).toBe(0);
+  });
+
+  test('awards only once per league', async () => {
+    const league = makeLeague([standing(players[0], 560), standing(players[1], 520)]);
+
+    await awardRankedSeasonPlacementPoints(league);
+    await awardRankedSeasonPlacementPoints(league);
+
+    expect(await balanceOf(players[0])).toBe(150);
+    expect(await PointTransaction.countDocuments({ user: players[0]._id })).toBe(1);
+  });
+
+  test('does nothing for a league with no qualified players', async () => {
+    const league = makeLeague([standing(players[0], 900, 1)]);
+
+    await awardRankedSeasonPlacementPoints(league);
+
+    expect(await PointTransaction.countDocuments({ user: players[0]._id })).toBe(0);
   });
 });

@@ -32,7 +32,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/shop/inventory — current user's purchasedItems + equippedFlair
+// GET /api/shop/inventory — current user's purchasedItems + equippedFlair.
+// Owned items are returned even when retired (isActive: false) so owners can still equip or
+// unequip them; purchases whose ShopItem no longer exists are skipped.
 router.get('/inventory', async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
@@ -41,7 +43,7 @@ router.get('/inventory', async (req, res) => {
     res.json({
       success: true,
       data: {
-        purchasedItems: user.purchasedItems,
+        purchasedItems: user.purchasedItems.filter(p => p.item),
         equippedFlair: user.equippedFlair,
         pointsBalance: user.pointsBalance,
       },
@@ -134,8 +136,8 @@ router.post('/seed', async (req, res) => {
         ShopItem.findOneAndUpdate(
           { name },
           {
-            $set: { cost, tier, description, value, sortOrder },
-            $setOnInsert: { name, category, isActive: true },
+            $set: { cost, tier, description, value, sortOrder, isActive: true },
+            $setOnInsert: { name, category },
           },
           { upsert: true, new: true }
         )

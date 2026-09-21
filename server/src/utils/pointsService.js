@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
+const { RANKED_GAMES_THRESHOLD } = require('./rankedLeagueConstants');
 
 const DUPLICATE_KEY_ERROR = 11000;
 
@@ -155,10 +156,48 @@ async function awardRankedQualificationPoints(userId, leagueId) {
   ]);
 }
 
+const RANKED_PLACEMENT_TYPES = [
+  'ranked_league_placement_1',
+  'ranked_league_placement_2',
+  'ranked_league_placement_3',
+];
+
+const RANKED_PLACEMENT_AMOUNTS = [150, 100, 50];
+
+// Standard competition ranking over qualified players: ties share a placement and the next placement is skipped (1, 1, 3).
+function rankQualifiedPlayers(league) {
+  const standings = [...league.players]
+    .filter(p => p.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+    .sort((a, b) => b.rankedPoints - a.rankedPoints);
+
+  return standings.map(standing => {
+    const firstTied = standings.findIndex(other => other.rankedPoints === standing.rankedPoints);
+    return { playerId: standing.player, placement: firstTied + 1 };
+  });
+}
+
+async function awardRankedSeasonPlacementPoints(league) {
+  const leagueId = league._id;
+
+  const placementAwards = rankQualifiedPlayers(league)
+    .filter(({ placement }) => placement <= RANKED_PLACEMENT_TYPES.length)
+    .map(({ playerId, placement }) =>
+      awardPointsOnce(
+        playerId,
+        RANKED_PLACEMENT_TYPES[placement - 1],
+        RANKED_PLACEMENT_AMOUNTS[placement - 1],
+        { leagueId, placement },
+        'leagueId'
+      )
+    );
+  await Promise.all(placementAwards);
+}
+
 module.exports = {
   awardPoints,
   spendPoints,
   awardGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,
+  awardRankedSeasonPlacementPoints,
 };

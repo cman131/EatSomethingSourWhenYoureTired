@@ -21,6 +21,13 @@ const TOURNAMENT_ROWS: [string, string][] = [
   ['4th place', '+50'],
 ];
 
+const RANKED_ROWS: [string, string][] = [
+  ['Qualify for the leaderboard', '+10'],
+  ['Finish a season 1st', '+150'],
+  ['Finish a season 2nd', '+100'],
+  ['Finish a season 3rd', '+50'],
+];
+
 function PointsTable({ rows }: { rows: [string, string][] }) {
   return (
     <table className="min-w-full text-sm">
@@ -67,14 +74,10 @@ const PointsHelpModal: React.FC<Props> = ({ onClose }) => (
         </section>
         <section aria-label="Ranked League">
           <h3 className="text-base font-semibold text-gray-800 mb-3">Ranked League</h3>
-          <table className="min-w-full text-sm">
-            <tbody className="divide-y divide-gray-100">
-              <tr>
-                <td className="py-2 text-gray-700">Qualify for the leaderboard</td>
-                <td className="py-2 text-right font-medium text-green-600">+10</td>
-              </tr>
-            </tbody>
-          </table>
+          <PointsTable rows={RANKED_ROWS} />
+          <p className="mt-2 text-xs text-gray-500">
+            Season placements are paid when the 90-day season ends, to qualified players only. Tied players share a placement.
+          </p>
         </section>
       </div>
     </div>

@@ -25,8 +25,8 @@ async function seedShop() {
     const result = await ShopItem.findOneAndUpdate(
       { name },
       {
-        $set: { cost, tier, description, value, sortOrder },
-        $setOnInsert: { name, category, isActive: true },
+        $set: { cost, tier, description, value, sortOrder, isActive: true },
+        $setOnInsert: { name, category },
       },
       { upsert: true, new: true, rawResult: true }
     );
