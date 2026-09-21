@@ -32,13 +32,40 @@ async function awardQualificationPoints(playerIds, leagueId) {
   }
 }
 
+function findLeaguePlayer(league, playerId) {
+  return league.players.find(p => p.player.toString() === playerId.toString());
+}
+
+function hasAppliedGame(league, game) {
+  return Boolean(game._id) && league.appliedGames.some(id => id.toString() === game._id.toString());
+}
+
+// Qualification awards are once-per-league, so a replay of an applied game can safely re-offer them
+// to every qualified player in it; this is what recovers an award that failed on the first attempt.
+async function retryQualificationPoints(game, league) {
+  const qualifiedPlayerIds = game.players
+    .map(({ player }) => findLeaguePlayer(league, player))
+    .filter(leaguePlayer => leaguePlayer && leaguePlayer.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+    .map(leaguePlayer => leaguePlayer.player);
+
+  await awardQualificationPoints(qualifiedPlayerIds, league._id);
+}
+
+// Applying a game is idempotent when it has an _id: the id is saved on the league together with the
+// points, so a repeated call (a retry or an admin replay) applies nothing the second time.
 async function updateRankedPoints(game) {
   const league = await getCurrentLeague();
+
+  if (hasAppliedGame(league, game)) {
+    await retryQualificationPoints(game, league);
+    return;
+  }
+
   const newlyQualifiedPlayerIds = [];
 
   for (const gamePlayer of game.players) {
     const playerId = gamePlayer.player.toString ? gamePlayer.player.toString() : String(gamePlayer.player);
-    const leaguePlayer = league.players.find(p => p.player.toString() === playerId);
+    const leaguePlayer = findLeaguePlayer(league, playerId);
     if (!leaguePlayer) continue;
 
     const umaBase = (Number(gamePlayer.score) - RANKED_STARTING_POINT) / 1000;
@@ -52,6 +79,9 @@ async function updateRankedPoints(game) {
     }
   }
 
+  if (game._id) {
+    league.appliedGames.push(game._id);
+  }
   league.markModified('players');
   await league.save();
 

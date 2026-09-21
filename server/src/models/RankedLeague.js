@@ -19,6 +19,11 @@ const rankedLeagueSchema = new mongoose.Schema({
       type: Number,
       default: 0
     }
+  }],
+  // Games already applied to this league; written in the same save as the points so a replay cannot double-apply
+  appliedGames: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Game'
   }]
 }, {
   timestamps: true

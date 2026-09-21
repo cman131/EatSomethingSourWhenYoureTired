@@ -130,6 +130,59 @@ describe('updateRankedPoints', () => {
     expect(find(p2Id).gamesPlayed).toBe(1);
     expect(find(outsiderId)).toBeUndefined(); // outsider was never added to the league
   });
+
+  describe('idempotency', () => {
+    const makeGame = () => ({
+      _id: new mongoose.Types.ObjectId(),
+      players: [
+        { player: p1Id, score: 40000, rank: 1 },
+        { player: p2Id, score: 32000, rank: 2 },
+        { player: p3Id, score: 25000, rank: 3 },
+        { player: p4Id, score: 23000, rank: 4 },
+      ],
+    });
+
+    const currentLeague = () => RankedLeague.findOne().sort({ startDate: -1 });
+    const find = (league, id) => league.players.find(p => p.player.toString() === id.toString());
+
+    test('applying the same game twice changes rankedPoints and gamesPlayed once', async () => {
+      const game = makeGame();
+
+      await updateRankedPoints(game);
+      await updateRankedPoints(game);
+
+      const league = await currentLeague();
+      expect(find(league, p1Id).rankedPoints).toBe(540);
+      expect(find(league, p1Id).gamesPlayed).toBe(1);
+    });
+
+    test('records the applied game id on the league', async () => {
+      const game = makeGame();
+
+      await updateRankedPoints(game);
+
+      const league = await currentLeague();
+      expect(league.appliedGames.map(String)).toEqual([game._id.toString()]);
+    });
+
+    test('a different game is still applied', async () => {
+      await updateRankedPoints(makeGame());
+      await updateRankedPoints(makeGame());
+
+      const league = await currentLeague();
+      expect(find(league, p1Id).gamesPlayed).toBe(2);
+    });
+
+    test('games without an id are always applied', async () => {
+      const { _id, ...noIdGame } = makeGame();
+
+      await updateRankedPoints(noIdGame);
+      await updateRankedPoints(noIdGame);
+
+      const league = await currentLeague();
+      expect(find(league, p1Id).gamesPlayed).toBe(2);
+    });
+  });
 });
 
 describe('ranked league qualification points', () => {
@@ -160,8 +213,9 @@ describe('ranked league qualification points', () => {
     await User.deleteMany({ displayName: /^test-ranked/ });
   });
 
-  function playGame() {
+  function playGame(gameId) {
     return updateRankedPoints({
+      _id: gameId,
       players: players.map((p, index) => ({ player: p._id, score: 25000, rank: index + 1 })),
     });
   }
@@ -229,5 +283,23 @@ describe('ranked league qualification points', () => {
     expect(saved.players[0].gamesPlayed).toBe(RANKED_GAMES_THRESHOLD);
     createSpy.mockRestore();
     errorSpy.mockRestore();
+  });
+
+  test('replaying an already-applied game retries a failed qualification award without re-applying points', async () => {
+    league.players[0].gamesPlayed = RANKED_GAMES_THRESHOLD - 1;
+    await league.save();
+    const gameId = new mongoose.Types.ObjectId();
+    const createSpy = jest.spyOn(PointTransaction, 'create').mockRejectedValueOnce(new Error('db down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    await playGame(gameId);
+    createSpy.mockRestore();
+    errorSpy.mockRestore();
+    expect(await qualificationTransactions(players[0])).toHaveLength(0);
+
+    await playGame(gameId);
+
+    expect(await qualificationTransactions(players[0])).toHaveLength(1);
+    const saved = await RankedLeague.findById(league._id);
+    expect(saved.players[0].gamesPlayed).toBe(RANKED_GAMES_THRESHOLD);
   });
 });

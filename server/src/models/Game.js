@@ -82,6 +82,10 @@ const gameSchema = new mongoose.Schema({
   },
   verifiedAt: {
     type: Date
+  },
+  // Set once every point award for the verified game has landed; unset means awards may be missing
+  pointsAwardedAt: {
+    type: Date
   }
 }, {
   timestamps: true
@@ -92,6 +96,7 @@ gameSchema.index({ submittedBy: 1 });
 gameSchema.index({ 'players.player': 1 });
 gameSchema.index({ gameDate: -1 });
 gameSchema.index({ createdAt: -1 });
+gameSchema.index({ verified: 1, pointsAwardedAt: 1, verifiedAt: 1 });
 
 // Validation: ensure exactly 4 players
 gameSchema.pre('save', function(next) {

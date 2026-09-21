@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
+const Game = require('../models/Game');
 
 async function awardPoints(userId, type, amount, metadata = {}) {
   const user = await User.findById(userId).select('isGuest');
@@ -47,16 +48,35 @@ const GAME_PLACEMENT_AMOUNTS = { 1: 10, 2: 7, 3: 4, 4: 2 };
 const GAME_SUBMITTED_AMOUNT = 2;
 const GAME_VERIFIED_AMOUNT = 1;
 
+function buildGameAwards(game, verifierId) {
+  const awards = game.players.map(({ player, rank }) => ({
+    userId: player,
+    type: GAME_PLACEMENT_TYPES[rank],
+    amount: GAME_PLACEMENT_AMOUNTS[rank],
+  }));
+  awards.push({ userId: game.submittedBy, type: 'game_submitted', amount: GAME_SUBMITTED_AMOUNT });
+  if (verifierId) {
+    awards.push({ userId: verifierId, type: 'game_verified', amount: GAME_VERIFIED_AMOUNT });
+  }
+  return awards;
+}
+
+// Safe to call repeatedly for the same game: each award is paid at most once, and one failing award
+// never stops the others. Throws an AggregateError listing every failure once all awards were attempted.
 async function awardGamePoints(game, verifierId) {
   const gameId = game._id;
+  const awards = buildGameAwards(game, verifierId);
 
-  const playerAwards = game.players.map(({ player, rank }) =>
-    awardPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], { gameId })
+  const results = await Promise.allSettled(
+    awards.map(({ userId, type, amount }) => awardPointsOnce(userId, type, amount, { gameId }, 'gameId'))
   );
-  await Promise.all(playerAwards);
 
-  await awardPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, { gameId });
-  await awardPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, { gameId });
+  const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+  if (failures.length > 0) {
+    throw new AggregateError(failures, `Failed to award ${failures.length} of ${awards.length} points for game ${gameId}`);
+  }
+
+  await Game.updateOne({ _id: gameId }, { $set: { pointsAwardedAt: new Date() } });
 }
 
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;
