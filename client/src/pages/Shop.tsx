@@ -10,7 +10,10 @@ import {
   FlairCategory,
 } from '../services/api';
 import { SparklesIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
-import { isPremiumBorder, isMidTierBorder, getPremiumTitleClass, getPremiumTitleEmoji, getMidTierTitleClass } from '../utils/flairUtils';
+import { isPremiumBorder, isMidTierBorder, isFlairEquipped } from '../utils/flairUtils';
+import FlairName from '../components/user/FlairName';
+import FlairIcon from '../components/user/FlairIcon';
+import TitleBadge from '../components/user/TitleBadge';
 
 type Tab = { key: FlairCategory; label: string };
 
@@ -69,7 +72,7 @@ const Shop: React.FC = () => {
     setActionError(null);
     setActionSuccess(null);
     const slot = item.category;
-    const isEquipped = equippedFlair[slot] === item._id;
+    const isEquipped = isFlairEquipped(equippedFlair, item);
     try {
       await shopApi.equip(isEquipped ? null : item._id, slot);
       setActionSuccess(isEquipped ? `Unequipped ${item.name}` : `Equipped ${item.name}!`);
@@ -152,13 +155,13 @@ const Shop: React.FC = () => {
               <span className="text-gray-400 text-xs">?</span>
             </div>
           )}
-          <span className={`font-medium ${previewNameColor ?? 'text-gray-900'}`}>
-            {previewIcon && <span className="mr-1 text-sm">{previewIcon}</span>}
-            Your Name
+          <span className="font-medium">
+            {previewIcon && <FlairIcon value={previewIcon} className="mr-1 text-sm" />}
+            <FlairName name="Your Name" colorValue={previewNameColor} defaultColorClass="text-gray-900" />
           </span>
           {previewTitleItem && (
             <span data-testid="preview-title-badge">
-              <TitleBadge value={previewTitleItem.value} tier={previewTitleItem.tier} />
+              <TitleBadge value={previewTitleItem.value} />
             </span>
           )}
         </div>
@@ -188,7 +191,7 @@ const Shop: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {currentItems.map(item => {
             const owned = ownedIds.has(item._id);
-            const equipped = equippedFlair[item.category] === item._id;
+            const equipped = isFlairEquipped(equippedFlair, item);
 
             return (
               <div
@@ -201,10 +204,12 @@ const Shop: React.FC = () => {
                 {/* Item preview */}
                 <div className="flex items-center gap-2 mb-3">
                   {item.category === 'nameColor' && (
-                    <span className={`font-semibold text-base ${item.value}`}>Aa</span>
+                    <span className="font-semibold text-base">
+                      <FlairName name="Aa" colorValue={item.value} />
+                    </span>
                   )}
                   {item.category === 'nameIcon' && (
-                    <span className="text-2xl">{item.value}</span>
+                    <FlairIcon value={item.value} className="text-2xl" />
                   )}
                   {item.category === 'profileBorder' && (
                     (isPremiumBorder(item.value) || isMidTierBorder(item.value)) ? (
@@ -216,7 +221,7 @@ const Shop: React.FC = () => {
                     )
                   )}
                   {item.category === 'title' && (
-                    <TitleBadge value={item.value} tier={item.tier} />
+                    <TitleBadge value={item.value} />
                   )}
                   <span className="font-medium text-gray-900 text-sm">{item.name}</span>
                 </div>
@@ -263,34 +268,6 @@ const Shop: React.FC = () => {
         </div>
       )}
     </div>
-  );
-};
-
-const TitleBadge: React.FC<{ value: string; tier: ShopItem['tier'] }> = ({ value, tier }) => {
-  if (tier === 'premium') {
-    const premiumClass = getPremiumTitleClass(value);
-    const emoji = getPremiumTitleEmoji(value);
-    return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${premiumClass}`}>
-        {emoji && <span className="mr-1">{emoji}</span>}
-        {value}
-      </span>
-    );
-  }
-  if (tier === 'mid') {
-    const midClass = getMidTierTitleClass(value);
-    if (midClass) {
-      return (
-        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${midClass}`}>
-          {value}
-        </span>
-      );
-    }
-  }
-  return (
-    <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-      {value}
-    </span>
   );
 };
 

@@ -89,4 +89,66 @@ describe('UserDisplay flair rendering', () => {
     expect(badge).toBeInTheDocument();
     expect(badge).toHaveTextContent('Dragon Slayer');
   });
+
+  test('renders the icon and the (You) tag outside the gradient name span', () => {
+    const user = {
+      _id: 'other-user',
+      displayName: 'Alice',
+      equippedFlair: { nameColor: 'flair-color-fuji', nameIcon: '🦊', profileBorder: null, title: null },
+    };
+
+    render(<UserDisplay user={user} showYouIndicator />);
+
+    const name = screen.getByText('Alice');
+    expect(name).toHaveClass('flair-color-fuji');
+    expect(name).not.toContainElement(screen.getByText('🦊'));
+    expect(name).not.toContainElement(screen.getByText('(You)'));
+  });
+
+  test('premium name colors render sparkles around the name', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: 'flair-color-neon', nameIcon: null, profileBorder: null, title: null },
+    };
+
+    const { container } = render(<UserDisplay user={user} />);
+
+    expect(screen.getByText('Alice')).toHaveClass('flair-color-neon');
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- sparkles are decorative aria-hidden elements with no role or text to query
+    expect(container.querySelectorAll('.flair-sparkle')).toHaveLength(3);
+  });
+
+  test('keeps the flair color class off the link and on the name span', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: 'flair-color-pink', nameIcon: null, profileBorder: null, title: null },
+    };
+
+    render(<UserDisplay user={user} />);
+
+    expect(screen.getByText('Alice')).toHaveClass('flair-color-pink');
+    expect(screen.getByRole('link', { name: 'Alice' })).not.toHaveClass('flair-color-pink');
+  });
+
+  test.each([
+    ['🐉', 'flair-icon-glow'],
+    ['🔥', 'flair-icon-flame'],
+  ])('icon %s gets the %s class', (icon, tierClass) => {
+    render(
+      <UserDisplay user={{ ...baseUser, equippedFlair: { nameColor: null, nameIcon: icon, profileBorder: null, title: null } }} />
+    );
+    // eslint-disable-next-line testing-library/no-node-access -- the icon wrapper is decorative (aria-hidden), so its tier class is only reachable via the parent
+    expect(screen.getByText(icon).parentElement).toHaveClass(tierClass);
+  });
+
+  test('renders a new premium title with its badge class', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: 'Tsumo-nami' },
+    };
+
+    render(<UserDisplay user={user} />);
+
+    expect(screen.getByText('Tsumo-nami')).toHaveClass('flair-title-tsumonami');
+  });
 });

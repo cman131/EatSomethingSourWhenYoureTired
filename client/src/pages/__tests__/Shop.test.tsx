@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Shop from '../Shop';
 import { ShopItem, PurchasedItem, EquippedFlair } from '../../services/api';
@@ -28,6 +28,7 @@ jest.mock('../../services/api', () => ({
 }));
 
 const { useApi } = require('../../hooks/useApi');
+const { shopApi } = require('../../services/api');
 
 const mockCatalog = {
   nameColor: [
@@ -134,12 +135,126 @@ describe('Shop page', () => {
     mockShopUseApi(mockCatalog, {
       ...mockInventory,
       purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
-      equippedFlair: { nameColor: ownedItem._id, nameIcon: null, profileBorder: null, title: null },
+      equippedFlair: { nameColor: ownedItem.value, nameIcon: null, profileBorder: null, title: null },
     });
 
     render(<Shop />);
 
     expect(screen.getByText(/equipped/i)).toBeInTheDocument();
+  });
+
+  test('clicking Equip on an owned item equips it by id', async () => {
+    shopApi.equip.mockReset();
+    shopApi.equip.mockResolvedValue({});
+    const ownedItem = mockCatalog.nameColor[0];
+    mockShopUseApi(mockCatalog, {
+      ...mockInventory,
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+    });
+
+    render(<Shop />);
+    fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+    await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('item1', 'nameColor'));
+    expect(await screen.findByText('Equipped Jade Green!')).toBeInTheDocument();
+  });
+
+  test('shows an error message when equipping fails', async () => {
+    shopApi.equip.mockReset();
+    shopApi.equip.mockRejectedValue(new Error('boom'));
+    const ownedItem = mockCatalog.nameColor[0];
+    mockShopUseApi(mockCatalog, {
+      ...mockInventory,
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+    });
+
+    render(<Shop />);
+    fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+    expect(await screen.findByText('Failed to equip item. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText(/^Equipped /)).toBeNull();
+  });
+
+  test('clicking Equipped unequips the item', async () => {
+    shopApi.equip.mockReset();
+    shopApi.equip.mockResolvedValue({});
+    const ownedItem = mockCatalog.nameColor[0];
+    mockShopUseApi(mockCatalog, {
+      ...mockInventory,
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+      equippedFlair: { nameColor: ownedItem.value, nameIcon: null, profileBorder: null, title: null },
+    });
+
+    render(<Shop />);
+    fireEvent.click(screen.getByRole('button', { name: /equipped/i }));
+
+    await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith(null, 'nameColor'));
+    expect(await screen.findByText('Unequipped Jade Green')).toBeInTheDocument();
+  });
+
+  test('only the item whose value is equipped shows the Equipped badge', () => {
+    const ownedA = mockCatalog.nameColor[0];
+    const ownedB = mockCatalog.nameColor[1];
+    mockShopUseApi(mockCatalog, {
+      ...mockInventory,
+      purchasedItems: [
+        { item: ownedA, purchasedAt: '2026-01-01' },
+        { item: ownedB, purchasedAt: '2026-01-01' },
+      ],
+      equippedFlair: { nameColor: ownedA.value, nameIcon: null, profileBorder: null, title: null },
+    });
+
+    render(<Shop />);
+
+    expect(screen.getAllByRole('button', { name: /equipped/i })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^equip$/i })).toHaveLength(1);
+  });
+
+  test('a premium name color previews with sparkles', () => {
+    const catalog = {
+      ...mockCatalog,
+      nameColor: [
+        { _id: 'gold1', name: 'Mahjong Gold', description: 'Gold', category: 'nameColor', cost: 300, value: 'flair-color-gold', tier: 'premium', sortOrder: 1, isActive: true } as ShopItem,
+      ],
+    };
+    mockShopUseApi(catalog);
+
+    render(<Shop />);
+
+    const card = screen.getByTestId('flair-item-card-gold1');
+    // eslint-disable-next-line testing-library/no-node-access -- sparkles are decorative aria-hidden spans with no accessible query
+    expect(card.querySelectorAll('.flair-sparkle')).toHaveLength(3);
+  });
+
+  test('hovering a premium name color shows sparkles in the preview', () => {
+    const catalog = {
+      ...mockCatalog,
+      nameColor: [
+        { _id: 'gold1', name: 'Mahjong Gold', description: 'Gold', category: 'nameColor', cost: 300, value: 'flair-color-gold', tier: 'premium', sortOrder: 1, isActive: true } as ShopItem,
+      ],
+    };
+    mockShopUseApi(catalog);
+
+    render(<Shop />);
+    fireEvent.mouseEnter(screen.getByTestId('flair-item-card-gold1'));
+
+    const previewBox = screen.getByTestId('preview-box');
+    // eslint-disable-next-line testing-library/no-node-access -- sparkles are decorative aria-hidden elements with no accessible query
+    expect(previewBox.querySelectorAll('.flair-sparkle')).toHaveLength(3);
+    const nameSpan = screen.getByText('Your Name');
+    expect(nameSpan).toHaveClass('flair-color-gold');
+    expect(nameSpan).not.toHaveClass('text-gray-900');
+  });
+
+  test('a mid icon previews with the shared glow class', () => {
+    mockShopUseApi();
+    render(<Shop />);
+
+    fireEvent.click(screen.getByRole('button', { name: /icons/i }));
+
+    const card = screen.getByTestId('flair-item-card-item3');
+    // eslint-disable-next-line testing-library/no-node-access -- the glow class sits on a decorative aria-hidden span with no accessible query
+    expect(card.querySelector('.flair-icon-glow')).toBeInTheDocument();
   });
 
   describe('hover preview', () => {
