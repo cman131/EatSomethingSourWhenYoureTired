@@ -65,12 +65,6 @@ docs/
 
 Architecture documentation lives in `docs/`. Start at `docs/index.md` if present.
 
-## Creating Pull Requests
-
-When creating pull requests, default to creating a Draft pull request instead of a
-published one. If the user seems to want a published one, ask for confirmation before
-creating one instead of a Draft.
-
 ## Custom Commands
 
 - `/test` — Detect changed projects, run tests, analyze failures, flag coverage gaps

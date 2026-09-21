@@ -53,4 +53,40 @@ describe('UserDisplay flair rendering', () => {
     const nameEl = screen.getByText('Alice').closest('span, a');
     expect(nameEl?.className).not.toContain('text-emerald');
   });
+
+  test('renders mid-tier title with silver metallic flair-title-mid class', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: {
+        nameColor: null,
+        nameIcon: null,
+        profileBorder: null,
+        title: 'East Wind',
+      },
+    };
+
+    render(<UserDisplay user={user} />);
+
+    const badge = document.querySelector('.flair-title-mid');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('East Wind');
+  });
+
+  test('renders mid-tier Dragon Slayer title with flair-title-mid class', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: {
+        nameColor: null,
+        nameIcon: null,
+        profileBorder: null,
+        title: 'Dragon Slayer',
+      },
+    };
+
+    render(<UserDisplay user={user} />);
+
+    const badge = document.querySelector('.flair-title-mid');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Dragon Slayer');
+  });
 });
