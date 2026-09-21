@@ -13,6 +13,7 @@ afterAll(async () => {
 
 const User = require('../models/User');
 const ShopItem = require('../models/ShopItem');
+const { SHOP_CATALOG } = require('../data/shopCatalog');
 
 let app, user, item;
 
@@ -201,5 +202,29 @@ describe('GET /api/shop/inventory', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.purchasedItems).toHaveLength(1);
     expect(res.body.data.equippedFlair.nameColor).toBe(item._id.toString());
+  });
+});
+
+describe('POST /api/shop/seed', () => {
+  test('returns 403 for non-admin users', async () => {
+    const res = await request(app).post('/api/shop/seed');
+
+    expect(res.status).toBe(403);
+  });
+
+  test('seeds the shared catalog with the current prices', async () => {
+    const adminApp = buildTestApp({ _id: user._id, isAdmin: true });
+
+    const res = await request(adminApp).post('/api/shop/seed');
+
+    expect(res.status).toBe(200);
+    expect(res.body.count).toBe(SHOP_CATALOG.length);
+
+    const jade = await ShopItem.findOne({ name: 'Jade Green' });
+    expect(jade.cost).toBe(125);
+    expect(jade.value).toBe('flair-color-emerald');
+    const hanabi = await ShopItem.findOne({ name: 'Hanabi' });
+    expect(hanabi.tier).toBe('premium');
+    expect(hanabi.value).toBe('flair-border-hanabi');
   });
 });
