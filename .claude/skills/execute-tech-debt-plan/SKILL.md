@@ -53,7 +53,19 @@ Edit the document: replace the state line under `## State` from its current valu
 InProgress
 ```
 
-This single-line edit is the only modification made to the document before implementation begins. Commit nothing yet — the state is intentionally dirty until the work is done.
+This single-line edit is the only modification made to the document before implementation begins.
+
+Then commit and push it **before continuing**, so the `InProgress` claim is visible on the remote and is part of `HEAD` when the worktree is created in Step 5:
+
+```bash
+git add docs/tech-debt/<area>/<filename>
+git commit -m "docs: start tech-debt <area>/<filename>"
+git push
+```
+
+- Stage only the plan document — never `git add -A` or `git add .`.
+- If the state was already `InProgress` (Resume/Restart from Step 3) there is nothing to commit — skip the commit and push.
+- If the push fails (no upstream, rejected, offline), stop and report the error rather than continuing. If the branch has no upstream, use `git push -u origin <current-branch>`.
 
 ### Step 5 — Delegate to superpowers
 
@@ -61,7 +73,7 @@ Invoke `superpowers:using-superpowers` via the `Skill` tool with this prompt:
 
 > **Before doing anything else, invoke `superpowers:using-git-worktrees` to create an isolated workspace for this tech-debt fix.**
 >
-> Implement the tech-debt plan at `<resolved-path>`. Its `## State` has been set to `InProgress`. Read the full document — pay particular attention to `## Problem Details`, `## Suggested Fix`, and `## Related Files`. Use whatever superpowers apply (brainstorming, TDD, systematic-debugging, etc.) to complete the fix described in `## Suggested Fix`. **When `superpowers:finishing-a-development-branch` asks how to integrate the work, always choose: merge locally to master (do not open a PR, do not push to remote). After the merge, remove the worktree using `git worktree remove <worktree-path>` (or `ExitWorktree` if the native tool is available). Your final four actions after all work is complete must be: (1) edit `<resolved-path>` and change `## State` from `InProgress` to `Complete`; (2) move `<resolved-path>` to `docs/completed-tech-debt/<area>/<filename>` (same subdirectory name, same filename), creating the destination directory if it doesn't exist; (3) commit the document state change and file relocation with a message like `docs: complete tech-debt <area>/<filename>`; (4) remove the worktree with `git worktree remove <worktree-path>` (or `ExitWorktree` if the native tool is available) — do this last so the worktree branch is merged and all commits are preserved before cleanup.**
+> Implement the tech-debt plan at `<resolved-path>`. Its `## State` has been set to `InProgress` and that change is already committed and pushed. Read the full document — pay particular attention to `## Problem Details`, `## Suggested Fix`, and `## Related Files`. Use whatever superpowers apply (brainstorming, TDD, systematic-debugging, etc.) to complete the fix described in `## Suggested Fix`. **When `superpowers:finishing-a-development-branch` asks how to integrate the work, always choose: merge locally to master (do not open a PR, and do not push the implementation or completion commits — only the initial `InProgress` commit has been pushed). After the merge, remove the worktree using `git worktree remove <worktree-path>` (or `ExitWorktree` if the native tool is available). Your final four actions after all work is complete must be: (1) edit `<resolved-path>` and change `## State` from `InProgress` to `Complete`; (2) move `<resolved-path>` to `docs/completed-tech-debt/<area>/<filename>` (same subdirectory name, same filename), creating the destination directory if it doesn't exist; (3) commit the document state change and file relocation with a message like `docs: complete tech-debt <area>/<filename>`; (4) remove the worktree with `git worktree remove <worktree-path>` (or `ExitWorktree` if the native tool is available) — do this last so the worktree branch is merged and all commits are preserved before cleanup.**
 
 > **Why this matters:** The `execute-tech-debt-plan` wrapper that set the state to `InProgress` cannot resume after a multi-turn workflow — this delegation is not a coroutine. You are responsible for the final state update, file move, and worktree removal.
 
