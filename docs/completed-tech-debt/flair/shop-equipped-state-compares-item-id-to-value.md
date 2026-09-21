@@ -126,3 +126,12 @@ Sequencing: a separate flair-catalog expansion is being designed and will edit `
 - `server/src/models/User.shopFlair.test.js`
 - `server/src/models/ShopItem.js` (only if adding the uniqueness index)
 - `docs/completed-tech-debt/flair/flair-cosmetics-not-rendering.md` (background)
+
+## Resolution notes
+
+Fixed in the flair catalog expansion (branch `feat/flair-catalog-expansion`): `Shop.tsx` now compares `equippedFlair[slot]` against `item.value` through the shared `isFlairEquipped` helper in `client/src/utils/flairUtils.ts`, and the test fixtures that seeded ids were corrected to values.
+
+Differences from the suggested fix above:
+- The type-level note on `EquippedFlair` in `client/src/services/api.ts` was not added; the explanation lives on `isFlairEquipped` in `flairUtils.ts` instead.
+- The optional `{category, value}` unique index on `ShopItem` was not added; `server/src/data/shopCatalog.test.js` now asserts value uniqueness per category on the seeded catalog, which covers the stated risk.
+- The open hypothesis about users still holding ObjectId strings in `equippedFlair` slots was not checked against a real database. Check before or after the production seed (see the rollout notes in the flair expansion spec).

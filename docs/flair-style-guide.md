@@ -32,7 +32,7 @@ The shop has three tiers. Each tier is visibly distinct in **every** category, s
 - **Never delete a flair class that a shipped item ever used.** `flair-ring-jade`, `flair-ring-cobalt` and `flair-ring-sakura` stay in `flair.css` (marked legacy) because users who equipped those items before they became `flair-mid-*` may still have those values stored.
 - **Gradient text needs forced-colors and print fallbacks.** Windows forced-colors mode and print drop background images but leave the text fill transparent, which would make the name invisible. Every mid and premium name-color class is therefore also listed in the `@media (forced-colors: active)` and `@media print` blocks (`background-image: none; -webkit-text-fill-color: currentColor;`).
 - **Do not place `FlairName` inside `truncate` or `overflow-hidden` ancestors.** The premium sparkles overhang the text box and would be clipped, and an inline-block wrapper cannot be ellipsized.
-- **Premium name wrappers inherit `text-decoration`.** `.flair-sparkle-wrap` is inline-block, and inline-block boxes do not receive a parent link's hover underline, so the rule sets `text-decoration: inherit`. (Not yet verified in a browser at the time of writing; check a premium name inside a link on hover.)
+- **Premium name wrappers inherit `text-decoration`.** `.flair-sparkle-wrap` is inline-block, and inline-block boxes do not receive a parent link's hover underline, so the rule sets `text-decoration: inherit`. (Verified in Chrome: the hover underline renders under premium gradient names as a plain link-colored line.)
 
 ## Profile Borders
 
