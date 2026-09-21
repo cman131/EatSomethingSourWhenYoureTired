@@ -135,6 +135,23 @@ describe('Shop page', () => {
   });
 
   describe('hover preview', () => {
+    test('hovering a nameColor item applies the color class and removes text-gray-900 from the preview name', () => {
+      mockShopUseApi(); // default catalog: nameColor[0] has value 'text-emerald-600'
+      render(<Shop />);
+
+      // Before hover — span has the fallback text-gray-900
+      const nameSpan = screen.getByText('Your Name');
+      expect(nameSpan).toHaveClass('text-gray-900');
+
+      // Fire hover on 'Jade Green' (value: 'text-emerald-600')
+      const itemCard = screen.getByTestId('flair-item-card-item1');
+      fireEvent.mouseEnter(itemCard);
+
+      // After hover — color class applied, text-gray-900 removed
+      expect(nameSpan).toHaveClass('text-emerald-600');
+      expect(nameSpan).not.toHaveClass('text-gray-900');
+    });
+
     test('hovering a profileBorder item applies its class to the preview avatar', () => {
       const catalogWithBorder = {
         ...mockCatalog,

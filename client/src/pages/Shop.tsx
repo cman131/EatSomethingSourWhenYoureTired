@@ -144,7 +144,7 @@ const Shop: React.FC = () => {
               <span className="text-gray-400 text-xs">?</span>
             </div>
           )}
-          <span className={`font-medium text-gray-900 ${previewNameColor}`}>
+          <span className={`font-medium ${previewNameColor || 'text-gray-900'}`}>
             {previewIcon && <span className="mr-1 text-sm">{previewIcon}</span>}
             Your Name
           </span>
