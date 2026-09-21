@@ -13,6 +13,7 @@ afterAll(async () => {
 
 const User = require('../models/User');
 const ShopItem = require('../models/ShopItem');
+const PointTransaction = require('../models/PointTransaction');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
 
 let app, user, item;
@@ -129,6 +130,97 @@ describe('POST /api/shop/purchase', () => {
 
     expect(res.status).toBe(404);
   });
+
+  test('returns 400 for a malformed itemId and does not charge the user', async () => {
+    const res = await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: 'not-an-object-id' });
+
+    expect(res.status).toBe(400);
+
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(500);
+    expect(updated.purchasedItems).toHaveLength(0);
+  });
+
+  test('returns 400 when itemId is missing', async () => {
+    const res = await request(app).post('/api/shop/purchase').send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 400 when itemId is not a string', async () => {
+    const res = await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: { $gt: '' } });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('records a negative shop_purchase ledger row for the item cost', async () => {
+    await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: item._id.toString() });
+
+    const rows = await PointTransaction.find({ user: user._id, type: 'shop_purchase' });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].amount).toBe(-200);
+  });
+
+  test('does not record a ledger row when the purchase is rejected', async () => {
+    await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
+
+    await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: item._id.toString() });
+
+    expect(await PointTransaction.countDocuments({ user: user._id })).toBe(0);
+  });
+
+  describe('concurrent purchases', () => {
+    const purchase = itemId =>
+      request(app).post('/api/shop/purchase').send({ itemId: itemId.toString() });
+
+    test('buying the same item in parallel charges once and grants one copy', async () => {
+      const responses = await Promise.all(Array.from({ length: 5 }, () => purchase(item._id)));
+
+      const statuses = responses.map(r => r.status).sort();
+      expect(statuses).toEqual([200, 400, 400, 400, 400]);
+      responses
+        .filter(r => r.status === 400)
+        .forEach(r => expect(r.body.message).toMatch(/already own/i));
+
+      const updated = await User.findById(user._id);
+      expect(updated.pointsBalance).toBe(300);
+      expect(updated.purchasedItems).toHaveLength(1);
+      expect(await PointTransaction.countDocuments({ user: user._id, type: 'shop_purchase' })).toBe(1);
+    });
+
+    test('buying different items in parallel cannot overspend the balance', async () => {
+      await User.findByIdAndUpdate(user._id, { pointsBalance: 300 });
+      const otherItems = await ShopItem.create(
+        [1, 2, 3, 4].map(n => ({
+          name: `test-shop-route-extra-${n}`,
+          description: 'Extra item',
+          category: 'nameColor',
+          cost: 200,
+          value: `text-extra-${n}`,
+        }))
+      );
+
+      const responses = await Promise.all([item, ...otherItems].map(i => purchase(i._id)));
+
+      const succeeded = responses.filter(r => r.status === 200);
+      const rejected = responses.filter(r => r.status === 400);
+      expect(succeeded).toHaveLength(1);
+      expect(rejected).toHaveLength(4);
+      rejected.forEach(r => expect(r.body.message).toMatch(/insufficient/i));
+
+      const updated = await User.findById(user._id);
+      expect(updated.pointsBalance).toBe(100);
+      expect(updated.purchasedItems).toHaveLength(1);
+    });
+  });
 });
 
 describe('POST /api/shop/equip', () => {
@@ -188,6 +280,82 @@ describe('POST /api/shop/equip', () => {
 
     expect(res.status).toBe(400);
   });
+
+  test('returns 400 when the item category does not match the slot and leaves equippedFlair unchanged', async () => {
+    await User.findByIdAndUpdate(user._id, { 'equippedFlair.nameColor': item.value });
+
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: item._id.toString(), slot: 'title' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/slot/i);
+
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.title).toBeNull();
+    expect(updated.equippedFlair.nameColor).toBe(item.value);
+  });
+
+  test.each(['nameIcon', 'profileBorder', 'title'])(
+    'rejects a nameColor item equipped into the %s slot',
+    async slot => {
+      const res = await request(app)
+        .post('/api/shop/equip')
+        .send({ itemId: item._id.toString(), slot });
+
+      expect(res.status).toBe(400);
+
+      const updated = await User.findById(user._id);
+      expect(updated.equippedFlair[slot]).toBeNull();
+    }
+  );
+
+  test('lets an owner equip and unequip an item that has been retired', async () => {
+    await ShopItem.findByIdAndUpdate(item._id, { isActive: false });
+
+    const equipRes = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: item._id.toString(), slot: 'nameColor' });
+
+    expect(equipRes.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.nameColor).toBe(item.value);
+
+    const unequipRes = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: null, slot: 'nameColor' });
+
+    expect(unequipRes.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.nameColor).toBeNull();
+  });
+
+  test('returns 400 for a malformed itemId', async () => {
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: 'not-an-object-id', slot: 'nameColor' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 400 when itemId is not a string', async () => {
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: { $gt: '' }, slot: 'nameColor' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('unequips a slot when itemId is an empty string', async () => {
+    await User.findByIdAndUpdate(user._id, { 'equippedFlair.nameColor': item.value });
+
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: '', slot: 'nameColor' });
+
+    expect(res.status).toBe(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.nameColor).toBeNull();
+  });
 });
 
 describe('GET /api/shop/inventory', () => {
@@ -202,6 +370,38 @@ describe('GET /api/shop/inventory', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.purchasedItems).toHaveLength(1);
     expect(res.body.data.equippedFlair.nameColor).toBe(item.value);
+  });
+
+  test('returns owned items that have been retired', async () => {
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: item._id } } });
+    await ShopItem.findByIdAndUpdate(item._id, { isActive: false });
+
+    const res = await request(app).get('/api/shop/inventory');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.purchasedItems).toHaveLength(1);
+    expect(res.body.data.purchasedItems[0].item.name).toBe('test-shop-route-jade');
+    expect(res.body.data.purchasedItems[0].item.isActive).toBe(false);
+  });
+
+  test('omits purchases whose item no longer exists', async () => {
+    const orphan = await ShopItem.create({
+      name: 'test-shop-route-orphan',
+      description: 'Will be deleted',
+      category: 'title',
+      cost: 100,
+      value: 'flair-title-orphan',
+    });
+    await User.findByIdAndUpdate(user._id, {
+      $push: { purchasedItems: { $each: [{ item: item._id }, { item: orphan._id }] } },
+    });
+    await ShopItem.deleteOne({ _id: orphan._id });
+
+    const res = await request(app).get('/api/shop/inventory');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.purchasedItems).toHaveLength(1);
+    expect(res.body.data.purchasedItems[0].item.name).toBe('test-shop-route-jade');
   });
 });
 
@@ -257,6 +457,26 @@ describe('POST /api/shop/seed', () => {
 
     const removed = await ShopItem.findById(item._id);
     expect(removed.isActive).toBe(false);
+  });
+
+  test('reactivates a catalog item that was previously retired', async () => {
+    await ShopItem.deleteMany({ name: 'Jade Green' });
+    await ShopItem.create({
+      name: 'Jade Green',
+      description: 'retired',
+      category: 'nameColor',
+      cost: 125,
+      tier: 'mid',
+      value: 'flair-color-emerald',
+      isActive: false,
+    });
+
+    const res = await seedAsAdmin();
+
+    expect(res.status).toBe(200);
+    const jade = await ShopItem.findOne({ name: 'Jade Green' });
+    expect(jade.isActive).toBe(true);
+    expect(jade.category).toBe('nameColor');
   });
 
   test('seeding twice does not create duplicates', async () => {

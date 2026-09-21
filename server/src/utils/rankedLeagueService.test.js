@@ -231,3 +231,145 @@ describe('ranked league qualification points', () => {
     errorSpy.mockRestore();
   });
 });
+
+describe('ranked season-end placement rewards', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  let players;
+
+  beforeEach(async () => {
+    // Scoped to this suite's users: Jest runs suites in parallel against the same database
+    const staleUsers = await User.find({ displayName: /^test-ranked/ }).select('_id');
+    await PointTransaction.deleteMany({ user: { $in: staleUsers.map(u => u._id) } });
+    await RankedLeague.deleteMany({});
+    await User.deleteMany({ displayName: /^test-ranked/ });
+
+    players = await User.create([1, 2, 3, 4].map(n => ({
+      displayName: `test-ranked-season-p${n}`,
+      email: `ranked-season-p${n}@example.com`,
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    })));
+  });
+
+  afterAll(async () => {
+    await User.deleteMany({ displayName: /^test-ranked/ });
+  });
+
+  const daysAgo = days => new Date(Date.now() - days * DAY_MS);
+  const balanceOf = async player => (await User.findById(player._id)).pointsBalance;
+  const placementTransactions = () =>
+    PointTransaction.find({
+      user: { $in: players.map(p => p._id) },
+      type: /^ranked_league_placement_/,
+    });
+
+  // players[0] wins, players[1] second, players[2] third, players[3] is unqualified
+  function createExpiredLeague(overrides = {}) {
+    return RankedLeague.create({
+      startDate: daysAgo(91),
+      players: [
+        { player: players[0]._id, rankedPoints: 560, gamesPlayed: 5 },
+        { player: players[1]._id, rankedPoints: 530, gamesPlayed: 4 },
+        { player: players[2]._id, rankedPoints: 510, gamesPlayed: 3 },
+        { player: players[3]._id, rankedPoints: 700, gamesPlayed: 2 },
+      ],
+      ...overrides,
+    });
+  }
+
+  test('pays the ended season when the next season is created', async () => {
+    const ended = await createExpiredLeague();
+
+    await getCurrentLeague();
+
+    expect(await balanceOf(players[0])).toBe(150);
+    expect(await balanceOf(players[1])).toBe(100);
+    expect(await balanceOf(players[2])).toBe(50);
+    expect(await balanceOf(players[3])).toBe(0);
+    const transactions = await placementTransactions();
+    expect(transactions.every(t => t.metadata.leagueId.toString() === ended._id.toString())).toBe(true);
+  });
+
+  test('marks the ended season as rewarded', async () => {
+    const ended = await createExpiredLeague();
+
+    await getCurrentLeague();
+
+    expect((await RankedLeague.findById(ended._id)).rewardsAwardedAt).toBeInstanceOf(Date);
+  });
+
+  test('pays the ended season exactly once across repeated calls', async () => {
+    await createExpiredLeague();
+
+    await getCurrentLeague();
+    await getCurrentLeague();
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(3);
+    expect(await balanceOf(players[0])).toBe(150);
+  });
+
+  test('does not pay the season that is still in progress', async () => {
+    await createExpiredLeague({ startDate: daysAgo(10) });
+
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(0);
+  });
+
+  test('pays an earlier season left unpaid after a crash between rollover and payout', async () => {
+    await createExpiredLeague();
+    await RankedLeague.create({ startDate: daysAgo(1), players: [] });
+
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(3);
+  });
+
+  test('retries a failed payout on the next call without double paying', async () => {
+    const ended = await createExpiredLeague();
+    const createSpy = jest.spyOn(PointTransaction, 'create').mockRejectedValueOnce(new Error('db down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const current = await getCurrentLeague();
+
+    expect(current.startDate.getTime()).toBeGreaterThan(ended.startDate.getTime());
+    expect((await RankedLeague.findById(ended._id)).rewardsAwardedAt).toBeNull();
+    createSpy.mockRestore();
+    errorSpy.mockRestore();
+
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(3);
+    expect(await balanceOf(players[0])).toBe(150);
+    expect(await balanceOf(players[1])).toBe(100);
+    expect(await balanceOf(players[2])).toBe(50);
+  });
+
+  test('skips a season another request is currently paying out', async () => {
+    await createExpiredLeague({ rewardsClaimedAt: new Date() });
+
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(0);
+  });
+
+  test('takes over a payout whose claim went stale', async () => {
+    await createExpiredLeague({ rewardsClaimedAt: new Date(Date.now() - 60 * 60 * 1000) });
+
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(3);
+  });
+
+  test('pays each of two leagues created by a rollover race', async () => {
+    const first = await createExpiredLeague();
+    const raceDuplicate = await RankedLeague.create({ startDate: new Date(first.startDate.getTime() + 5), players: [] });
+    await RankedLeague.create({ startDate: daysAgo(1), players: [] });
+
+    await getCurrentLeague();
+
+    expect(await placementTransactions()).toHaveLength(3);
+    expect((await RankedLeague.findById(raceDuplicate._id)).rewardsAwardedAt).toBeInstanceOf(Date);
+  });
+});

@@ -1,12 +1,19 @@
 const express = require('express');
 const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
-const { spendPoints } = require('../utils/pointsService');
+const { purchaseItem, PurchaseFailure } = require('../utils/shopService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
+const { validateMongoIdBody, validateOptionalMongoIdBody } = require('../middleware/validation');
 
 const router = express.Router();
 
 const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+
+const PURCHASE_FAILURE_RESPONSES = {
+  [PurchaseFailure.UserNotFound]: { status: 404, message: 'User not found' },
+  [PurchaseFailure.AlreadyOwned]: { status: 400, message: 'You already own this item' },
+  [PurchaseFailure.InsufficientBalance]: { status: 400, message: 'Insufficient points balance' },
+};
 
 // GET /api/shop — list active items grouped by category
 router.get('/', async (req, res) => {
@@ -25,7 +32,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/shop/inventory — current user's purchasedItems + equippedFlair
+// GET /api/shop/inventory — current user's purchasedItems + equippedFlair.
+// Owned items are returned even when retired (isActive: false) so owners can still equip or
+// unequip them; purchases whose ShopItem no longer exists are skipped.
 router.get('/inventory', async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
@@ -34,7 +43,7 @@ router.get('/inventory', async (req, res) => {
     res.json({
       success: true,
       data: {
-        purchasedItems: user.purchasedItems,
+        purchasedItems: user.purchasedItems.filter(p => p.item),
         equippedFlair: user.equippedFlair,
         pointsBalance: user.pointsBalance,
       },
@@ -45,34 +54,20 @@ router.get('/inventory', async (req, res) => {
 });
 
 // POST /api/shop/purchase — body: { itemId }
-router.post('/purchase', async (req, res) => {
+router.post('/purchase', validateMongoIdBody('itemId'), async (req, res) => {
   try {
     const { itemId } = req.body;
-    if (!itemId) {
-      return res.status(400).json({ success: false, message: 'itemId is required' });
-    }
 
     const item = await ShopItem.findById(itemId);
     if (!item || !item.isActive) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
 
-    const user = await User.findById(req.user._id);
-    const alreadyOwns = user.purchasedItems.some(
-      p => p.item.toString() === itemId
-    );
-    if (alreadyOwns) {
-      return res.status(400).json({ success: false, message: 'You already own this item' });
+    const result = await purchaseItem(req.user._id, item);
+    if (!result.purchased) {
+      const failure = PURCHASE_FAILURE_RESPONSES[result.reason];
+      return res.status(failure.status).json({ success: false, message: failure.message });
     }
-
-    if (user.pointsBalance < item.cost) {
-      return res.status(400).json({ success: false, message: 'Insufficient points balance' });
-    }
-
-    await spendPoints(user._id, item.cost, { itemId: item._id });
-    await User.findByIdAndUpdate(user._id, {
-      $push: { purchasedItems: { item: item._id } },
-    });
 
     res.json({ success: true, message: 'Purchase successful' });
   } catch (err) {
@@ -81,7 +76,7 @@ router.post('/purchase', async (req, res) => {
 });
 
 // POST /api/shop/equip — body: { itemId, slot }
-router.post('/equip', async (req, res) => {
+router.post('/equip', validateOptionalMongoIdBody('itemId'), async (req, res) => {
   try {
     const { itemId, slot } = req.body;
 
@@ -105,6 +100,10 @@ router.post('/equip', async (req, res) => {
     const item = await ShopItem.findById(itemId);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
+    if (item.category !== slot) {
+      return res.status(400).json({ success: false, message: 'Item does not belong in this slot' });
     }
 
     await User.findByIdAndUpdate(req.user._id, {
@@ -137,8 +136,8 @@ router.post('/seed', async (req, res) => {
         ShopItem.findOneAndUpdate(
           { name },
           {
-            $set: { cost, tier, description, value, sortOrder },
-            $setOnInsert: { name, category, isActive: true },
+            $set: { cost, tier, description, value, sortOrder, isActive: true },
+            $setOnInsert: { name, category },
           },
           { upsert: true, new: true }
         )
