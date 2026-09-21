@@ -1,30 +1,66 @@
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
 
-async function awardPoints(userId, type, amount, metadata = {}) {
-  const user = await User.findById(userId).select('isGuest');
-  if (user && user.isGuest) {
-    return;
-  }
+const DUPLICATE_KEY_ERROR = 11000;
 
-  await PointTransaction.create({ user: userId, type, amount, metadata });
-  await User.findByIdAndUpdate(userId, {
-    $inc: { pointsBalance: amount, totalPointsEarned: amount },
-  });
+async function removeLedgerRow(transaction) {
+  try {
+    await PointTransaction.deleteOne({ _id: transaction._id });
+  } catch (cleanupError) {
+    console.error(
+      `Point ledger drift: transaction ${transaction._id} has no matching balance update`,
+      cleanupError
+    );
+  }
 }
 
-// Awards at most once per (user, type, metadata[dedupeField]) so a repeated trigger cannot pay twice.
-async function awardPointsOnce(userId, type, amount, metadata, dedupeField) {
-  const alreadyAwarded = await PointTransaction.exists({
-    user: userId,
-    type,
-    [`metadata.${dedupeField}`]: metadata[dedupeField],
-  });
-  if (alreadyAwarded) {
-    return;
+// The ledger row is written first; if the balance update then fails the row is removed again,
+// so an error leaves the ledger and pointsBalance in agreement.
+async function recordAward({ userId, type, amount, metadata = {} }) {
+  const transaction = await PointTransaction.create({ user: userId, type, amount, metadata });
+  try {
+    await User.updateOne(
+      { _id: userId },
+      { $inc: { pointsBalance: amount, totalPointsEarned: amount } }
+    );
+  } catch (error) {
+    await removeLedgerRow(transaction);
+    throw error;
   }
+}
 
-  await awardPoints(userId, type, amount, metadata);
+// Relies on the unique partial indexes on PointTransaction (per tournament / per league):
+// a duplicate-key error means this award was already made, so it is skipped.
+async function recordAwardOnce(award) {
+  try {
+    await recordAward(award);
+  } catch (error) {
+    if (error.code !== DUPLICATE_KEY_ERROR) {
+      throw error;
+    }
+  }
+}
+
+// One query resolves the guests for the whole batch rather than one lookup per award.
+async function excludeGuestAwards(awards) {
+  const guests = await User.find({ _id: { $in: awards.map(award => award.userId) }, isGuest: true })
+    .select('_id');
+  const guestIds = new Set(guests.map(guest => guest._id.toString()));
+  return awards.filter(award => !guestIds.has(award.userId.toString()));
+}
+
+async function awardAll(awards) {
+  const eligibleAwards = await excludeGuestAwards(awards);
+  await Promise.all(eligibleAwards.map(recordAward));
+}
+
+async function awardAllOnce(awards) {
+  const eligibleAwards = await excludeGuestAwards(awards);
+  await Promise.all(eligibleAwards.map(recordAwardOnce));
+}
+
+async function awardPoints(userId, type, amount, metadata = {}) {
+  await awardAll([{ userId, type, amount, metadata }]);
 }
 
 async function spendPoints(userId, amount, metadata = {}) {
@@ -48,15 +84,20 @@ const GAME_SUBMITTED_AMOUNT = 2;
 const GAME_VERIFIED_AMOUNT = 1;
 
 async function awardGamePoints(game, verifierId) {
-  const gameId = game._id;
+  const metadata = { gameId: game._id };
 
-  const playerAwards = game.players.map(({ player, rank }) =>
-    awardPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], { gameId })
-  );
-  await Promise.all(playerAwards);
+  const placementAwards = game.players.map(({ player, rank }) => ({
+    userId: player,
+    type: GAME_PLACEMENT_TYPES[rank],
+    amount: GAME_PLACEMENT_AMOUNTS[rank],
+    metadata,
+  }));
 
-  await awardPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, { gameId });
-  await awardPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, { gameId });
+  await awardAll([
+    ...placementAwards,
+    { userId: game.submittedBy, type: 'game_submitted', amount: GAME_SUBMITTED_AMOUNT, metadata },
+    { userId: verifierId, type: 'game_verified', amount: GAME_VERIFIED_AMOUNT, metadata },
+  ]);
 }
 
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;
@@ -72,45 +113,46 @@ const TOURNAMENT_PLACEMENT_AMOUNTS = [200, 100, 70, 50];
 
 async function awardTournamentPoints(tournament) {
   const tournamentId = tournament._id;
-  const awardOnce = (playerId, type, amount, metadata) =>
-    awardPointsOnce(playerId, type, amount, { tournamentId, ...metadata }, 'tournamentId');
 
   const droppedPlayerIds = new Set(
     tournament.players.filter(p => p.dropped).map(p => p.player.toString())
   );
 
-  const participantAwards = tournament.players
+  const participationAwards = tournament.players
     .filter(p => !p.dropped)
-    .map(p => awardOnce(p.player, 'tournament_participated', TOURNAMENT_PARTICIPATION_AMOUNT));
-  await Promise.all(participantAwards);
+    .map(p => ({
+      userId: p.player,
+      type: 'tournament_participated',
+      amount: TOURNAMENT_PARTICIPATION_AMOUNT,
+      metadata: { tournamentId },
+    }));
 
-  if (Array.isArray(tournament.top4)) {
-    const placementAwards = tournament.top4
+  const placementAwards = Array.isArray(tournament.top4)
+    ? tournament.top4
       .slice(0, 4)
-      .map((playerId, index) => ({ playerId, index }))
-      .filter(({ playerId }) => !droppedPlayerIds.has(playerId.toString()))
-      .map(({ playerId, index }) =>
-        awardOnce(
-          playerId,
-          TOURNAMENT_PLACEMENT_TYPES[index],
-          TOURNAMENT_PLACEMENT_AMOUNTS[index],
-          { placement: index + 1 }
-        )
-      );
-    await Promise.all(placementAwards);
-  }
+      .map((playerId, index) => ({
+        userId: playerId,
+        type: TOURNAMENT_PLACEMENT_TYPES[index],
+        amount: TOURNAMENT_PLACEMENT_AMOUNTS[index],
+        metadata: { tournamentId, placement: index + 1 },
+      }))
+      .filter(({ userId }) => !droppedPlayerIds.has(userId.toString()))
+    : [];
+
+  await awardAllOnce([...participationAwards, ...placementAwards]);
 }
 
 const RANKED_QUALIFICATION_AMOUNT = 10;
 
 async function awardRankedQualificationPoints(userId, leagueId) {
-  await awardPointsOnce(
-    userId,
-    'ranked_league_qualified',
-    RANKED_QUALIFICATION_AMOUNT,
-    { leagueId },
-    'leagueId'
-  );
+  await awardAllOnce([
+    {
+      userId,
+      type: 'ranked_league_qualified',
+      amount: RANKED_QUALIFICATION_AMOUNT,
+      metadata: { leagueId },
+    },
+  ]);
 }
 
 module.exports = {

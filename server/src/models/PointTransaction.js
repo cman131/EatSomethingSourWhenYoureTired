@@ -44,5 +44,16 @@ const pointTransactionSchema = new mongoose.Schema({
 
 pointTransactionSchema.index({ user: 1, createdAt: -1 });
 
+// Backs the once-per-source awards: a repeated or concurrent trigger hits a duplicate-key error instead of paying twice.
+// Partial because these ids default to null on every other transaction.
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.tournamentId': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.tournamentId': { $type: 'objectId' } } }
+);
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.leagueId': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.leagueId': { $type: 'objectId' } } }
+);
+
 module.exports = mongoose.model('PointTransaction', pointTransactionSchema);
 module.exports.POINT_TRANSACTION_TYPES = POINT_TRANSACTION_TYPES;
