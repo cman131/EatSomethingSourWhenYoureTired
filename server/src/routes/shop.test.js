@@ -152,7 +152,7 @@ describe('POST /api/shop/equip', () => {
 
   test('unequips a slot when itemId is null', async () => {
     await User.findByIdAndUpdate(user._id, {
-      'equippedFlair.nameColor': item._id.toString(),
+      'equippedFlair.nameColor': item.value,
     });
 
     const res = await request(app)
@@ -194,14 +194,14 @@ describe('GET /api/shop/inventory', () => {
   test('returns purchasedItems and equippedFlair for the current user', async () => {
     await User.findByIdAndUpdate(user._id, {
       $push: { purchasedItems: { item: item._id } },
-      'equippedFlair.nameColor': item._id.toString(),
+      'equippedFlair.nameColor': item.value,
     });
 
     const res = await request(app).get('/api/shop/inventory');
 
     expect(res.status).toBe(200);
     expect(res.body.data.purchasedItems).toHaveLength(1);
-    expect(res.body.data.equippedFlair.nameColor).toBe(item._id.toString());
+    expect(res.body.data.equippedFlair.nameColor).toBe(item.value);
   });
 });
 
