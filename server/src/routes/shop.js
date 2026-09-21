@@ -3,23 +3,17 @@ const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
 const { purchaseItem, PurchaseFailure } = require('../utils/shopService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
+const { validateMongoIdBody, validateOptionalMongoIdBody } = require('../middleware/validation');
 
 const router = express.Router();
 
 const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
-
-const OBJECT_ID_PATTERN = /^[0-9a-fA-F]{24}$/;
 
 const PURCHASE_FAILURE_RESPONSES = {
   [PurchaseFailure.UserNotFound]: { status: 404, message: 'User not found' },
   [PurchaseFailure.AlreadyOwned]: { status: 400, message: 'You already own this item' },
   [PurchaseFailure.InsufficientBalance]: { status: 400, message: 'Insufficient points balance' },
 };
-
-// typeof check also rejects object bodies like { itemId: { $ne: null } }, which would otherwise reach a query
-function isObjectIdString(value) {
-  return typeof value === 'string' && OBJECT_ID_PATTERN.test(value);
-}
 
 // GET /api/shop — list active items grouped by category
 router.get('/', async (req, res) => {
@@ -58,15 +52,9 @@ router.get('/inventory', async (req, res) => {
 });
 
 // POST /api/shop/purchase — body: { itemId }
-router.post('/purchase', async (req, res) => {
+router.post('/purchase', validateMongoIdBody('itemId'), async (req, res) => {
   try {
     const { itemId } = req.body;
-    if (!itemId) {
-      return res.status(400).json({ success: false, message: 'itemId is required' });
-    }
-    if (!isObjectIdString(itemId)) {
-      return res.status(400).json({ success: false, message: 'Invalid itemId' });
-    }
 
     const item = await ShopItem.findById(itemId);
     if (!item || !item.isActive) {
@@ -86,7 +74,7 @@ router.post('/purchase', async (req, res) => {
 });
 
 // POST /api/shop/equip — body: { itemId, slot }
-router.post('/equip', async (req, res) => {
+router.post('/equip', validateOptionalMongoIdBody('itemId'), async (req, res) => {
   try {
     const { itemId, slot } = req.body;
 
@@ -110,6 +98,10 @@ router.post('/equip', async (req, res) => {
     const item = await ShopItem.findById(itemId);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
+    if (item.category !== slot) {
+      return res.status(400).json({ success: false, message: 'Item does not belong in this slot' });
     }
 
     await User.findByIdAndUpdate(req.user._id, {

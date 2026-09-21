@@ -131,13 +131,30 @@ describe('POST /api/shop/purchase', () => {
     expect(res.status).toBe(404);
   });
 
-  test('returns 400 for a malformed itemId instead of a server error', async () => {
+  test('returns 400 for a malformed itemId and does not charge the user', async () => {
     const res = await request(app)
       .post('/api/shop/purchase')
       .send({ itemId: 'not-an-object-id' });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/invalid/i);
+
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(500);
+    expect(updated.purchasedItems).toHaveLength(0);
+  });
+
+  test('returns 400 when itemId is missing', async () => {
+    const res = await request(app).post('/api/shop/purchase').send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 400 when itemId is not a string', async () => {
+    const res = await request(app)
+      .post('/api/shop/purchase')
+      .send({ itemId: { $gt: '' } });
+
+    expect(res.status).toBe(400);
   });
 
   test('records a negative shop_purchase ledger row for the item cost', async () => {
@@ -262,6 +279,64 @@ describe('POST /api/shop/equip', () => {
       .send({ itemId: item._id.toString(), slot: 'badSlot' });
 
     expect(res.status).toBe(400);
+  });
+
+  test('returns 400 when the item category does not match the slot and leaves equippedFlair unchanged', async () => {
+    await User.findByIdAndUpdate(user._id, { 'equippedFlair.nameColor': item.value });
+
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: item._id.toString(), slot: 'title' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/slot/i);
+
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.title).toBeNull();
+    expect(updated.equippedFlair.nameColor).toBe(item.value);
+  });
+
+  test.each(['nameIcon', 'profileBorder', 'title'])(
+    'rejects a nameColor item equipped into the %s slot',
+    async slot => {
+      const res = await request(app)
+        .post('/api/shop/equip')
+        .send({ itemId: item._id.toString(), slot });
+
+      expect(res.status).toBe(400);
+
+      const updated = await User.findById(user._id);
+      expect(updated.equippedFlair[slot]).toBeNull();
+    }
+  );
+
+  test('returns 400 for a malformed itemId', async () => {
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: 'not-an-object-id', slot: 'nameColor' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 400 when itemId is not a string', async () => {
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: { $gt: '' }, slot: 'nameColor' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('unequips a slot when itemId is an empty string', async () => {
+    await User.findByIdAndUpdate(user._id, { 'equippedFlair.nameColor': item.value });
+
+    const res = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: '', slot: 'nameColor' });
+
+    expect(res.status).toBe(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.nameColor).toBeNull();
   });
 });
 
