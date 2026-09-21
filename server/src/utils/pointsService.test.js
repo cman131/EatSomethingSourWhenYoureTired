@@ -12,6 +12,11 @@ const {
 beforeAll(async () => {
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/mahjong-test';
   await mongoose.connect(mongoUri);
+  await PointTransaction.init(); // the once-only awards rely on the unique partial indexes existing
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -83,6 +88,23 @@ describe('awardPoints', () => {
     const updated = await User.findById(guest._id);
     expect(updated.pointsBalance).toBe(0);
     expect(updated.totalPointsEarned).toBe(0);
+  });
+
+  test('removes the ledger row and rethrows when the balance update fails', async () => {
+    jest.spyOn(User, 'updateOne').mockRejectedValueOnce(new Error('balance write failed'));
+
+    await expect(awardPoints(user._id, 'game_submitted', 5, {})).rejects.toThrow('balance write failed');
+
+    expect(await PointTransaction.countDocuments({ user: user._id })).toBe(0);
+    expect((await User.findById(user._id)).pointsBalance).toBe(0);
+  });
+
+  test('rethrows the balance error even when removing the ledger row also fails', async () => {
+    jest.spyOn(User, 'updateOne').mockRejectedValueOnce(new Error('balance write failed'));
+    jest.spyOn(PointTransaction, 'deleteOne').mockRejectedValueOnce(new Error('cleanup failed'));
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(awardPoints(user._id, 'game_submitted', 5, {})).rejects.toThrow('balance write failed');
   });
 });
 
@@ -228,6 +250,27 @@ describe('awardGamePoints', () => {
     expect(await PointTransaction.countDocuments({ user: guest._id })).toBe(0);
     expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_placement_1' })).toBe(1);
   });
+
+  test('resolves guests with a single query for the whole game', async () => {
+    const game = {
+      _id: new mongoose.Types.ObjectId(),
+      players: [
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
+      ],
+      submittedBy: p1._id,
+    };
+    const findSpy = jest.spyOn(User, 'find');
+    const findByIdSpy = jest.spyOn(User, 'findById');
+
+    await awardGamePoints(game, p2._id);
+
+    expect(findSpy).toHaveBeenCalledTimes(1);
+    expect(findByIdSpy).not.toHaveBeenCalled();
+    expect(await PointTransaction.countDocuments({ user: { $in: [p1._id, p2._id, p3._id, p4._id] } })).toBe(6);
+  });
 });
 
 describe('awardTournamentPoints', () => {
@@ -302,6 +345,26 @@ describe('awardTournamentPoints', () => {
     expect(await PointTransaction.countDocuments({ user: players[0]._id })).toBe(2);
   });
 
+  test('pays once when the same tournament is completed concurrently', async () => {
+    const tournament = makeTournament();
+
+    await Promise.all([awardTournamentPoints(tournament), awardTournamentPoints(tournament)]);
+
+    expect(await balanceOf(players[0])).toBe(215);
+    expect(await balanceOf(players[4])).toBe(15);
+    expect(await PointTransaction.countDocuments({ user: players[0]._id })).toBe(2);
+  });
+
+  test('resolves guests with a single query for the whole tournament', async () => {
+    const findSpy = jest.spyOn(User, 'find');
+    const findByIdSpy = jest.spyOn(User, 'findById');
+
+    await awardTournamentPoints(makeTournament());
+
+    expect(findSpy).toHaveBeenCalledTimes(1);
+    expect(findByIdSpy).not.toHaveBeenCalled();
+  });
+
   test('does not award guest players', async () => {
     const guest = await User.create({ displayName: 'test-points-guest', isGuest: true });
     const tournament = makeTournament({ top4: [guest, players[1], players[2], players[3]] });
@@ -330,6 +393,18 @@ describe('awardRankedQualificationPoints', () => {
 
     await awardRankedQualificationPoints(user._id, leagueId);
     await awardRankedQualificationPoints(user._id, leagueId);
+
+    expect(await PointTransaction.countDocuments({ user: user._id })).toBe(1);
+    expect((await User.findById(user._id)).pointsBalance).toBe(10);
+  });
+
+  test('awards only once when called concurrently for the same league', async () => {
+    const leagueId = new mongoose.Types.ObjectId();
+
+    await Promise.all([
+      awardRankedQualificationPoints(user._id, leagueId),
+      awardRankedQualificationPoints(user._id, leagueId),
+    ]);
 
     expect(await PointTransaction.countDocuments({ user: user._id })).toBe(1);
     expect((await User.findById(user._id)).pointsBalance).toBe(10);
