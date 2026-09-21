@@ -711,17 +711,27 @@ export const rankedLeaguesApi = {
 };
 
 // Points API
+export interface PointTransactionContext {
+  kind: 'game' | 'tournament' | 'rankedSeason' | 'shopItem';
+  id: string;
+  label: string | null;
+  missing: boolean;
+}
+
 export interface PointTransaction {
   _id: string;
   user: string;
   type: string;
   amount: number;
   metadata: {
+    itemId?: string | null;
     gameId?: string | null;
     tournamentId?: string | null;
     leagueId?: string | null;
     placement?: number | null;
   };
+  // Present on history rows; absent on the summary's recentTransactions.
+  context?: PointTransactionContext | null;
   createdAt: string;
 }
 
@@ -735,6 +745,7 @@ export interface PointsHistory {
   items: PointTransaction[];
   total: number;
   page: number;
+  limit: number;
   totalPages: number;
 }
 

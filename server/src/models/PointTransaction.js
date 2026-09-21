@@ -35,7 +35,9 @@ const pointTransactionSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  // Mongoose strict mode silently drops undeclared keys, so any new metadata key must be declared here.
   metadata: {
+    itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopItem', default: null },
     gameId: { type: mongoose.Schema.Types.ObjectId, ref: 'Game', default: null },
     tournamentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', default: null },
     leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'RankedLeague', default: null },
