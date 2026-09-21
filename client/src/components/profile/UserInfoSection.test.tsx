@@ -146,4 +146,27 @@ describe('UserInfoSection flair rendering', () => {
     );
     expect(screen.queryByTestId('flair-title-badge')).not.toBeInTheDocument();
   });
+
+  test('premium name color renders sparkles and keeps the icon outside the gradient span', () => {
+    const user = {
+      ...baseUser,
+      equippedFlair: { nameColor: 'flair-color-neon', nameIcon: '🥷', profileBorder: null, title: null },
+    };
+    const { container } = render(
+      <UserInfoSection
+        user={user}
+        isOwnProfile={false}
+        onUpdateProfile={noopAsync}
+        onRefetchProfile={noopAsync}
+      />
+    );
+
+    const nameEl = screen.getByText('TestPlayer');
+    expect(nameEl).toHaveClass('flair-color-neon');
+    expect(nameEl).not.toContainElement(screen.getByText('🥷'));
+    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- decorative sparkles are aria-hidden
+    expect(container.querySelectorAll('.flair-sparkle')).toHaveLength(3);
+    // eslint-disable-next-line testing-library/no-node-access -- the icon wrapper is an aria-hidden span with no role or text
+    expect(screen.getByText('🥷').parentElement).toHaveClass('flair-icon-ninja');
+  });
 });
