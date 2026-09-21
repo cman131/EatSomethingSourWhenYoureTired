@@ -8,8 +8,6 @@ import EtiquetteDisplay from '../components/tournaments/EtiquetteDisplay';
 import RulesDisplay from '../components/tournaments/RulesDisplay';
 import { StarIcon } from '@heroicons/react/24/outline';
 
-const RANKED_GAMES_THRESHOLD = 3;
-
 const RankedLeague: React.FC = () => {
   useRequireAuth();
   const { user } = useAuth();
@@ -48,6 +46,8 @@ const RankedLeague: React.FC = () => {
     }
   };
 
+  const rankedGamesThreshold = league?.rankedGamesThreshold ?? 0;
+
   const isInLeague = league && user
     ? league.players.some(p => p.player._id === user._id)
     : false;
@@ -58,13 +58,13 @@ const RankedLeague: React.FC = () => {
 
   const rankedPlayers = league
     ? league.players
-        .filter(p => p.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+        .filter(p => p.gamesPlayed >= rankedGamesThreshold)
         .sort((a, b) => b.rankedPoints - a.rankedPoints)
     : [];
 
   const unrankedPlayers = league
     ? league.players
-        .filter(p => p.gamesPlayed < RANKED_GAMES_THRESHOLD)
+        .filter(p => p.gamesPlayed < rankedGamesThreshold)
         .sort((a, b) => b.gamesPlayed - a.gamesPlayed || a.player._id.localeCompare(b.player._id))
     : [];
 
@@ -153,7 +153,7 @@ const RankedLeague: React.FC = () => {
           {unrankedPlayers.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Unranked</h2>
-              <p className="text-sm text-gray-500 mb-4">Less than {RANKED_GAMES_THRESHOLD} games — not yet eligible for the leaderboard</p>
+              <p className="text-sm text-gray-500 mb-4">Less than {rankedGamesThreshold} games — not yet eligible for the leaderboard</p>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>

@@ -8,7 +8,6 @@ import { CalculatorIcon } from '@heroicons/react/24/outline';
 
 const MEETUP_URL = 'https://www.meetup.com/charleston-riichi-mahjong/events/';
 const DISCORD_URL = 'https://discord.gg/xhZtZZF3Jk';
-const RANKED_GAMES_THRESHOLD = 3;
 const PLAYER_SEATS = ['East', 'South', 'West', 'North'];
 
 const CLUB_PHOTOS = [
@@ -57,6 +56,7 @@ const Home: React.FC = () => {
   const { data: leagueResponse, loading: leagueLoading } = useApi<ApiResponse<{ league: RankedLeague }>>(getLeague);
 
   const league = leagueResponse?.data?.league ?? null;
+  const rankedGamesThreshold = league?.rankedGamesThreshold ?? 0;
 
   const isRegistered = league && user
     ? league.players.some((p: RankedLeaguePlayer) => p.player._id === user._id)
@@ -72,11 +72,11 @@ const Home: React.FC = () => {
 
   const rankedPlayers: RankedLeaguePlayer[] = league
     ? league.players
-        .filter((p: RankedLeaguePlayer) => p.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+        .filter((p: RankedLeaguePlayer) => p.gamesPlayed >= rankedGamesThreshold)
         .sort((a: RankedLeaguePlayer, b: RankedLeaguePlayer) => b.rankedPoints - a.rankedPoints)
     : [];
 
-  const userRank: number | null = userEntry && userEntry.gamesPlayed >= RANKED_GAMES_THRESHOLD
+  const userRank: number | null = userEntry && userEntry.gamesPlayed >= rankedGamesThreshold
     ? rankedPlayers.findIndex((p: RankedLeaguePlayer) => p.player._id === user!._id) + 1
     : null;
 
@@ -115,9 +115,9 @@ const Home: React.FC = () => {
                   Join →
                 </Link>
               </>
-            ) : userEntry && userEntry.gamesPlayed < RANKED_GAMES_THRESHOLD ? (
+            ) : userEntry && userEntry.gamesPlayed < rankedGamesThreshold ? (
               <>
-                <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / {RANKED_GAMES_THRESHOLD} games complete</div>
+                <div className="font-semibold text-gray-900">Qualifying — {userEntry.gamesPlayed} / {rankedGamesThreshold} games complete</div>
                 {daysRemaining !== null && (
                   <div className="text-xs text-gray-500 mt-0.5">{daysRemaining} days remaining</div>
                 )}

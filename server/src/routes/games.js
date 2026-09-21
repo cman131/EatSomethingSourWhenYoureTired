@@ -292,36 +292,44 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
       });
     }
 
-    game.verified = true;
-    game.verifiedBy = req.user._id;
-    game.verifiedAt = new Date();
+    // Flip verified atomically so concurrent requests cannot both pass and double-award points
+    const verifiedGame = await Game.findOneAndUpdate(
+      { _id: game._id, verified: false },
+      { $set: { verified: true, verifiedBy: req.user._id, verifiedAt: new Date() } },
+      { new: true }
+    );
 
-    await game.save();
+    if (!verifiedGame) {
+      return res.status(400).json({
+        success: false,
+        message: 'Game is already verified'
+      });
+    }
 
     try {
-      await awardGamePoints(game, req.user._id);
+      await awardGamePoints(verifiedGame, req.user._id);
     } catch (err) {
       console.error('Failed to award game points:', err);
     }
 
-    if (game.isRanked) {
+    if (verifiedGame.isRanked) {
       try {
-        await updateRankedPoints(game);
+        await updateRankedPoints(verifiedGame);
       } catch (err) {
         console.error('Failed to update ranked points:', err);
       }
     }
 
-    await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
-    await game.populate('players.player', PLAYER_POPULATE_FIELDS);
-    await game.populate('verifiedBy', PLAYER_POPULATE_FIELDS);
-    await game.populate('comments.commenter', PLAYER_POPULATE_FIELDS);
+    await verifiedGame.populate('submittedBy', PLAYER_POPULATE_FIELDS);
+    await verifiedGame.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await verifiedGame.populate('verifiedBy', PLAYER_POPULATE_FIELDS);
+    await verifiedGame.populate('comments.commenter', PLAYER_POPULATE_FIELDS);
 
     res.json({
       success: true,
       message: 'Game verified successfully',
       data: {
-        game
+        game: verifiedGame
       }
     });
   } catch (error) {

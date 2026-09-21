@@ -1079,6 +1079,14 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
       });
     }
 
+    // Ending a round of a finished tournament would re-run completion (and re-award its points)
+    if (tournament.status === 'Completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Tournament is already completed'
+      });
+    }
+
     const round = tournament.rounds.find(r => r.roundNumber === roundNumber);
 
     if (!round) {

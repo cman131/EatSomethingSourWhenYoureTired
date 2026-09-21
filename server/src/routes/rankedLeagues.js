@@ -1,9 +1,16 @@
 const express = require('express');
-const { getCurrentLeague } = require('../utils/rankedLeagueService');
+const { getCurrentLeague, RANKED_GAMES_THRESHOLD } = require('../utils/rankedLeagueService');
 const { PLAYER_POPULATE_FIELDS } = require('../models/User');
-const { awardPoints } = require('../utils/pointsService');
 
 const router = express.Router();
+
+async function toLeagueResponse(league) {
+  await league.populate('players.player', PLAYER_POPULATE_FIELDS);
+  const leagueObj = league.toObject();
+  leagueObj.players = leagueObj.players.sort((a, b) => b.rankedPoints - a.rankedPoints);
+  leagueObj.rankedGamesThreshold = RANKED_GAMES_THRESHOLD;
+  return leagueObj;
+}
 
 // @route   GET /api/ranked-leagues/current
 // @desc    Get the current ranked league with sorted players
@@ -11,12 +18,9 @@ const router = express.Router();
 router.get('/current', async (req, res) => {
   try {
     const league = await getCurrentLeague();
-    await league.populate('players.player', PLAYER_POPULATE_FIELDS);
-    const leagueObj = league.toObject();
-    leagueObj.players = leagueObj.players.sort((a, b) => b.rankedPoints - a.rankedPoints);
     res.json({
       success: true,
-      data: { league: leagueObj }
+      data: { league: await toLeagueResponse(league) }
     });
   } catch (error) {
     console.error('Get ranked league error:', error);
@@ -38,20 +42,11 @@ router.post('/current/join', async (req, res) => {
     if (!alreadyJoined) {
       league.players.push({ player: req.user._id, rankedPoints: 500 });
       await league.save();
-      try {
-        await awardPoints(req.user._id, 'ranked_league_qualified', 10, { leagueId: league._id });
-      } catch (err) {
-        console.error('Failed to award ranked league qualification points:', err);
-      }
     }
-
-    await league.populate('players.player', PLAYER_POPULATE_FIELDS);
-    const leagueObj = league.toObject();
-    leagueObj.players = leagueObj.players.sort((a, b) => b.rankedPoints - a.rankedPoints);
 
     res.json({
       success: true,
-      data: { league: leagueObj }
+      data: { league: await toLeagueResponse(league) }
     });
   } catch (error) {
     console.error('Join ranked league error:', error);
