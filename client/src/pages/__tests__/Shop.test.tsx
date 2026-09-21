@@ -156,6 +156,23 @@ describe('Shop page', () => {
     fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
 
     await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('item1', 'nameColor'));
+    expect(await screen.findByText('Equipped Jade Green!')).toBeInTheDocument();
+  });
+
+  test('shows an error message when equipping fails', async () => {
+    shopApi.equip.mockReset();
+    shopApi.equip.mockRejectedValue(new Error('boom'));
+    const ownedItem = mockCatalog.nameColor[0];
+    mockShopUseApi(mockCatalog, {
+      ...mockInventory,
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+    });
+
+    render(<Shop />);
+    fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+    expect(await screen.findByText('Failed to equip item. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText(/^Equipped /)).toBeNull();
   });
 
   test('clicking Equipped unequips the item', async () => {
@@ -172,6 +189,7 @@ describe('Shop page', () => {
     fireEvent.click(screen.getByRole('button', { name: /equipped/i }));
 
     await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith(null, 'nameColor'));
+    expect(await screen.findByText('Unequipped Jade Green')).toBeInTheDocument();
   });
 
   test('only the item whose value is equipped shows the Equipped badge', () => {
@@ -206,6 +224,26 @@ describe('Shop page', () => {
     const card = screen.getByTestId('flair-item-card-gold1');
     // eslint-disable-next-line testing-library/no-node-access -- sparkles are decorative aria-hidden spans with no accessible query
     expect(card.querySelectorAll('.flair-sparkle')).toHaveLength(3);
+  });
+
+  test('hovering a premium name color shows sparkles in the preview', () => {
+    const catalog = {
+      ...mockCatalog,
+      nameColor: [
+        { _id: 'gold1', name: 'Mahjong Gold', description: 'Gold', category: 'nameColor', cost: 300, value: 'flair-color-gold', tier: 'premium', sortOrder: 1, isActive: true } as ShopItem,
+      ],
+    };
+    mockShopUseApi(catalog);
+
+    render(<Shop />);
+    fireEvent.mouseEnter(screen.getByTestId('flair-item-card-gold1'));
+
+    const previewBox = screen.getByTestId('preview-box');
+    // eslint-disable-next-line testing-library/no-node-access -- sparkles are decorative aria-hidden elements with no accessible query
+    expect(previewBox.querySelectorAll('.flair-sparkle')).toHaveLength(3);
+    const nameSpan = screen.getByText('Your Name');
+    expect(nameSpan).toHaveClass('flair-color-gold');
+    expect(nameSpan).not.toHaveClass('text-gray-900');
   });
 
   test('a mid icon previews with the shared glow class', () => {
