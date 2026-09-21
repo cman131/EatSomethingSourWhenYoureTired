@@ -60,17 +60,47 @@ const GAME_PLACEMENT_TYPES = {
 const GAME_PLACEMENT_AMOUNTS = { 1: 10, 2: 7, 3: 4, 4: 2 };
 const GAME_SUBMITTED_AMOUNT = 2;
 const GAME_VERIFIED_AMOUNT = 1;
+const GAME_POINT_TYPES = [...Object.values(GAME_PLACEMENT_TYPES), 'game_submitted', 'game_verified'];
+const GAME_DAILY_CAP = 60;
+const GAME_DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function logCappedAward(details) {
+  console.warn('Points award capped', details);
+}
+
+// Pays at most the headroom left under the daily cap; writes no row when there is none.
+async function awardCappedPoints(userId, type, amount, metadata) {
+  const since = new Date(Date.now() - GAME_DAILY_WINDOW_MS);
+  const earned = await getRecentEarnings(userId, GAME_POINT_TYPES, since);
+  const granted = Math.max(0, Math.min(amount, GAME_DAILY_CAP - earned));
+
+  if (granted < amount) {
+    logCappedAward({
+      userId,
+      gameId: metadata.gameId,
+      type,
+      requested: amount,
+      granted,
+      reason: 'daily_cap',
+    });
+  }
+  if (granted === 0) {
+    return;
+  }
+
+  await awardPoints(userId, type, granted, metadata);
+}
 
 async function awardGamePoints(game, verifierId) {
   const gameId = game._id;
 
   const playerAwards = game.players.map(({ player, rank }) =>
-    awardPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], { gameId })
+    awardCappedPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], { gameId })
   );
   await Promise.all(playerAwards);
 
-  await awardPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, { gameId });
-  await awardPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, { gameId });
+  await awardCappedPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, { gameId });
+  await awardCappedPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, { gameId });
 }
 
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;

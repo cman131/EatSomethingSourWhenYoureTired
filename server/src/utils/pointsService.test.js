@@ -276,6 +276,119 @@ describe('awardGamePoints', () => {
     expect(await PointTransaction.countDocuments({ user: guest._id })).toBe(0);
     expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_placement_1' })).toBe(1);
   });
+
+  describe('caps', () => {
+    const HOUR = 60 * 60 * 1000;
+
+    const newGame = (users, submitter) => ({
+      _id: new mongoose.Types.ObjectId(),
+      players: users.map((u, i) => ({ player: u._id, rank: i + 1 })),
+      submittedBy: submitter._id,
+    });
+    const seedEarning = (target, amount, ageMs) =>
+      PointTransaction.create({
+        user: target._id,
+        type: 'game_placement_1',
+        amount,
+        createdAt: new Date(Date.now() - ageMs),
+      });
+    const gameRowsFor = (target, game) =>
+      PointTransaction.find({ user: target._id, 'metadata.gameId': game._id });
+    const balanceOf = async target => (await User.findById(target._id)).pointsBalance;
+
+    let warnSpy;
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    describe('daily cap', () => {
+      test('pays in full when the awards land exactly on the cap', async () => {
+        await seedEarning(p1, 48, HOUR);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        const rows = await gameRowsFor(p1, game);
+        expect(rows.map(r => r.amount).sort((a, b) => a - b)).toEqual([2, 10]); // placement_1 + submitted
+        expect(warnSpy).not.toHaveBeenCalled();
+      });
+
+      test('truncates an award that would exceed the cap to the remaining headroom', async () => {
+        await seedEarning(p1, 55, HOUR);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        const placement = await PointTransaction.findOne({
+          user: p1._id,
+          type: 'game_placement_1',
+          'metadata.gameId': game._id,
+        });
+        expect(placement.amount).toBe(5);
+        expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_submitted' })).toBe(0);
+        expect(await balanceOf(p1)).toBe(5);
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Points award capped',
+          expect.objectContaining({
+            userId: p1._id,
+            gameId: game._id,
+            type: 'game_placement_1',
+            requested: 10,
+            granted: 5,
+            reason: 'daily_cap',
+          })
+        );
+      });
+
+      test('pays nothing and writes no row once the cap is reached', async () => {
+        await seedEarning(p1, 60, HOUR);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await gameRowsFor(p1, game)).toHaveLength(0);
+        expect(await balanceOf(p1)).toBe(0);
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Points award capped',
+          expect.objectContaining({ userId: p1._id, granted: 0, reason: 'daily_cap' })
+        );
+      });
+
+      test('does not count earnings older than 24 hours', async () => {
+        await seedEarning(p1, 60, 25 * HOUR);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await balanceOf(p1)).toBe(12); // 10 placement + 2 submitted, uncapped
+      });
+
+      test("does not let one player's earnings limit another player", async () => {
+        await seedEarning(p1, 60, HOUR);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p3._id);
+
+        expect(await balanceOf(p2)).toBe(7);
+      });
+
+      test('still pays tournament awards to a player who is at the game cap', async () => {
+        await seedEarning(p1, 60, HOUR);
+        const tournament = {
+          _id: new mongoose.Types.ObjectId(),
+          players: [{ player: p1._id, dropped: false }],
+          top4: [p1._id],
+        };
+
+        await awardTournamentPoints(tournament);
+
+        expect(await balanceOf(p1)).toBe(215); // 15 participation + 200 for 1st
+      });
+    });
+  });
 });
 
 describe('awardTournamentPoints', () => {
