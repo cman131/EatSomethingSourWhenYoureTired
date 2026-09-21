@@ -152,7 +152,9 @@ const Shop: React.FC = () => {
             Your Name
           </span>
           {previewTitleItem && (
-            <TitleBadge value={previewTitleItem.value} tier={previewTitleItem.tier} />
+            <span data-testid="preview-title-badge">
+              <TitleBadge value={previewTitleItem.value} tier={previewTitleItem.tier} />
+            </span>
           )}
         </div>
       </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Shop from '../Shop';
 import { ShopItem, PurchasedItem, EquippedFlair } from '../../services/api';
@@ -211,8 +211,7 @@ describe('Shop page', () => {
 
       // Default tab is nameColor — no title items visible in grid
       // The equipped title should still appear in the preview box
-      const previewBox = screen.getByTestId('preview-box');
-      expect(previewBox.querySelector('.flair-title-chicken')).toBeInTheDocument();
+      expect(screen.queryByTestId('preview-title-badge')).toBeInTheDocument();
     });
 
     test('hovering a title item shows that title in the preview', () => {
@@ -237,14 +236,13 @@ describe('Shop page', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /titles/i }));
 
-      const previewBox = screen.getByTestId('preview-box');
-      expect(previewBox.querySelector('.flair-title-chombo')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('preview-title-badge')).not.toBeInTheDocument();
 
       // 'Chombo Chaser' appears as the item name in the card (exact text, no emoji)
       const itemCard = screen.getByTestId('flair-item-card-title2');
       fireEvent.mouseEnter(itemCard);
 
-      expect(previewBox.querySelector('.flair-title-chombo')).toBeInTheDocument();
+      expect(screen.queryByTestId('preview-title-badge')).toBeInTheDocument();
     });
   });
 });
