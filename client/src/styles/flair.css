@@ -233,9 +233,12 @@
 
 /* Premium name sparkles: siblings of the clipped name span (not children), so they keep
    their own color. Sized in em so they scale with the name. */
+/* text-decoration is not propagated into inline-block descendants, so inherit it
+   explicitly to keep a parent's hover:underline working on premium names. */
 .flair-sparkle-wrap {
   position: relative;
   display: inline-block;
+  text-decoration: inherit;
 }
 
 .flair-sparkle {

@@ -13,6 +13,7 @@ interface FlairNameProps {
 // The color class goes on a span holding only the name text. Gradient text is made
 // transparent for background-clip, and that would blank anything nested inside it, so
 // icons, the "(You)" tag and the sparkles are rendered outside this span.
+// Do not place inside truncate/overflow-hidden ancestors: the premium sparkles overflow the text box and would be clipped.
 const FlairName: React.FC<FlairNameProps> = ({
   name,
   colorValue,
