@@ -21,11 +21,14 @@ const PointsSection: React.FC<PointsSectionProps> = ({ user, isOwnProfile }) => 
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="text-center">
-          <p className="text-sm text-gray-500">Balance</p>
-          <p className="text-3xl font-bold text-indigo-600">{balance}</p>
-        </div>
+      {/* Spendable balance is owner-only: the server omits it from other members' responses. */}
+      <div className={isOwnProfile ? 'grid grid-cols-2 gap-4' : 'grid grid-cols-1 gap-4'}>
+        {isOwnProfile && (
+          <div className="text-center">
+            <p className="text-sm text-gray-500">Balance</p>
+            <p className="text-3xl font-bold text-indigo-600">{balance}</p>
+          </div>
+        )}
         <div className="text-center">
           <p className="text-sm text-gray-500">Total Earned</p>
           <p className="text-3xl font-bold text-gray-800">{totalEarned}</p>

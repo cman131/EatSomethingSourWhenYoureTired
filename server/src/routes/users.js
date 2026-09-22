@@ -6,6 +6,7 @@ const DiscardQuiz = require('../models/DiscardQuiz');
 const { validateUserUpdate } = require('../middleware/validation');
 const ShopItem = require('../models/ShopItem');
 const { validateShowcase, ShowcaseEntryType } = require('../utils/showcaseService');
+const { toUserProfileResponse } = require('../utils/userProfileContract');
 
 const router = express.Router();
 
@@ -682,7 +683,7 @@ router.get('/:id', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: user.toJSON()
+        user: toUserProfileResponse(user, req.user)
       }
     });
   } catch (error) {
