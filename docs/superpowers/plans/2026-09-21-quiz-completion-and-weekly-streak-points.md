@@ -1125,17 +1125,17 @@ describe('awardQuizCompletionPoints', () => {
   });
 
   test('resets the cap the following week', async () => {
-    const lastWeekTx = await PointTransaction.create([1, 2, 3, 4, 5].map(i => ({
+    // Mongoose marks `createdAt` immutable when timestamps:true, which makes updateOne/updateMany
+    // silently drop writes to it — go through the raw collection to backdate these fixture rows.
+    const backdated = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await PointTransaction.collection.insertMany([1, 2, 3, 4, 5].map(i => ({
       user: user._id, type: 'quiz_completed', amount: 1, metadata: { quizId: `last-week-${i}` },
+      createdAt: backdated, updatedAt: backdated,
     })));
-    await PointTransaction.updateMany(
-      { _id: { $in: lastWeekTx.map(tx => tx._id) } },
-      { $set: { createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) } }
-    );
 
     await awardQuizCompletionPoints(user._id, 'this-week-1');
 
-    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed', metadata: { quizId: 'this-week-1' } })).toBe(1);
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed', 'metadata.quizId': 'this-week-1' })).toBe(1);
   });
 });
 ```

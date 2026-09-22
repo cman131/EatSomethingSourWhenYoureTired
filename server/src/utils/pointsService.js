@@ -10,8 +10,11 @@ const {
   TOURNAMENT_PLACEMENT_AMOUNTS,
   RANKED_QUALIFICATION_AMOUNT,
   RANKED_PLACEMENT_AMOUNTS,
+  QUIZ_COMPLETION_AMOUNT,
+  QUIZ_WEEKLY_CAP_COUNT,
 } = require('./pointsConfig');
 const { recordAward, recordAwardOnce } = require('./pointsLedger');
+const { getWeekStart, getWeekEnd } = require('./weekWindow');
 
 // One query resolves the guests for the whole batch rather than one lookup per award.
 async function excludeGuestAwards(awards) {
@@ -168,6 +171,33 @@ async function awardRankedSeasonPlacementPoints(league) {
   await awardAllOnce(placementAwards);
 }
 
+async function hasQuizWeeklyCapRoom(userId, referenceDate = new Date()) {
+  const weekStart = getWeekStart(referenceDate);
+  const weekEnd = getWeekEnd(weekStart);
+  const earnedThisWeek = await PointTransaction.countDocuments({
+    user: userId,
+    type: 'quiz_completed',
+    createdAt: { $gte: weekStart, $lt: weekEnd },
+  });
+  return earnedThisWeek < QUIZ_WEEKLY_CAP_COUNT;
+}
+
+// Awards +QUIZ_COMPLETION_AMOUNT once per (user, quizId) via the ledger's unique index, unless the
+// user has already hit the weekly quiz cap. GET /generate/random (decisionQuizzes.js, discardQuizzes.js)
+// can produce unlimited quizzes on demand, so the cap is what keeps this path from being farmable.
+async function awardQuizCompletionPoints(userId, quizId) {
+  const eligibleAwards = await excludeGuestAwards([
+    { userId, type: 'quiz_completed', amount: QUIZ_COMPLETION_AMOUNT, metadata: { quizId } },
+  ]);
+  if (eligibleAwards.length === 0) {
+    return;
+  }
+  if (!(await hasQuizWeeklyCapRoom(userId))) {
+    return;
+  }
+  await recordAwardOnce(eligibleAwards[0]);
+}
+
 module.exports = {
   awardPoints,
   spendPoints,
@@ -175,4 +205,5 @@ module.exports = {
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
+  awardQuizCompletionPoints,
 };
