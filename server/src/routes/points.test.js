@@ -197,6 +197,19 @@ describe('GET /api/points/me/history context', () => {
     });
   });
 
+  test('labels a game points reversal with the game date, via reversedGameId', async () => {
+    const game = await createUnvalidated(Game, { gameDate: new Date('2026-03-04T12:00:00Z') });
+    await PointTransaction.create({
+      user: user._id, type: 'game_points_reversal', amount: -10, metadata: { reversedGameId: game._id },
+    });
+
+    const tx = await getOnlyItem();
+
+    expect(tx.context).toEqual({
+      kind: 'game', id: game._id.toString(), label: 'Game played 2026-03-04', missing: false,
+    });
+  });
+
   test('labels a ranked season award with the season start date', async () => {
     const league = await createUnvalidated(RankedLeague, { startDate: new Date('2026-01-15T00:00:00Z') });
     await PointTransaction.create({

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const RankedLeague = require('../models/RankedLeague');
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
-const { getCurrentLeague, updateRankedPoints, RANKED_GAMES_THRESHOLD } = require('./rankedLeagueService');
+const { getCurrentLeague, updateRankedPoints, reverseRankedPoints, RANKED_GAMES_THRESHOLD } = require('./rankedLeagueService');
 
 beforeAll(async () => {
   const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/mahjong-test';
@@ -182,6 +182,128 @@ describe('updateRankedPoints', () => {
       const league = await currentLeague();
       expect(find(league, p1Id).gamesPlayed).toBe(2);
     });
+  });
+});
+
+describe('reverseRankedPoints', () => {
+  const p1Id = new mongoose.Types.ObjectId();
+  const p2Id = new mongoose.Types.ObjectId();
+  const p3Id = new mongoose.Types.ObjectId();
+  const p4Id = new mongoose.Types.ObjectId();
+
+  beforeEach(async () => {
+    await RankedLeague.deleteMany({});
+    await RankedLeague.create({
+      startDate: new Date(),
+      players: [
+        { player: p1Id, rankedPoints: 500, gamesPlayed: 0 },
+        { player: p2Id, rankedPoints: 500, gamesPlayed: 0 },
+        { player: p3Id, rankedPoints: 500, gamesPlayed: 0 },
+        { player: p4Id, rankedPoints: 500, gamesPlayed: 0 },
+      ]
+    });
+  });
+
+  const currentLeague = () => RankedLeague.findOne().sort({ startDate: -1 });
+  const find = (league, id) => league.players.find(p => p.player.toString() === id.toString());
+
+  const makeGame = () => ({
+    _id: new mongoose.Types.ObjectId(),
+    isRanked: true,
+    players: [
+      { player: p1Id, score: 40000, rank: 1 },
+      { player: p2Id, score: 32000, rank: 2 },
+      { player: p3Id, score: 25000, rank: 3 },
+      { player: p4Id, score: 23000, rank: 4 },
+    ],
+  });
+
+  test('undoes the rankedPoints and gamesPlayed applied by updateRankedPoints', async () => {
+    const game = makeGame();
+    await updateRankedPoints(game);
+
+    await reverseRankedPoints(game);
+
+    const league = await currentLeague();
+    expect(find(league, p1Id).rankedPoints).toBe(500);
+    expect(find(league, p1Id).gamesPlayed).toBe(0);
+  });
+
+  test('removes the game id from appliedGames', async () => {
+    const game = makeGame();
+    await updateRankedPoints(game);
+
+    await reverseRankedPoints(game);
+
+    const league = await currentLeague();
+    expect(league.appliedGames.map(String)).not.toContain(game._id.toString());
+  });
+
+  test('is idempotent: a repeat call does not double-subtract', async () => {
+    const game = makeGame();
+    await updateRankedPoints(game);
+
+    await reverseRankedPoints(game);
+    await reverseRankedPoints(game);
+
+    const league = await currentLeague();
+    expect(find(league, p1Id).rankedPoints).toBe(500);
+    expect(find(league, p1Id).gamesPlayed).toBe(0);
+  });
+
+  test('does nothing for an unranked game', async () => {
+    const game = { ...makeGame(), isRanked: false };
+
+    await expect(reverseRankedPoints(game)).resolves.not.toThrow();
+  });
+
+  test('does nothing for a game that was never applied', async () => {
+    const game = makeGame();
+
+    await expect(reverseRankedPoints(game)).resolves.not.toThrow();
+    const league = await currentLeague();
+    expect(find(league, p1Id).gamesPlayed).toBe(0);
+  });
+
+  test('adjusts the season the game was verified in, not the current season', async () => {
+    const oldSeason = await RankedLeague.create({
+      startDate: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000),
+      players: [{ player: p1Id, rankedPoints: 500, gamesPlayed: 0 }],
+    });
+    const game = { _id: new mongoose.Types.ObjectId(), isRanked: true, players: [{ player: p1Id, score: 40000, rank: 1 }] };
+    oldSeason.players[0].rankedPoints += 40;
+    oldSeason.players[0].gamesPlayed += 1;
+    oldSeason.appliedGames.push(game._id);
+    await oldSeason.save();
+
+    await reverseRankedPoints(game);
+
+    const reloadedOld = await RankedLeague.findById(oldSeason._id);
+    expect(reloadedOld.players[0].rankedPoints).toBe(500);
+    expect(reloadedOld.players[0].gamesPlayed).toBe(0);
+    const current = await currentLeague();
+    expect(current._id.toString()).not.toBe(oldSeason._id.toString());
+  });
+
+  test('does not touch a player who is not in the league', async () => {
+    const outsiderId = new mongoose.Types.ObjectId();
+    const game = {
+      _id: new mongoose.Types.ObjectId(),
+      isRanked: true,
+      players: [
+        { player: outsiderId, score: 40000, rank: 1 },
+        { player: p2Id, score: 32000, rank: 2 },
+        { player: p3Id, score: 25000, rank: 3 },
+        { player: p4Id, score: 23000, rank: 4 },
+      ],
+    };
+    await updateRankedPoints(game);
+
+    await expect(reverseRankedPoints(game)).resolves.not.toThrow();
+
+    const league = await currentLeague();
+    expect(find(league, outsiderId)).toBeUndefined();
+    expect(find(league, p2Id).gamesPlayed).toBe(0);
   });
 });
 

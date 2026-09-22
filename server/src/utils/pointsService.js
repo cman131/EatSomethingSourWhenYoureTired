@@ -216,6 +216,66 @@ async function awardGamePoints(game, verifierId) {
   await Game.updateOne({ _id: gameId }, { $set: { pointsAwardedAt: new Date() } });
 }
 
+// Records a negative counterpart for every game-scoped transaction on this game, preserving the
+// original rows so a player's points history still shows what was paid and why it was taken back.
+// Used when a verified game is deleted. Keyed on the source transaction rather than the game, since
+// one user can have more than one transaction for the same game (e.g. placement + submitted).
+// Idempotent per transaction via recordAwardOnce: a repeat call skips any row already reversed, and
+// one failing reversal never blocks the others. A player who already spent the points can go
+// negative here — same as everywhere else $inc touches pointsBalance, nothing enforces its schema
+// min of 0 outside a validated .save().
+async function reverseGamePoints(gameId) {
+  const originals = await PointTransaction.find({
+    'metadata.gameId': gameId,
+    type: { $in: GAME_POINT_TYPES },
+  }).lean();
+
+  const results = await Promise.allSettled(
+    originals.map(tx => recordAwardOnce({
+      userId: tx.user,
+      type: 'game_points_reversal',
+      amount: -tx.amount,
+      metadata: { reversedGameId: gameId, reversalOf: tx._id },
+    }))
+  );
+
+  const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+  if (failures.length > 0) {
+    throw new AggregateError(failures, `Failed to reverse ${failures.length} of ${originals.length} points for game ${gameId}`);
+  }
+}
+
+// Undoes the effect of the transaction the same way recordAward applied it, then removes the row.
+// Unlike reverseGamePoints this leaves no ledger trace, which is fine here: the game document
+// persists and gamePointsReplay.js can freely re-award it once pointsAwardedAt is cleared.
+async function removeAward(transaction) {
+  await User.updateOne(
+    { _id: transaction.user },
+    { $inc: { pointsBalance: -transaction.amount, totalPointsEarned: -transaction.amount } }
+  );
+  try {
+    await PointTransaction.deleteOne({ _id: transaction._id });
+  } catch (cleanupError) {
+    console.error(
+      `Point ledger drift: transaction ${transaction._id} was reversed on the balance but the row could not be removed`,
+      cleanupError
+    );
+  }
+}
+
+// Deletes the game-scoped transactions for a game and reverses their effect on each user's balance,
+// so the game can be re-awarded from scratch after an admin corrects its scores. Clears
+// pointsAwardedAt so the game reads as "not yet awarded" again.
+async function undoGamePoints(gameId) {
+  const originals = await PointTransaction.find({
+    'metadata.gameId': gameId,
+    type: { $in: GAME_POINT_TYPES },
+  });
+
+  await Promise.all(originals.map(removeAward));
+  await Game.updateOne({ _id: gameId }, { $unset: { pointsAwardedAt: 1 } });
+}
+
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;
 
 const TOURNAMENT_PLACEMENT_TYPES = [
@@ -310,6 +370,8 @@ module.exports = {
   getRecentEarnings,
   spendPoints,
   awardGamePoints,
+  reverseGamePoints,
+  undoGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
