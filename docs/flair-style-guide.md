@@ -11,6 +11,7 @@ The shop has three purchasable tiers, plus a fourth earn-only tier (Prestige, be
 | Entry | Flat, clean, simple | None | 50–75 pts |
 | Mid | Richer, textured, gradient or glow | None | 100–175 pts |
 | Premium | Bold, animated, striking | Yes | 250–300 pts |
+| Prestige | Dark, gold-lettered, earn-only | None | Not purchasable |
 
 | Category | Entry | Mid | Premium |
 |---|---|---|---|

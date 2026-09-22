@@ -121,6 +121,19 @@ describe('grantEarnedTitle', () => {
     expect(await PointTransaction.countDocuments({ user: player._id })).toBe(0);
   });
 
+  // Closes the loop between the grant service and the shop's own purchasability rule (Task 8):
+  // an item this function creates must actually be excluded, not just carry fields that look right.
+  test('the granted item is excluded from the shop by isPurchasable and purchasableItemsFilter', async () => {
+    const { isPurchasable, purchasableItemsFilter } = require('./shopService');
+    const refId = newRefId();
+
+    const item = await grantSpring(player._id, refId);
+
+    expect(isPurchasable(item)).toBe(false);
+    const listed = await ShopItem.findOne({ _id: item._id, ...purchasableItemsFilter() });
+    expect(listed).toBeNull();
+  });
+
   test('does not grant to guest users', async () => {
     const guest = await User.create({ displayName: 'test-grant-guest', isGuest: true });
 
