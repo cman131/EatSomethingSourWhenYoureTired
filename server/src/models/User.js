@@ -168,6 +168,15 @@ const userSchema = new mongoose.Schema({
     profileBorder: { type: String, default: null },
     title:         { type: String, default: null },
   },
+  // Up to MAX_FLAIR_LOADOUTS (server/src/utils/flairLoadoutService.js) named looks a player can
+  // save and one-click apply. Same slot shape as equippedFlair.
+  flairLoadouts: [{
+    name:          { type: String, required: [true, 'Loadout name is required'], trim: true, minlength: 1, maxlength: 30 },
+    nameColor:     { type: String, default: null },
+    nameIcon:      { type: String, default: null },
+    profileBorder: { type: String, default: null },
+    title:         { type: String, default: null },
+  }],
 }, {
   timestamps: true
 });

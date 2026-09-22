@@ -107,3 +107,69 @@ describe('User flair fields', () => {
     expect(found.equippedFlair.nameColor).toBe(item.value);
   });
 });
+
+describe('User flairLoadouts', () => {
+  test('new user has an empty flairLoadouts array', async () => {
+    const user = await User.create({
+      displayName: 'test-flair-loadouts-new',
+      email: 'test-flair-loadouts-new@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    });
+
+    expect(user.flairLoadouts).toHaveLength(0);
+  });
+
+  test('can add a flairLoadout with all four slots', async () => {
+    const user = await User.create({
+      displayName: 'test-flair-loadouts-add',
+      email: 'test-flair-loadouts-add@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    });
+
+    user.flairLoadouts.push({
+      name: 'Tournament Look',
+      nameColor: 'flair-color-gold',
+      nameIcon: '🐉',
+      profileBorder: 'flair-border-hanabi',
+      title: 'Chicken Farmer',
+    });
+    await user.save();
+
+    const found = await User.findById(user._id);
+    expect(found.flairLoadouts).toHaveLength(1);
+    expect(found.flairLoadouts[0].name).toBe('Tournament Look');
+    expect(found.flairLoadouts[0].nameColor).toBe('flair-color-gold');
+    expect(found.flairLoadouts[0].title).toBe('Chicken Farmer');
+  });
+
+  test('a flairLoadout slot defaults to null when omitted', async () => {
+    const user = await User.create({
+      displayName: 'test-flair-loadouts-partial',
+      email: 'test-flair-loadouts-partial@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    });
+
+    user.flairLoadouts.push({ name: 'Just a color', nameColor: 'flair-color-pink' });
+    await user.save();
+
+    const found = await User.findById(user._id);
+    expect(found.flairLoadouts[0].nameIcon).toBeNull();
+    expect(found.flairLoadouts[0].profileBorder).toBeNull();
+    expect(found.flairLoadouts[0].title).toBeNull();
+  });
+
+  test('rejects a flairLoadout with no name', async () => {
+    const user = await User.create({
+      displayName: 'test-flair-loadouts-noname',
+      email: 'test-flair-loadouts-noname@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+    });
+
+    user.flairLoadouts.push({ nameColor: 'flair-color-pink' });
+    await expect(user.save()).rejects.toThrow();
+  });
+});
