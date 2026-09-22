@@ -494,6 +494,92 @@ describe('POST /api/shop/loadouts', () => {
   });
 });
 
+describe('PUT /api/shop/loadouts/:loadoutId', () => {
+  let loadoutId;
+
+  beforeEach(async () => {
+    await User.findByIdAndUpdate(user._id, {
+      $push: { purchasedItems: { item: item._id } },
+    });
+    const created = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'Original', nameColor: item.value });
+    loadoutId = created.body.data._id;
+  });
+
+  test('renames a loadout without changing its slots', async () => {
+    const res = await request(app)
+      .put(`/api/shop/loadouts/${loadoutId}`)
+      .send({ name: 'Renamed' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Renamed');
+    expect(res.body.data.nameColor).toBe(item.value);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts[0].name).toBe('Renamed');
+  });
+
+  test('replaces a slot value with another owned item', async () => {
+    const otherItem = await ShopItem.create({
+      name: 'test-shop-route-second-color',
+      description: 'Second color',
+      category: 'nameColor',
+      cost: 100,
+      value: 'text-second-color',
+    });
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: otherItem._id } } });
+
+    const res = await request(app)
+      .put(`/api/shop/loadouts/${loadoutId}`)
+      .send({ name: 'Original', nameColor: otherItem.value });
+
+    expect(res.status).toBe(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts[0].nameColor).toBe(otherItem.value);
+  });
+
+  test('returns 400 when replacing a slot with an item the user does not own', async () => {
+    const res = await request(app)
+      .put(`/api/shop/loadouts/${loadoutId}`)
+      .send({ name: 'Original', nameColor: 'not-owned-value' });
+
+    expect(res.status).toBe(400);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts[0].nameColor).toBe(item.value);
+  });
+
+  test('returns 404 for a loadout id that does not belong to the user', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app)
+      .put(`/api/shop/loadouts/${fakeId}`)
+      .send({ name: 'Nope' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('returns 400 for an empty name', async () => {
+    const res = await request(app)
+      .put(`/api/shop/loadouts/${loadoutId}`)
+      .send({ name: '' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('returns 400 for a non-string name and leaves the loadout unchanged', async () => {
+    const res = await request(app)
+      .put(`/api/shop/loadouts/${loadoutId}`)
+      .send({ name: ['a', 'b'] });
+
+    expect(res.status).toBe(400);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts[0].name).toBe('Original');
+  });
+});
+
 describe('POST /api/shop/seed', () => {
   // The seed endpoint deactivates every non-catalog ShopItem and upserts the real catalog,
   // so it must only ever run against a dedicated test database.

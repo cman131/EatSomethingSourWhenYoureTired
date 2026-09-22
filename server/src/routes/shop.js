@@ -166,6 +166,53 @@ router.post('/loadouts', validateLoadoutName, async (req, res) => {
   }
 });
 
+// PUT /api/shop/loadouts/:loadoutId — body: any subset of { name, nameColor, nameIcon, profileBorder, title }
+router.put('/loadouts/:loadoutId', validateMongoId('loadoutId'), async (req, res) => {
+  try {
+    const { loadoutId } = req.params;
+
+    if (req.body.name !== undefined && typeof req.body.name !== 'string') {
+      return res.status(400).json({ success: false, message: 'Loadout name must be a string' });
+    }
+
+    const user = await User.findById(req.user._id).populate('purchasedItems.item');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const loadout = user.flairLoadouts.id(loadoutId);
+    if (!loadout) {
+      return res.status(404).json({ success: false, message: 'Loadout not found' });
+    }
+
+    const name = req.body.name !== undefined ? req.body.name.trim() : loadout.name;
+    if (!name || name.length > 30) {
+      return res.status(400).json({ success: false, message: 'Loadout name must be between 1 and 30 characters' });
+    }
+
+    const updatedSlots = { name };
+    for (const slot of VALID_SLOTS) {
+      updatedSlots[slot] = req.body[slot] !== undefined ? req.body[slot] : loadout[slot];
+    }
+
+    const ownedItems = user.purchasedItems.filter(p => p.item).map(p => p.item);
+    const validation = validateLoadoutSlots(ownedItems, updatedSlots);
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, message: 'Loadout includes an item you do not own' });
+    }
+
+    loadout.name = updatedSlots.name;
+    for (const slot of VALID_SLOTS) {
+      loadout[slot] = updatedSlots[slot];
+    }
+    await user.save();
+
+    res.json({ success: true, message: 'Loadout updated', data: loadout });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // POST /api/shop/seed — admin only, idempotent catalog seeding
 router.post('/seed', async (req, res) => {
   try {
