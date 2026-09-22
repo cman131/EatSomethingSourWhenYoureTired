@@ -12,6 +12,9 @@
 //
 //   add --dry-run to list what would be replayed without awarding anything
 //
+// Recommended: run with --dry-run first against production data before applying, to review what
+// would be replayed.
+//
 // --game or --since is required to replay games at all: games verified under an older points scheme
 // should never be swept up by accident. Tournaments have no such requirement — awardTournamentPoints
 // and grantTournamentChampionTitle are idempotent, so sweeping every Completed tournament on every
