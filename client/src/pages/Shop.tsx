@@ -11,6 +11,8 @@ import {
 } from '../services/api';
 import { SparklesIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import { isPremiumBorder, isMidTierBorder, isFlairEquipped } from '../utils/flairUtils';
+import { composeFlairPreview } from '../utils/flairPreview';
+import { useFlairEquip } from '../hooks/useFlairEquip';
 import FlairName from '../components/user/FlairName';
 import FlairIcon from '../components/user/FlairIcon';
 import TitleBadge from '../components/user/TitleBadge';
@@ -118,8 +120,6 @@ const Shop: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<FlairCategory>('nameColor');
   const [hoveredItem, setHoveredItem] = useState<ShopItem | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const { data: catalogRes, loading: catalogLoading } = useApi<{ data: ShopCatalog }>(
     shopApi.getCatalog,
@@ -146,6 +146,8 @@ const Shop: React.FC = () => {
 
   const refreshInventory = () => setInventoryKey(k => k + 1);
 
+  const { actionError, actionSuccess, equipItem, setActionError, setActionSuccess } = useFlairEquip(equippedFlair, refreshInventory);
+
   const handlePurchase = async (item: ShopItem) => {
     setActionError(null);
     setActionSuccess(null);
@@ -158,41 +160,12 @@ const Shop: React.FC = () => {
     }
   };
 
-  const handleEquip = async (item: ShopItem) => {
-    setActionError(null);
-    setActionSuccess(null);
-    const slot = item.category;
-    const isEquipped = isFlairEquipped(equippedFlair, item);
-    try {
-      await shopApi.equip(isEquipped ? null : item._id, slot);
-      setActionSuccess(isEquipped ? `Unequipped ${item.name}` : `Equipped ${item.name}!`);
-      refreshInventory();
-    } catch {
-      setActionError('Failed to equip item. Please try again.');
-    }
-  };
-
-  const previewUser = {
-    _id: 'preview',
-    displayName: 'Your Name',
-    equippedFlair: hoveredItem
-      ? { ...equippedFlair, [hoveredItem.category]: hoveredItem.value }
-      : equippedFlair,
-  };
-
-  const previewNameColor = previewUser.equippedFlair.nameColor ?? null;
-  const previewIcon = previewUser.equippedFlair.nameIcon ?? '';
-  const previewBorder = previewUser.equippedFlair.profileBorder ?? '';
-  const previewNeedsGradientBorder = isPremiumBorder(previewBorder) || isMidTierBorder(previewBorder);
-
-  const previewTitleValue = previewUser.equippedFlair.title;
   const knownTitleItems = [
     ...(catalog?.title ?? []),
     ...ownedItems.filter(i => i.category === 'title' && !catalogIds.has(i._id)),
   ];
-  const previewTitleItem = previewTitleValue
-    ? knownTitleItems.find(i => i.value === previewTitleValue) ?? null
-    : null;
+  const preview = composeFlairPreview(equippedFlair, hoveredItem, knownTitleItems);
+  const previewNeedsGradientBorder = isPremiumBorder(preview.border) || isMidTierBorder(preview.border);
 
   const currentItems: ShopItem[] = catalog?.[activeTab] ?? [];
   const retiredItems = ownedItems.filter(i => i.category === activeTab && !catalogIds.has(i._id));
@@ -205,7 +178,7 @@ const Shop: React.FC = () => {
       equipped={isFlairEquipped(equippedFlair, item)}
       canAfford={(inventory?.pointsBalance ?? 0) >= item.cost}
       onBuy={handlePurchase}
-      onEquip={handleEquip}
+      onEquip={equipItem}
       onHover={setHoveredItem}
     />
   );
@@ -253,23 +226,23 @@ const Shop: React.FC = () => {
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
         <div className="flex items-center gap-3">
           {previewNeedsGradientBorder ? (
-            <div className={previewBorder} data-testid="preview-avatar">
+            <div className={preview.border} data-testid="preview-avatar">
               <div className="flair-border-inner w-10 h-10 bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-400 text-xs">?</span>
               </div>
             </div>
           ) : (
-            <div className={`w-10 h-10 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${previewBorder}`} data-testid="preview-avatar">
+            <div className={`w-10 h-10 rounded-full bg-gray-200 border border-gray-200 flex items-center justify-center ${preview.border}`} data-testid="preview-avatar">
               <span className="text-gray-400 text-xs">?</span>
             </div>
           )}
           <span className="font-medium">
-            {previewIcon && <FlairIcon value={previewIcon} className="mr-1 text-sm" />}
-            <FlairName name="Your Name" colorValue={previewNameColor} defaultColorClass="text-gray-900" />
+            {preview.nameIcon && <FlairIcon value={preview.nameIcon} className="mr-1 text-sm" />}
+            <FlairName name="Your Name" colorValue={preview.nameColor} defaultColorClass="text-gray-900" />
           </span>
-          {previewTitleItem && (
+          {preview.titleValue && (
             <span data-testid="preview-title-badge">
-              <TitleBadge value={previewTitleItem.value} />
+              <TitleBadge value={preview.titleValue} />
             </span>
           )}
         </div>

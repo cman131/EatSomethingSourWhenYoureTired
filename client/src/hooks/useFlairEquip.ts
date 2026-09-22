@@ -24,5 +24,7 @@ export function useFlairEquip(equippedFlair: EquippedFlair, onEquipped: () => vo
     [equippedFlair, onEquipped]
   );
 
-  return { actionError, actionSuccess, equipItem };
+  // Setters are exposed so callers with a second, related action — like Shop.tsx's purchase
+  // flow — can share the same message state.
+  return { actionError, actionSuccess, equipItem, setActionError, setActionSuccess };
 }
