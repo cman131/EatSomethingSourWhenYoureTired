@@ -11,6 +11,7 @@ import HeadToHeadSection from '../components/profile/HeadToHeadSection';
 import RecentGamePerformanceSection from '../components/profile/RecentGamePerformanceSection';
 import TournamentResultsSection from '../components/profile/TournamentResultsSection';
 import UserInfoSection from '../components/profile/UserInfoSection';
+import MyFlairSection from '../components/profile/MyFlairSection';
 import PointsSection from '../components/profile/PointsSection';
 
 const Profile: React.FC = () => {
@@ -79,6 +80,10 @@ const Profile: React.FC = () => {
   );
 
 
+  const refetchProfile = React.useCallback(async () => {
+    await refetchProfileUser();
+  }, [refetchProfileUser]);
+
   if (profileUserLoading || !user) {
     return (
       <div className="space-y-8">
@@ -119,9 +124,12 @@ const Profile: React.FC = () => {
           user={user}
           isOwnProfile={isOwnProfile}
           onUpdateProfile={updateProfile}
-          onRefetchProfile={async () => { await refetchProfileUser(); }}
+          onRefetchProfile={refetchProfile}
         />
       )}
+
+      {/* My Flair — equip owned items and manage saved loadouts (own profile only) */}
+      {isOwnProfile && <MyFlairSection onRefetchProfile={refetchProfile} />}
 
       {/* Only show other sections if user is not in private mode */}
       {!user?.privateMode && (
