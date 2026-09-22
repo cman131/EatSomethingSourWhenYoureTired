@@ -2,6 +2,7 @@ const express = require('express');
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
 const { attachHistoryContext } = require('../utils/pointsHistoryContext');
+const pointsConfig = require('../utils/pointsConfig');
 
 const router = express.Router();
 
@@ -74,6 +75,32 @@ router.get('/me/history', async (req, res) => {
   } catch (error) {
     console.error('Get points history error:', error);
     res.status(500).json({ success: false, message: 'Failed to get points history' });
+  }
+});
+
+// @route   GET /api/points/config
+// @desc    Get the current award amounts, so the client never hardcodes them
+// @access  Private
+router.get('/config', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        gamePlacementAmounts: pointsConfig.GAME_PLACEMENT_AMOUNTS,
+        gameSubmittedAmount: pointsConfig.GAME_SUBMITTED_AMOUNT,
+        gameVerifiedAmount: pointsConfig.GAME_VERIFIED_AMOUNT,
+        tournamentParticipationAmount: pointsConfig.TOURNAMENT_PARTICIPATION_AMOUNT,
+        tournamentPlacementAmounts: pointsConfig.TOURNAMENT_PLACEMENT_AMOUNTS,
+        rankedQualificationAmount: pointsConfig.RANKED_QUALIFICATION_AMOUNT,
+        rankedPlacementAmounts: pointsConfig.RANKED_PLACEMENT_AMOUNTS,
+        quizCompletionAmount: pointsConfig.QUIZ_COMPLETION_AMOUNT,
+        quizWeeklyCapCount: pointsConfig.QUIZ_WEEKLY_CAP_COUNT,
+        weeklyStreakAmounts: pointsConfig.WEEKLY_STREAK_AMOUNTS,
+      },
+    });
+  } catch (error) {
+    console.error('Get points config error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get points config' });
   }
 });
 

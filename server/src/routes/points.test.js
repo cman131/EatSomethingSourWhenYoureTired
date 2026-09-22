@@ -231,3 +231,23 @@ describe('GET /api/points/me/history context', () => {
     expect(tx.context).toBeNull();
   });
 });
+
+describe('GET /api/points/config', () => {
+  test('returns every award amount', async () => {
+    const res = await request(app).get('/api/points/config');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({
+      gamePlacementAmounts: { 1: 10, 2: 7, 3: 4, 4: 2 },
+      gameSubmittedAmount: 2,
+      gameVerifiedAmount: 1,
+      tournamentParticipationAmount: 15,
+      tournamentPlacementAmounts: [200, 100, 70, 50],
+      rankedQualificationAmount: 10,
+      rankedPlacementAmounts: [150, 100, 50],
+      quizCompletionAmount: 1,
+      quizWeeklyCapCount: 5,
+      weeklyStreakAmounts: [2, 3, 4, 5],
+    });
+  });
+});
