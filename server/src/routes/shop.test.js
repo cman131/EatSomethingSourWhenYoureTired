@@ -438,6 +438,17 @@ describe('POST /api/shop/loadouts', () => {
     expect(updated.flairLoadouts).toHaveLength(0);
   });
 
+  test('returns 400 for a non-string name', async () => {
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: ['a', 'b'], nameColor: item.value });
+
+    expect(res.status).toBe(400);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(0);
+  });
+
   test('returns 400 for a slot value the user does not own', async () => {
     const res = await request(app)
       .post('/api/shop/loadouts')

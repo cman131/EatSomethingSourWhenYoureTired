@@ -192,6 +192,20 @@ const validateOptionalMongoIdBody = (fieldName) => [
   handleValidationErrors
 ];
 
+// Body-field validation for a saved flair loadout's name. isString() rejects arrays and objects
+// (e.g. { $gt: '' }) before trim()/isLength() see them.
+const validateLoadoutName = [
+  body('name')
+    .isString()
+    .withMessage('Loadout name must be a string')
+    .bail()
+    .trim()
+    .isLength({ min: 1, max: 30 })
+    .withMessage('Loadout name must be between 1 and 30 characters'),
+
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -202,6 +216,7 @@ module.exports = {
   validateResetPassword,
   validateMongoId,
   validateMongoIdBody,
-  validateOptionalMongoIdBody
+  validateOptionalMongoIdBody,
+  validateLoadoutName
 };
 

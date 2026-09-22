@@ -8,25 +8,21 @@ const {
   applyLoadout,
 } = require('../utils/flairLoadoutService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
-const { validateMongoIdBody, validateOptionalMongoIdBody, validateMongoId, handleValidationErrors } = require('../middleware/validation');
-const { body } = require('express-validator');
+const {
+  validateMongoIdBody,
+  validateOptionalMongoIdBody,
+  validateMongoId,
+  validateLoadoutName,
+} = require('../middleware/validation');
 
 const router = express.Router();
 
 const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
 
-const validateLoadoutName = [
-  body('name')
-    .trim()
-    .isLength({ min: 1, max: 30 })
-    .withMessage('Loadout name must be between 1 and 30 characters'),
-  handleValidationErrors,
-];
-
-function loadoutSlotsFromBody(body) {
-  const slots = { name: typeof body.name === 'string' ? body.name.trim() : body.name };
+function loadoutFromBody(reqBody) {
+  const slots = { name: typeof reqBody.name === 'string' ? reqBody.name.trim() : reqBody.name };
   for (const slot of VALID_SLOTS) {
-    slots[slot] = body[slot] ?? null;
+    slots[slot] = reqBody[slot] ?? null;
   }
   return slots;
 }
@@ -141,7 +137,7 @@ router.post('/equip', validateOptionalMongoIdBody('itemId'), async (req, res) =>
 // POST /api/shop/loadouts — body: { name, nameColor, nameIcon, profileBorder, title }
 router.post('/loadouts', validateLoadoutName, async (req, res) => {
   try {
-    const loadout = loadoutSlotsFromBody(req.body);
+    const loadout = loadoutFromBody(req.body);
 
     const user = await User.findById(req.user._id).populate('purchasedItems.item');
     if (!user) {
