@@ -18,6 +18,8 @@ const POINT_TRANSACTION_TYPES = [
   'ranked_league_placement_2',
   'ranked_league_placement_3',
   'shop_purchase',
+  'quiz_completed',
+  'weekly_streak_bonus',
 ];
 
 const pointTransactionSchema = new mongoose.Schema({
@@ -42,6 +44,8 @@ const pointTransactionSchema = new mongoose.Schema({
     tournamentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', default: null },
     leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'RankedLeague', default: null },
     placement: { type: Number, default: null },
+    quizId: { type: String, default: null },
+    weekStart: { type: Date, default: null },
   },
 }, {
   timestamps: true,
@@ -62,6 +66,14 @@ pointTransactionSchema.index(
 pointTransactionSchema.index(
   { user: 1, type: 1, 'metadata.gameId': 1 },
   { unique: true, partialFilterExpression: { 'metadata.gameId': { $type: 'objectId' } } }
+);
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.quizId': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.quizId': { $type: 'string' } } }
+);
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.weekStart': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.weekStart': { $type: 'date' } } }
 );
 
 module.exports = mongoose.model('PointTransaction', pointTransactionSchema);
