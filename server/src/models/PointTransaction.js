@@ -37,12 +37,14 @@ const pointTransactionSchema = new mongoose.Schema({
     tournamentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', default: null },
     leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'RankedLeague', default: null },
     placement: { type: Number, default: null },
+    groupKey: { type: String, default: null },
   },
 }, {
   timestamps: true,
 });
 
 pointTransactionSchema.index({ user: 1, createdAt: -1 });
+pointTransactionSchema.index({ 'metadata.groupKey': 1, createdAt: -1 });
 
 module.exports = mongoose.model('PointTransaction', pointTransactionSchema);
 module.exports.POINT_TRANSACTION_TYPES = POINT_TRANSACTION_TYPES;

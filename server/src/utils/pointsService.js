@@ -68,6 +68,7 @@ function logCappedAward(details) {
   console.warn('Points award capped', details);
 }
 
+// Best-effort: read-then-write is not atomic, so concurrent verifications can overshoot the cap slightly.
 // Pays at most the headroom left under the daily cap; writes no row when there is none.
 async function awardCappedPoints(userId, type, amount, metadata) {
   const since = new Date(Date.now() - GAME_DAILY_WINDOW_MS);
@@ -91,16 +92,56 @@ async function awardCappedPoints(userId, type, amount, metadata) {
   await awardPoints(userId, type, granted, metadata);
 }
 
+const REPEAT_GROUP_MAX_GAMES = 6;
+const REPEAT_GROUP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Identifies a game's group by its registered (non-guest) players; null when fewer than 2.
+async function findGameGroupKey(game) {
+  const playerIds = game.players.map(({ player }) => player);
+  const registered = await User.find({ _id: { $in: playerIds }, isGuest: { $ne: true } })
+    .select('_id')
+    .lean();
+
+  if (registered.length < 2) {
+    return null;
+  }
+  return registered
+    .map(({ _id }) => _id.toString())
+    .sort()
+    .join(':');
+}
+
+// Counts games on the ledger, not the Game collection, because submitters can delete games.
+async function hasReachedRepeatGroupLimit(groupKey, gameId) {
+  const since = new Date(Date.now() - REPEAT_GROUP_WINDOW_MS);
+  const gameIds = await PointTransaction.distinct('metadata.gameId', {
+    type: { $in: GAME_POINT_TYPES },
+    'metadata.groupKey': groupKey,
+    createdAt: { $gte: since },
+  });
+  const otherGames = gameIds.filter(id => id && id.toString() !== gameId.toString());
+
+  return otherGames.length >= REPEAT_GROUP_MAX_GAMES;
+}
+
 async function awardGamePoints(game, verifierId) {
   const gameId = game._id;
+  const groupKey = await findGameGroupKey(game);
+
+  if (groupKey && (await hasReachedRepeatGroupLimit(groupKey, gameId))) {
+    logCappedAward({ gameId, groupKey, reason: 'repeat_group' });
+    return;
+  }
+
+  const metadata = { gameId, groupKey };
 
   const playerAwards = game.players.map(({ player, rank }) =>
-    awardCappedPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], { gameId })
+    awardCappedPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], metadata)
   );
   await Promise.all(playerAwards);
 
-  await awardCappedPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, { gameId });
-  await awardCappedPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, { gameId });
+  await awardCappedPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, metadata);
+  await awardCappedPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, metadata);
 }
 
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;

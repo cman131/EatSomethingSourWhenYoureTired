@@ -285,10 +285,10 @@ describe('awardGamePoints', () => {
       players: users.map((u, i) => ({ player: u._id, rank: i + 1 })),
       submittedBy: submitter._id,
     });
-    const seedEarning = (target, amount, ageMs) =>
+    const seedEarning = (target, amount, ageMs, type = 'game_placement_1') =>
       PointTransaction.create({
         user: target._id,
-        type: 'game_placement_1',
+        type,
         amount,
         createdAt: new Date(Date.now() - ageMs),
       });
@@ -386,6 +386,128 @@ describe('awardGamePoints', () => {
         await awardTournamentPoints(tournament);
 
         expect(await balanceOf(p1)).toBe(215); // 15 participation + 200 for 1st
+      });
+
+      test('counts game_submitted and game_verified earnings toward the cap', async () => {
+        await seedEarning(p1, 30, HOUR, 'game_submitted');
+        await seedEarning(p1, 30, HOUR, 'game_verified');
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await gameRowsFor(p1, game)).toHaveLength(0);
+      });
+
+      test('does not count non-game earnings toward the cap', async () => {
+        await seedEarning(p1, 200, HOUR, 'tournament_placement_1');
+        await seedEarning(p1, 10, HOUR, 'ranked_league_qualified');
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await balanceOf(p1)).toBe(12); // 10 placement + 2 submitted, uncapped
+      });
+    });
+
+    describe('repeat group', () => {
+      const DAY = 24 * HOUR;
+
+      // Plays a real game, then backdates its ledger rows. Uses the native driver because
+      // Mongoose treats createdAt as immutable and would silently drop the update.
+      const playAndAge = async (users, ageMs) => {
+        const game = newGame(users, users[0]);
+        await awardGamePoints(game, users[1]._id);
+        await PointTransaction.collection.updateMany(
+          { 'metadata.gameId': game._id },
+          { $set: { createdAt: new Date(Date.now() - ageMs) } }
+        );
+      };
+      const playAndAgeMany = async (count, users, ageMs) => {
+        for (let i = 0; i < count; i += 1) {
+          await playAndAge(users, ageMs);
+        }
+      };
+      const makeUser = (name, extra = {}) =>
+        User.create({
+          displayName: `test-points-${name}`,
+          email: `${name}@example.com`,
+          password: 'password123',
+          clubAffiliation: 'Charleston',
+          ...extra,
+        });
+      const makeGuests = names =>
+        User.create(names.map(name => ({ displayName: `test-points-${name}`, isGuest: true })));
+
+      test('skips the game once the same group has 6 point-earning games in 7 days', async () => {
+        await playAndAgeMany(6, [p1, p2, p3, p4], 2 * DAY);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await PointTransaction.countDocuments({ 'metadata.gameId': game._id })).toBe(0);
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Points award capped',
+          expect.objectContaining({ gameId: game._id, reason: 'repeat_group' })
+        );
+      });
+
+      test('still pays the 6th game for the group', async () => {
+        await playAndAgeMany(5, [p1, p2, p3, p4], 2 * DAY);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await gameRowsFor(p1, game)).toHaveLength(2); // placement_1 + submitted
+      });
+
+      test('does not count games older than 7 days', async () => {
+        await playAndAgeMany(6, [p1, p2, p3, p4], 8 * DAY);
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await gameRowsFor(p1, game)).toHaveLength(2);
+      });
+
+      test('treats a different set of registered players as a separate group', async () => {
+        const p5 = await makeUser('p5');
+        await playAndAgeMany(6, [p1, p2, p3, p4], 2 * DAY);
+        const game = newGame([p1, p2, p3, p5], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await gameRowsFor(p1, game)).toHaveLength(2);
+      });
+
+      test('ignores guests when identifying the group', async () => {
+        const [g1, g2, g3, g4] = await makeGuests(['g1', 'g2', 'g3', 'g4']);
+        await playAndAgeMany(6, [p1, p2, g1, g2], 2 * DAY);
+        const game = newGame([p1, p2, g3, g4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await PointTransaction.countDocuments({ 'metadata.gameId': game._id })).toBe(0);
+      });
+
+      test('does not apply to games with fewer than 2 registered players', async () => {
+        const [g1, g2, g3] = await makeGuests(['g1', 'g2', 'g3']);
+        await playAndAgeMany(6, [p1, g1, g2, g3], 2 * DAY);
+        const game = newGame([p1, g1, g2, g3], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        expect(await gameRowsFor(p1, game)).toHaveLength(2);
+      });
+
+      test('stores the same group key on every award row of a game', async () => {
+        const game = newGame([p1, p2, p3, p4], p1);
+
+        await awardGamePoints(game, p2._id);
+
+        const rows = await PointTransaction.find({ 'metadata.gameId': game._id });
+        expect(rows).toHaveLength(6); // 4 placements + submitted + verified
+        expect(rows[0].metadata.groupKey).toBeTruthy();
+        expect(new Set(rows.map(r => r.metadata.groupKey)).size).toBe(1);
       });
     });
   });
