@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Shop from '../Shop';
 import { ShopItem, PurchasedItem, EquippedFlair } from '../../services/api';
@@ -159,7 +159,7 @@ describe('Shop page', () => {
     expect(await screen.findByText('Equipped Jade Green!')).toBeInTheDocument();
   });
 
-  test('shows an error message when equipping fails', async () => {
+  test('shows the error message and no success banner when equipping fails', async () => {
     shopApi.equip.mockReset();
     shopApi.equip.mockRejectedValue(new Error('boom'));
     const ownedItem = mockCatalog.nameColor[0];
@@ -171,7 +171,7 @@ describe('Shop page', () => {
     render(<Shop />);
     fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
 
-    expect(await screen.findByText('Failed to equip item. Please try again.')).toBeInTheDocument();
+    expect(await screen.findByText('boom')).toBeInTheDocument();
     expect(screen.queryByText(/^Equipped /)).toBeNull();
   });
 
@@ -255,6 +255,142 @@ describe('Shop page', () => {
     const card = screen.getByTestId('flair-item-card-item3');
     // eslint-disable-next-line testing-library/no-node-access -- the glow class sits on a decorative aria-hidden span with no accessible query
     expect(card.querySelector('.flair-icon-glow')).toBeInTheDocument();
+  });
+
+  describe('purchase flow', () => {
+    const richInventory = { ...mockInventory, pointsBalance: 1000 };
+
+    // First Buy button on the default Name Effects tab belongs to Jade Green (item1, 250 points)
+    const clickBuyOnJadeGreen = () => {
+      fireEvent.click(screen.getAllByRole('button', { name: /^buy$/i })[0]);
+    };
+
+    beforeEach(() => {
+      shopApi.purchase.mockReset();
+      mockShopUseApi(mockCatalog, richInventory);
+    });
+
+    test('clicking Buy asks for confirmation naming the item, its cost and the resulting balance', () => {
+      render(<Shop />);
+
+      clickBuyOnJadeGreen();
+
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByText('Jade Green')).toBeInTheDocument();
+      expect(within(dialog).getByText(/cost/i)).toHaveTextContent('250');
+      expect(within(dialog).getByText(/balance after purchase/i)).toHaveTextContent('750');
+      expect(shopApi.purchase).not.toHaveBeenCalled();
+    });
+
+    test('Cancel closes the confirmation without purchasing', () => {
+      render(<Shop />);
+
+      clickBuyOnJadeGreen();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /cancel/i }));
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(shopApi.purchase).not.toHaveBeenCalled();
+    });
+
+    test('confirming purchases the item and announces success as a status', async () => {
+      shopApi.purchase.mockResolvedValue({});
+      render(<Shop />);
+
+      clickBuyOnJadeGreen();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /confirm purchase/i }));
+
+      await waitFor(() => expect(shopApi.purchase).toHaveBeenCalledWith('item1'));
+      expect(await screen.findByRole('status')).toHaveTextContent('Purchased Jade Green!');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    test('shows the server message as an alert when the purchase is rejected', async () => {
+      shopApi.purchase.mockRejectedValue(new Error('You already own this item'));
+      render(<Shop />);
+
+      clickBuyOnJadeGreen();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /confirm purchase/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('You already own this item');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    test('falls back to the generic message when the error has no message', async () => {
+      shopApi.purchase.mockRejectedValue(new Error(''));
+      render(<Shop />);
+
+      clickBuyOnJadeGreen();
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /confirm purchase/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Purchase failed. Please try again.');
+    });
+
+    test('disables the confirm button and sends one request while the purchase is pending', async () => {
+      shopApi.purchase.mockReturnValue(new Promise(() => {}));
+      render(<Shop />);
+
+      clickBuyOnJadeGreen();
+      const dialog = screen.getByRole('dialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: /confirm purchase/i }));
+
+      const pendingButton = await within(dialog).findByRole('button', { name: /purchasing/i });
+      expect(pendingButton).toBeDisabled();
+      fireEvent.click(pendingButton);
+      expect(shopApi.purchase).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('equip feedback', () => {
+    const ownedItem = mockCatalog.nameColor[0];
+    const ownedInventory = {
+      ...mockInventory,
+      purchasedItems: [{ item: ownedItem, purchasedAt: '2026-01-01' }],
+    };
+
+    beforeEach(() => {
+      shopApi.equip.mockReset();
+      mockShopUseApi(mockCatalog, ownedInventory);
+    });
+
+    test('shows the server message as an alert when equipping is rejected', async () => {
+      shopApi.equip.mockRejectedValue(new Error('You do not own this item'));
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('You do not own this item');
+    });
+
+    test('falls back to the generic message when the equip error has no message', async () => {
+      shopApi.equip.mockRejectedValue(new Error(''));
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Failed to equip item. Please try again.');
+    });
+
+    test('announces a successful equip as a status', async () => {
+      shopApi.equip.mockResolvedValue({});
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent('Equipped Jade Green!');
+    });
+
+    test('disables equip buttons and sends one request while an equip is pending', async () => {
+      shopApi.equip.mockReturnValue(new Promise(() => {}));
+      render(<Shop />);
+
+      const equipButton = screen.getByRole('button', { name: /^equip$/i });
+      fireEvent.click(equipButton);
+
+      await waitFor(() => expect(equipButton).toBeDisabled());
+      fireEvent.click(equipButton);
+      expect(shopApi.equip).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('retired items', () => {
