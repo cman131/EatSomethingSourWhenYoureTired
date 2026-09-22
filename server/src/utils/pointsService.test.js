@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
+const Game = require('../models/Game');
 const {
   awardPoints,
   spendPoints,
@@ -271,6 +272,127 @@ describe('awardGamePoints', () => {
     expect(findSpy).toHaveBeenCalledTimes(1);
     expect(findByIdSpy).not.toHaveBeenCalled();
     expect(await PointTransaction.countDocuments({ user: { $in: [p1._id, p2._id, p3._id, p4._id] } })).toBe(6);
+  });
+
+  describe('idempotency and failure isolation', () => {
+    function makeGame(overrides = {}) {
+      return {
+        _id: new mongoose.Types.ObjectId(),
+        players: [
+          { player: p1._id, rank: 1 },
+          { player: p2._id, rank: 2 },
+          { player: p3._id, rank: 3 },
+          { player: p4._id, rank: 4 },
+        ],
+        submittedBy: p1._id,
+        ...overrides,
+      };
+    }
+
+    const playerIds = () => [p1, p2, p3, p4].map(p => p._id);
+    const balanceOf = async u => (await User.findById(u._id)).pointsBalance;
+
+    test('replaying the same game pays each player only once', async () => {
+      const game = makeGame();
+
+      await awardGamePoints(game, p2._id);
+      await awardGamePoints(game, p2._id);
+
+      expect(await balanceOf(p1)).toBe(12); // 10 placement + 2 submitted
+      expect(await balanceOf(p2)).toBe(8); // 7 placement + 1 verified
+      expect(await balanceOf(p3)).toBe(4);
+      expect(await balanceOf(p4)).toBe(2);
+      expect(await PointTransaction.countDocuments({ user: { $in: playerIds() } })).toBe(6);
+    });
+
+    test('a second game still pays the same players', async () => {
+      await awardGamePoints(makeGame(), p2._id);
+      await awardGamePoints(makeGame(), p2._id);
+
+      expect(await balanceOf(p3)).toBe(8);
+    });
+
+    test('one failed placement award does not stop the remaining awards', async () => {
+      const game = makeGame();
+      const realCreate = PointTransaction.create.bind(PointTransaction);
+      const createSpy = jest.spyOn(PointTransaction, 'create').mockImplementation(async doc => {
+        if (doc.user.toString() === p2._id.toString() && doc.type === 'game_placement_2') {
+          throw new Error('db down');
+        }
+        return realCreate(doc);
+      });
+
+      await expect(awardGamePoints(game, p3._id)).rejects.toThrow(/1 of 6/);
+      createSpy.mockRestore();
+
+      expect(await balanceOf(p1)).toBe(12); // placement and submitted both paid
+      expect(await balanceOf(p3)).toBe(5); // placement and verified both paid
+      expect(await balanceOf(p4)).toBe(2);
+      expect(await balanceOf(p2)).toBe(0);
+    });
+
+    test('the error lists each failed award', async () => {
+      const createSpy = jest.spyOn(PointTransaction, 'create').mockRejectedValue(new Error('db down'));
+
+      const error = await awardGamePoints(makeGame(), p2._id).catch(err => err);
+      createSpy.mockRestore();
+
+      expect(error).toBeInstanceOf(AggregateError);
+      expect(error.errors).toHaveLength(6);
+    });
+
+    test('retrying after a failure completes only the missing awards', async () => {
+      const game = makeGame();
+      const realCreate = PointTransaction.create.bind(PointTransaction);
+      const createSpy = jest.spyOn(PointTransaction, 'create').mockImplementation(async doc => {
+        if (doc.user.toString() === p2._id.toString() && doc.type === 'game_placement_2') {
+          throw new Error('db down');
+        }
+        return realCreate(doc);
+      });
+      await awardGamePoints(game, p3._id).catch(() => {});
+      createSpy.mockRestore();
+
+      await awardGamePoints(game, p3._id);
+
+      expect(await balanceOf(p1)).toBe(12);
+      expect(await balanceOf(p2)).toBe(7);
+      expect(await balanceOf(p3)).toBe(5);
+      expect(await balanceOf(p4)).toBe(2);
+    });
+
+    test('skips the verifier award when the game has no verifier', async () => {
+      await awardGamePoints(makeGame(), undefined);
+
+      expect(await PointTransaction.countDocuments({ type: 'game_verified', user: { $in: playerIds() } })).toBe(0);
+      expect(await balanceOf(p1)).toBe(12);
+    });
+
+    test('stamps pointsAwardedAt on the game once every award has succeeded', async () => {
+      const game = await Game.create({
+        submittedBy: p1._id,
+        players: [p1, p2, p3, p4].map((p, i) => ({ player: p._id, score: 40000 - i * 5000, position: i + 1 })),
+      });
+
+      await awardGamePoints(game, p2._id);
+
+      expect((await Game.findById(game._id)).pointsAwardedAt).toBeInstanceOf(Date);
+      await Game.deleteOne({ _id: game._id });
+    });
+
+    test('leaves pointsAwardedAt unset when an award fails', async () => {
+      const game = await Game.create({
+        submittedBy: p1._id,
+        players: [p1, p2, p3, p4].map((p, i) => ({ player: p._id, score: 40000 - i * 5000, position: i + 1 })),
+      });
+      const createSpy = jest.spyOn(PointTransaction, 'create').mockRejectedValueOnce(new Error('db down'));
+
+      await awardGamePoints(game, p2._id).catch(() => {});
+      createSpy.mockRestore();
+
+      expect((await Game.findById(game._id)).pointsAwardedAt).toBeUndefined();
+      await Game.deleteOne({ _id: game._id });
+    });
   });
 });
 
