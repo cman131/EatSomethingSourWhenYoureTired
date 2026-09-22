@@ -277,6 +277,77 @@ describe('awardGamePoints', () => {
     expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_placement_1' })).toBe(1);
   });
 
+  describe('player membership requirement', () => {
+    const makeOutsider = name =>
+      User.create({
+        displayName: `test-points-${name}`,
+        email: `${name}@example.com`,
+        password: 'password123',
+        clubAffiliation: 'Charleston',
+      });
+
+    test('does not award game_submitted when the submitter is not one of the players', async () => {
+      const outsider = await makeOutsider('outsider1');
+      const game = {
+        _id: new mongoose.Types.ObjectId(),
+        players: [
+          { player: p1._id, rank: 1 },
+          { player: p2._id, rank: 2 },
+          { player: p3._id, rank: 3 },
+          { player: p4._id, rank: 4 },
+        ],
+        submittedBy: outsider._id,
+      };
+
+      await awardGamePoints(game, p2._id);
+
+      expect(await PointTransaction.countDocuments({ user: outsider._id })).toBe(0);
+      expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_placement_1' })).toBe(1);
+      expect(await PointTransaction.countDocuments({ user: p2._id, type: 'game_verified' })).toBe(1);
+    });
+
+    test('does not award game_verified when the verifier is not one of the players (e.g. an admin)', async () => {
+      const admin = await makeOutsider('admin1');
+      const game = {
+        _id: new mongoose.Types.ObjectId(),
+        players: [
+          { player: p1._id, rank: 1 },
+          { player: p2._id, rank: 2 },
+          { player: p3._id, rank: 3 },
+          { player: p4._id, rank: 4 },
+        ],
+        submittedBy: p1._id,
+      };
+
+      await awardGamePoints(game, admin._id);
+
+      expect(await PointTransaction.countDocuments({ user: admin._id })).toBe(0);
+      expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_submitted' })).toBe(1);
+    });
+
+    test('awards neither submitted nor verified points when both are outside the game', async () => {
+      const outsider = await makeOutsider('outsider2');
+      const admin = await makeOutsider('admin2');
+      const game = {
+        _id: new mongoose.Types.ObjectId(),
+        players: [
+          { player: p1._id, rank: 1 },
+          { player: p2._id, rank: 2 },
+          { player: p3._id, rank: 3 },
+          { player: p4._id, rank: 4 },
+        ],
+        submittedBy: outsider._id,
+      };
+
+      await awardGamePoints(game, admin._id);
+
+      expect(await PointTransaction.countDocuments({ user: outsider._id })).toBe(0);
+      expect(await PointTransaction.countDocuments({ user: admin._id })).toBe(0);
+      // placements are unaffected
+      expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_placement_1' })).toBe(1);
+    });
+  });
+
   describe('caps', () => {
     const HOUR = 60 * 60 * 1000;
 
@@ -496,7 +567,9 @@ describe('awardGamePoints', () => {
 
         await awardGamePoints(game, p2._id);
 
-        expect(await gameRowsFor(p1, game)).toHaveLength(2);
+        const rows = await gameRowsFor(p1, game);
+        expect(rows).toHaveLength(2);
+        expect(rows.every(r => r.metadata.groupKey === null)).toBe(true);
       });
 
       test('stores the same group key on every award row of a game', async () => {
@@ -506,8 +579,8 @@ describe('awardGamePoints', () => {
 
         const rows = await PointTransaction.find({ 'metadata.gameId': game._id });
         expect(rows).toHaveLength(6); // 4 placements + submitted + verified
-        expect(rows[0].metadata.groupKey).toBeTruthy();
-        expect(new Set(rows.map(r => r.metadata.groupKey)).size).toBe(1);
+        const expectedKey = [p1, p2, p3, p4].map(u => u._id.toString()).sort().join(':');
+        expect(new Set(rows.map(r => r.metadata.groupKey))).toEqual(new Set([expectedKey]));
       });
     });
   });

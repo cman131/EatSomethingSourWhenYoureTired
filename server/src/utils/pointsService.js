@@ -134,14 +134,19 @@ async function awardGamePoints(game, verifierId) {
   }
 
   const metadata = { gameId, groupKey };
+  const playerIds = new Set(game.players.map(({ player }) => player.toString()));
 
   const playerAwards = game.players.map(({ player, rank }) =>
     awardCappedPoints(player, GAME_PLACEMENT_TYPES[rank], GAME_PLACEMENT_AMOUNTS[rank], metadata)
   );
   await Promise.all(playerAwards);
 
-  await awardCappedPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, metadata);
-  await awardCappedPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, metadata);
+  if (playerIds.has(game.submittedBy.toString())) {
+    await awardCappedPoints(game.submittedBy, 'game_submitted', GAME_SUBMITTED_AMOUNT, metadata);
+  }
+  if (playerIds.has(verifierId.toString())) {
+    await awardCappedPoints(verifierId, 'game_verified', GAME_VERIFIED_AMOUNT, metadata);
+  }
 }
 
 const TOURNAMENT_PARTICIPATION_AMOUNT = 15;
