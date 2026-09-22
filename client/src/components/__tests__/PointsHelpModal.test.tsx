@@ -15,11 +15,12 @@ describe('PointsHelpModal', () => {
     expect(screen.getByText('How to Earn Points')).toBeInTheDocument();
   });
 
-  test('renders all three section headings', () => {
+  test('renders all section headings', () => {
     render(<PointsHelpModal onClose={jest.fn()} />);
     expect(screen.getByRole('heading', { name: 'Games' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tournaments' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ranked League' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Limits' })).toBeInTheDocument();
   });
 
   test.each([
@@ -54,6 +55,19 @@ describe('PointsHelpModal', () => {
   test('Ranked League section does not show Coming soon', () => {
     render(<PointsHelpModal onClose={jest.fn()} />);
     expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
+  });
+
+  test('Limits section explains the game caps and that tournament awards are not limited', () => {
+    render(<PointsHelpModal onClose={jest.fn()} />);
+    const section = screen.getByRole('region', { name: 'Limits' });
+    expect(within(section).getByText(/\b60 game points\b/i)).toBeInTheDocument();
+    expect(within(section).getByText(/24-hour period/i)).toBeInTheDocument();
+    expect(within(section).getByText(/same set of registered players/i)).toBeInTheDocument();
+    expect(within(section).getByText(/guests don't count/i)).toBeInTheDocument();
+    expect(within(section).getByText(/\b6 games\b/i)).toBeInTheDocument();
+    expect(within(section).getByText(/7 days/i)).toBeInTheDocument();
+    expect(within(section).getByText(/award no points/i)).toBeInTheDocument();
+    expect(within(section).getByText(/tournament awards are not limited/i)).toBeInTheDocument();
   });
 
   test('calls onClose when the X button is clicked', () => {

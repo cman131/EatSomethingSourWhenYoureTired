@@ -42,12 +42,14 @@ const pointTransactionSchema = new mongoose.Schema({
     tournamentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', default: null },
     leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'RankedLeague', default: null },
     placement: { type: Number, default: null },
+    groupKey: { type: String, default: null },
   },
 }, {
   timestamps: true,
 });
 
 pointTransactionSchema.index({ user: 1, createdAt: -1 });
+pointTransactionSchema.index({ 'metadata.groupKey': 1, createdAt: -1 });
 
 // Backs the once-per-source awards: a repeated or concurrent trigger hits a duplicate-key error instead of paying twice.
 // Partial because these ids default to null on every other transaction.

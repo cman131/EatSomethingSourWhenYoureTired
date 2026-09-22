@@ -28,6 +28,11 @@ const RANKED_ROWS: [string, string][] = [
   ['Finish a season 3rd', '+50'],
 ];
 
+// Mirrors GAME_DAILY_CAP and REPEAT_GROUP_* in server/src/utils/pointsService.js — keep in sync.
+const GAME_DAILY_CAP = 60;
+const REPEAT_GROUP_MAX_GAMES = 6;
+const REPEAT_GROUP_WINDOW_DAYS = 7;
+
 function PointsTable({ rows }: { rows: [string, string][] }) {
   return (
     <table className="min-w-full text-sm">
@@ -78,6 +83,21 @@ const PointsHelpModal: React.FC<Props> = ({ onClose }) => (
           <p className="mt-2 text-xs text-gray-500">
             Season placements are paid when the 90-day season ends, to qualified players only. Tied players share a placement.
           </p>
+        </section>
+        <section aria-label="Limits">
+          <h3 className="text-base font-semibold text-gray-800 mb-3">Limits</h3>
+          <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+            <li>
+              You can earn at most {GAME_DAILY_CAP} game points in any 24-hour period. Awards
+              beyond that are trimmed or skipped.
+            </li>
+            <li>
+              The same set of registered players (guests don't count) earns points from at most{' '}
+              {REPEAT_GROUP_MAX_GAMES} games per {REPEAT_GROUP_WINDOW_DAYS} days. Later games in
+              that window award no points.
+            </li>
+            <li>Tournament awards are not limited.</li>
+          </ul>
         </section>
       </div>
     </div>
