@@ -161,6 +161,12 @@ const userSchema = new mongoose.Schema({
   purchasedItems: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopItem' },
     purchasedAt: { type: Date, default: Date.now },
+    // Only set for earned items: which event granted it.
+    source: {
+      kind: { type: String, enum: ['tournament', 'ranked_season'] },
+      refId: { type: mongoose.Schema.Types.ObjectId },
+      label: { type: String },
+    },
   }],
   equippedFlair: {
     nameColor:     { type: String, default: null },

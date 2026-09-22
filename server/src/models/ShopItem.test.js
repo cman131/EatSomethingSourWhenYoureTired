@@ -75,3 +75,60 @@ describe('ShopItem model', () => {
     expect(item.previewCss).toBe('ring: 2px solid gold');
   });
 });
+
+describe('ShopItem acquisition fields', () => {
+  test('defaults to a shop item with no availability window and no sourceKey', async () => {
+    const item = await ShopItem.create({
+      name: 'test-shop-acq-defaults',
+      description: 'Defaults',
+      category: 'title',
+      cost: 50,
+      value: 'test-shop-acq-defaults',
+    });
+
+    expect(item.acquisition).toBe('shop');
+    expect(item.availableFrom).toBeNull();
+    expect(item.availableUntil).toBeNull();
+    expect(item.sourceKey).toBeUndefined();
+  });
+
+  test('accepts the prestige tier and the earned acquisition type', async () => {
+    const item = await ShopItem.create({
+      name: 'test-shop-acq-earned',
+      description: 'Earned',
+      category: 'title',
+      cost: 0,
+      value: '🏆 test-shop-acq-earned',
+      tier: 'prestige',
+      acquisition: 'earned',
+      sourceKey: 'test-shop-src:earned',
+    });
+
+    expect(item.tier).toBe('prestige');
+    expect(item.acquisition).toBe('earned');
+  });
+
+  test('rejects an unknown acquisition type', async () => {
+    await expect(ShopItem.create({
+      name: 'test-shop-acq-bad',
+      description: 'Bad',
+      category: 'title',
+      cost: 0,
+      value: 'test-shop-acq-bad',
+      acquisition: 'gifted',
+    })).rejects.toThrow(/acquisition/);
+  });
+
+  test('enforces a unique sourceKey but allows many items without one', async () => {
+    await ShopItem.init();
+    const base = { description: 'Dup', category: 'title', cost: 0, tier: 'prestige', acquisition: 'earned' };
+    await ShopItem.create({ ...base, name: 'test-shop-acq-dup-a', value: 'test-shop-acq-dup-a', sourceKey: 'test-shop-src:dup' });
+
+    await expect(ShopItem.create({
+      ...base, name: 'test-shop-acq-dup-b', value: 'test-shop-acq-dup-b', sourceKey: 'test-shop-src:dup',
+    })).rejects.toMatchObject({ code: 11000 });
+
+    await ShopItem.create({ ...base, name: 'test-shop-acq-none-a', value: 'test-shop-acq-none-a' });
+    await ShopItem.create({ ...base, name: 'test-shop-acq-none-b', value: 'test-shop-acq-none-b' });
+  });
+});
