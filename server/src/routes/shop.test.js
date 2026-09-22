@@ -849,3 +849,137 @@ describe('POST /api/shop/seed', () => {
     expect(await ShopItem.countDocuments({ name: { $in: catalogNames } })).toBe(SHOP_CATALOG.length);
   });
 });
+
+describe('earned items and availability windows', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const inDays = days => new Date(Date.now() + days * DAY_MS);
+
+  const createItem = (suffix, overrides = {}) => ShopItem.create({
+    name: `test-shop-route-${suffix}`,
+    description: suffix,
+    category: 'title',
+    cost: 100,
+    value: `test-shop-route-${suffix}`,
+    ...overrides,
+  });
+
+  const listedNames = async () => {
+    const res = await request(app).get('/api/shop');
+    return (res.body.data.title || []).map(i => i.name);
+  };
+
+  test('GET /api/shop hides earned items', async () => {
+    await createItem('earned', { acquisition: 'earned', tier: 'prestige', cost: 0 });
+    await createItem('bought');
+
+    const names = await listedNames();
+
+    expect(names).toContain('test-shop-route-bought');
+    expect(names).not.toContain('test-shop-route-earned');
+  });
+
+  test('GET /api/shop lists an item inside its window', async () => {
+    await createItem('open', { availableFrom: inDays(-1), availableUntil: inDays(1) });
+
+    expect(await listedNames()).toContain('test-shop-route-open');
+  });
+
+  test('GET /api/shop hides an expired item', async () => {
+    await createItem('expired', { availableFrom: inDays(-10), availableUntil: inDays(-1) });
+
+    expect(await listedNames()).not.toContain('test-shop-route-expired');
+  });
+
+  test('GET /api/shop hides an item that has not opened yet', async () => {
+    await createItem('future', { availableFrom: inDays(1) });
+
+    expect(await listedNames()).not.toContain('test-shop-route-future');
+  });
+
+  test('POST /purchase rejects an earned item and does not charge', async () => {
+    const earned = await createItem('earned-buy', { acquisition: 'earned', tier: 'prestige', cost: 0 });
+
+    const res = await request(app).post('/api/shop/purchase').send({ itemId: earned._id.toString() });
+
+    expect(res.status).toBe(404);
+    expect((await User.findById(user._id)).purchasedItems).toHaveLength(0);
+  });
+
+  test('POST /purchase rejects an expired item and does not charge', async () => {
+    const expired = await createItem('expired-buy', { availableUntil: inDays(-1) });
+
+    const res = await request(app).post('/api/shop/purchase').send({ itemId: expired._id.toString() });
+
+    expect(res.status).toBe(404);
+    const unchanged = await User.findById(user._id);
+    expect(unchanged.pointsBalance).toBe(500);
+    expect(unchanged.purchasedItems).toHaveLength(0);
+  });
+
+  test('an owner keeps an expired item in inventory and can equip it', async () => {
+    const expired = await createItem('expired-owned', { availableUntil: inDays(-1) });
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: expired._id } } });
+
+    const inventory = await request(app).get('/api/shop/inventory');
+    const equip = await request(app).post('/api/shop/equip').send({ itemId: expired._id.toString(), slot: 'title' });
+
+    expect(inventory.body.data.purchasedItems.map(p => p.item.name)).toContain('test-shop-route-expired-owned');
+    expect(equip.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.title).toBe('test-shop-route-expired-owned');
+  });
+});
+
+describe('POST /api/shop/seed and earned items', () => {
+  const seedAsAdmin = async () => {
+    expect(mongoose.connection.name).toMatch(/test/);
+    return request(buildTestApp({ _id: user._id, isAdmin: true })).post('/api/shop/seed');
+  };
+
+  afterAll(async () => {
+    if (/test/.test(mongoose.connection.name)) {
+      await ShopItem.deleteMany({ name: { $in: SHOP_CATALOG.map(i => i.name) } });
+    }
+  });
+
+  test('leaves earned items active', async () => {
+    const earned = await ShopItem.create({
+      name: 'test-shop-route-seed-earned',
+      description: 'Earned',
+      category: 'title',
+      cost: 0,
+      value: '🏆 test-shop-route-seed-earned',
+      tier: 'prestige',
+      acquisition: 'earned',
+    });
+
+    const res = await seedAsAdmin();
+
+    expect(res.status).toBe(200);
+    expect((await ShopItem.findById(earned._id)).isActive).toBe(true);
+  });
+
+  test('still deactivates shop items that are not in the catalog, including legacy rows without acquisition', async () => {
+    await ShopItem.collection.insertOne({
+      name: 'test-shop-route-legacy',
+      description: 'Legacy row',
+      category: 'title',
+      cost: 100,
+      value: 'test-shop-route-legacy',
+      tier: 'entry',
+      isActive: true,
+    });
+
+    await seedAsAdmin();
+
+    expect((await ShopItem.findOne({ name: 'test-shop-route-legacy' })).isActive).toBe(false);
+  });
+
+  test('seeded catalog items are shop items with no window', async () => {
+    await seedAsAdmin();
+
+    const jade = await ShopItem.findOne({ name: 'Jade Green' });
+    expect(jade.acquisition).toBe('shop');
+    expect(jade.availableFrom).toBeNull();
+    expect(jade.availableUntil).toBeNull();
+  });
+});

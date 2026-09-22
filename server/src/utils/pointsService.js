@@ -411,4 +411,5 @@ module.exports = {
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
   awardQuizCompletionPoints,
+  rankQualifiedPlayers,
 };

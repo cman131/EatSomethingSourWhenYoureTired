@@ -7,6 +7,7 @@ import {
   getNameColorStyle,
   isPremiumBorder,
   isMidTierBorder,
+  PRESTIGE_TITLE_MARKER,
 } from '../flairUtils';
 
 // Reads the server catalog directly so the two packages cannot drift apart.
@@ -15,6 +16,8 @@ import {
 const { SHOP_CATALOG } = require('../../../../server/src/data/shopCatalog');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { FLAIR_CATEGORIES } = require('../../../../server/src/data/flairCategories');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PRESTIGE_TITLE_MARKER: SERVER_PRESTIGE_TITLE_MARKER } = require('../../../../server/src/utils/prestigeTitle');
 
 interface CatalogItem {
   name: string;
@@ -125,6 +128,29 @@ describe('flair categories across server and client', () => {
     const tabKeys = Array.from(shopSource.matchAll(/\{ key: '(\w+)', label:/g)).map(m => m[1]);
 
     expect([...tabKeys].sort()).toEqual([...FLAIR_CATEGORIES].sort());
+  });
+});
+
+describe('prestige titles', () => {
+  test('use the same marker as the server', () => {
+    expect(PRESTIGE_TITLE_MARKER).toBe(SERVER_PRESTIGE_TITLE_MARKER);
+  });
+
+  test('any value starting with the marker resolves to the prestige style', () => {
+    const style = getTitleStyle(`${PRESTIGE_TITLE_MARKER}Spring Open`);
+
+    expect(style?.tier).toBe('prestige');
+    expect(cssDefines(style?.className ?? '')).toBe(true);
+  });
+
+  test('the marker only counts at the start of the value', () => {
+    expect(getTitleStyle(`Spring ${PRESTIGE_TITLE_MARKER}Open`)).toBeNull();
+  });
+
+  test('no shop catalog title resolves to the prestige style', () => {
+    for (const item of itemsIn('title')) {
+      expect(getTitleStyle(item.value)?.tier).not.toBe('prestige');
+    }
   });
 });
 

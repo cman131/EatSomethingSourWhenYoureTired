@@ -1,6 +1,6 @@
 import type { EquippedFlair, ShopItem } from '../services/api';
 
-export type FlairTier = 'entry' | 'mid' | 'premium';
+export type FlairTier = 'entry' | 'mid' | 'premium' | 'prestige';
 
 export interface TitleStyle {
   tier: FlairTier;
@@ -29,6 +29,11 @@ export interface BackdropStyle {
 
 const ENTRY_TITLE: TitleStyle = { tier: 'entry', className: '' };
 const MID_TITLE: TitleStyle = { tier: 'mid', className: 'flair-title-mid' };
+
+// Earned titles are stored with this prefix (see server/src/utils/prestigeTitle.js), so any value
+// carrying it is styled as prestige without a per-item registry entry. Never change it once shipped.
+export const PRESTIGE_TITLE_MARKER = '🏆 ';
+const PRESTIGE_TITLE: TitleStyle = { tier: 'prestige', className: 'flair-title-prestige' };
 
 const TITLE_STYLES: Record<string, TitleStyle> = {
   'Regular': ENTRY_TITLE,
@@ -122,6 +127,9 @@ export function isMidTierBorder(borderValue: string): boolean {
 }
 
 export function getTitleStyle(titleValue: string): TitleStyle | null {
+  if (titleValue.startsWith(PRESTIGE_TITLE_MARKER)) {
+    return PRESTIGE_TITLE;
+  }
   return lookup(TITLE_STYLES, titleValue);
 }
 

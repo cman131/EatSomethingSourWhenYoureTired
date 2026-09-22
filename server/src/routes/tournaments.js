@@ -10,6 +10,8 @@ const { generateRoundPairings, getFinalsMatchCount } = require('../utils/roundGe
 const { createGame } = require('../utils/gameService');
 const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
 const { awardTournamentPoints } = require('../utils/pointsService');
+const { grantTournamentChampionTitle } = require('../utils/flairGrantService');
+const { normalizeWinnerTitle } = require('../utils/prestigeTitle');
 
 /** Populate rounds.pairings.game when tournament has rounds so player.uma virtual can compute from games. */
 async function prepareTournamentForResponse(tournament) {
@@ -591,12 +593,20 @@ router.get('/:id', authenticateToken, validateMongoId('id'), async (req, res) =>
 // @access  Private
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, roundStrategy } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, roundStrategy, winnerTitle } = req.body;
 
     if (!name || !date) {
       return res.status(400).json({
         success: false,
         message: 'Tournament name and date are required'
+      });
+    }
+
+    const winnerTitleResult = normalizeWinnerTitle(winnerTitle);
+    if (winnerTitleResult.error) {
+      return res.status(400).json({
+        success: false,
+        message: winnerTitleResult.error
       });
     }
 
@@ -642,6 +652,10 @@ router.post('/', authenticateToken, async (req, res) => {
       players: [],
       rounds: []
     };
+
+    if (winnerTitleResult.value) {
+      tournamentData.winnerTitle = winnerTitleResult.value;
+    }
 
     // Add maxPlayers if provided
     if (maxPlayers !== undefined) {
@@ -722,7 +736,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // @access  Private (Creator or Admin)
 router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOwnerOrAdmin, async (req, res) => {
   try {
-    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, roundStrategy, notifyParticipants } = req.body;
+    const { name, description, date, location, onlineLocation, isOnline, modifications, ruleset, maxPlayers, roundDurationMinutes, startingPointValue, roundStrategy, notifyParticipants, winnerTitle } = req.body;
 
     const tournament = await Tournament.findById(req.params.id);
 
@@ -861,6 +875,24 @@ router.put('/:id', authenticateToken, validateMongoId('id'), requireTournamentOw
         });
       }
       tournament.startingPointValue = startingPointValue;
+    }
+
+    if (winnerTitle !== undefined) {
+      const winnerTitleResult = normalizeWinnerTitle(winnerTitle);
+      if (winnerTitleResult.error) {
+        return res.status(400).json({
+          success: false,
+          message: winnerTitleResult.error
+        });
+      }
+      const changed = winnerTitleResult.value !== (tournament.winnerTitle || '');
+      if (changed && tournament.status === 'Completed') {
+        return res.status(400).json({
+          success: false,
+          message: 'winnerTitle cannot be changed after the tournament is completed'
+        });
+      }
+      tournament.winnerTitle = winnerTitleResult.value || undefined;
     }
 
     if (roundStrategy !== undefined) {
@@ -1287,6 +1319,12 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
         await awardTournamentPoints(tournament);
       } catch (err) {
         console.error('Failed to award tournament points:', err);
+      }
+
+      try {
+        await grantTournamentChampionTitle(tournament);
+      } catch (err) {
+        console.error('Failed to grant tournament champion title:', err);
       }
     }
 

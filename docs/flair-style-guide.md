@@ -4,13 +4,14 @@ Visual design philosophy for the shop cosmetics system. Catalog data lives in `s
 
 ## Tier Hierarchy
 
-The shop has three tiers. Each tier is visibly distinct in **every** category, so players can tell at a glance how rare an item is.
+The shop has three purchasable tiers, plus a fourth earn-only tier (Prestige, below). Each tier is visibly distinct in **every** category, so players can tell at a glance how rare an item is.
 
 | Tier | Feel | Animation | Cost range |
 |------|------|-----------|------------|
 | Entry | Flat, clean, simple | None | 50–75 pts |
 | Mid | Richer, textured, gradient or glow | None | 100–175 pts |
 | Premium | Bold, animated, striking | Yes | 250–300 pts |
+| Prestige | Dark, gold-lettered, earn-only | None | Not purchasable |
 
 | Category | Entry | Mid | Premium |
 |---|---|---|---|
@@ -106,6 +107,15 @@ Rendered by the shared `TitleBadge`, driven by `TITLE_STYLES`.
 | Chicken Farmer | `flair-title-chicken` | Warm gold, amber text, 🐔 |
 | Chombo Chaser | `flair-title-chombo` | Red → purple gradient, white text, pink glow, ⚡ |
 | Tsumo-nami | `flair-title-tsumonami` | Ocean gradient, white text, cyan glow, 🌊 |
+
+## Prestige (earn-only) titles
+
+Prestige is not a shop tier and cannot be bought. A tournament winner or ranked-season champion is granted a title whose stored `value` starts with the reserved marker `🏆 ` (for example `🏆 Spring Open` or `🏆 Season Champion: Jan 2026`). `getTitleStyle` in `flairUtils.ts` recognizes the marker and returns the single shared `flair-title-prestige` style, so a new event needs no CSS or registry entry.
+
+- **Look:** a dark badge with gold lettering and a gold ring. Deliberately unlike every purchasable badge. It is static, so it needs no reduced-motion rule. It has a `@media print` fallback because the dark background is dropped when printing; forced-colors mode replaces badge colors on its own.
+- **Never change the marker.** It is stored in every earned title and matched by the client.
+- **No shop value may start with the marker**, or a purchasable item would be styled as prestige. `shopCatalog.test.js` and `flairCatalog.test.ts` enforce this.
+- **Text comes from the tournament's `winnerTitle`** (max 30 characters, defaulting to the truncated name) or, for seasons, the season's start month. Both are shown verbatim after the marker.
 
 ## CSS Architecture
 

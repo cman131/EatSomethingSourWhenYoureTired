@@ -40,9 +40,14 @@ jest.mock('../../utils/pointsService', () => ({
   awardTournamentPoints: jest.fn().mockResolvedValue(undefined)
 }));
 
+jest.mock('../../utils/flairGrantService', () => ({
+  grantTournamentChampionTitle: jest.fn().mockResolvedValue(undefined)
+}));
+
 const Tournament = require('../../models/Tournament');
 const { getFinalsMatchCount } = require('../../utils/roundGenerationService');
 const { awardTournamentPoints } = require('../../utils/pointsService');
+const { grantTournamentChampionTitle } = require('../../utils/flairGrantService');
 const router = require('../tournaments');
 
 const app = express();
@@ -106,5 +111,37 @@ describe('PUT /tournaments/:id/rounds/:roundNumber/end — tournament points', (
     expect(res.body.message).toMatch(/already completed/i);
     expect(awardTournamentPoints).not.toHaveBeenCalled();
     expect(tournament.save).not.toHaveBeenCalled();
+  });
+
+  test('grants the champion title once when the tournament completes', async () => {
+    const tournament = makeMockTournament();
+    Tournament.findById.mockResolvedValue(tournament);
+
+    const res = await endRound();
+
+    expect(res.status).toBe(200);
+    expect(grantTournamentChampionTitle).toHaveBeenCalledTimes(1);
+    expect(grantTournamentChampionTitle).toHaveBeenCalledWith(tournament);
+  });
+
+  test('still completes the round when the title grant fails', async () => {
+    const tournament = makeMockTournament();
+    Tournament.findById.mockResolvedValue(tournament);
+    grantTournamentChampionTitle.mockRejectedValueOnce(new Error('db down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const res = await endRound();
+
+    expect(res.status).toBe(200);
+    expect(tournament.status).toBe('Completed');
+    errorSpy.mockRestore();
+  });
+
+  test('grants no title when the tournament was already completed', async () => {
+    Tournament.findById.mockResolvedValue(makeMockTournament({ status: 'Completed' }));
+
+    await endRound();
+
+    expect(grantTournamentChampionTitle).not.toHaveBeenCalled();
   });
 });

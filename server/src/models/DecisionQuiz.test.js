@@ -127,10 +127,16 @@ describe('DecisionQuiz Model Validation', () => {
         "M4", "P8"
       ],
       roundWind: 'E',
+      roundNumber: 1,
       responses: new Map(),
     };
 
-    validDecisionQuiz.id = DecisionQuiz.generateId(validDecisionQuiz.players, validDecisionQuiz.doraIndicators, validDecisionQuiz.roundWind);
+    validDecisionQuiz.id = DecisionQuiz.generateId(
+      validDecisionQuiz.players,
+      validDecisionQuiz.doraIndicators,
+      validDecisionQuiz.roundWind,
+      validDecisionQuiz.roundNumber
+    );
     const quiz = new DecisionQuiz(validDecisionQuiz);
     const savedQuiz = await quiz.save();
     

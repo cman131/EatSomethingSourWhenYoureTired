@@ -49,6 +49,29 @@ async function recordPurchaseInLedger(userId, item) {
   }
 }
 
+function isWithinWindow(item, now) {
+  const opened = !item.availableFrom || item.availableFrom <= now;
+  const notClosed = !item.availableUntil || item.availableUntil > now;
+  return opened && notClosed;
+}
+
+// Earned items are never sold. Legacy rows have no acquisition field and count as shop items.
+function isPurchasable(item, now = new Date()) {
+  return item.isActive && item.acquisition !== 'earned' && isWithinWindow(item, now);
+}
+
+// Query form of isPurchasable, so the shop list and the purchase route cannot disagree.
+function purchasableItemsFilter(now = new Date()) {
+  return {
+    isActive: true,
+    acquisition: { $ne: 'earned' },
+    $and: [
+      { $or: [{ availableFrom: null }, { availableFrom: { $lte: now } }] },
+      { $or: [{ availableUntil: null }, { availableUntil: { $gt: now } }] },
+    ],
+  };
+}
+
 async function purchaseItem(userId, item) {
   const updated = await debitAndGrantItem(userId, item);
   if (!updated) {
@@ -61,5 +84,7 @@ async function purchaseItem(userId, item) {
 
 module.exports = {
   purchaseItem,
+  isPurchasable,
+  purchasableItemsFilter,
   PurchaseFailure,
 };

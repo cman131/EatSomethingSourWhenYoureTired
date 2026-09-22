@@ -332,6 +332,25 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
+/* Earned titles: a dark badge with gold lettering, unlike any purchasable tier. Static, so it needs
+   no reduced-motion rule. Forced-colors mode replaces badge colors on its own. */
+.flair-title-prestige {
+  background: linear-gradient(135deg, #1c1917, #44403c, #1c1917);
+  color: #fcd34d;
+  border: 1px solid #d97706;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.45), 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Printing drops backgrounds, which would leave pale gold text on white. */
+@media print {
+  .flair-title-prestige {
+    background: none;
+    color: #78350f;
+    border-color: #78350f;
+    box-shadow: none;
+  }
+}
+
 /* ==========================================================================
    Profile backdrops: a decorative banner strip behind the profile header (ProfileBackdrop).
    No text is ever drawn on it, so the gradient text-clip fallbacks above do not apply; when

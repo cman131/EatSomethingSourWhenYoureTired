@@ -270,3 +270,50 @@ describe('User flairLoadouts', () => {
     await expect(user.save()).rejects.toThrow(/name/i);
   });
 });
+
+describe('purchasedItems source', () => {
+  const buildEarnedUser = (name, purchasedItems) => User.create({
+    displayName: name,
+    email: `${name}@example.com`,
+    password: 'password123',
+    clubAffiliation: 'Charleston',
+    purchasedItems,
+  });
+
+  test('records the event an item was earned from', async () => {
+    const item = await ShopItem.create({
+      name: 'test-flair-earned', description: 'Earned', category: 'title', cost: 0, value: '🏆 test-flair-earned',
+    });
+    const refId = new mongoose.Types.ObjectId();
+
+    const user = await buildEarnedUser('test-flair-source', [
+      { item: item._id, source: { kind: 'tournament', refId, label: 'Spring Open' } },
+    ]);
+
+    const found = await User.findById(user._id);
+    expect(found.purchasedItems[0].source.kind).toBe('tournament');
+    expect(found.purchasedItems[0].source.refId.toString()).toBe(refId.toString());
+    expect(found.purchasedItems[0].source.label).toBe('Spring Open');
+  });
+
+  test('leaves source empty for a purchase', async () => {
+    const item = await ShopItem.create({
+      name: 'test-flair-bought', description: 'Bought', category: 'title', cost: 50, value: 'test-flair-bought',
+    });
+
+    const user = await buildEarnedUser('test-flair-nosource', [{ item: item._id }]);
+
+    const found = await User.findById(user._id);
+    expect(found.purchasedItems[0].source.kind).toBeUndefined();
+  });
+
+  test('rejects an unknown source kind', async () => {
+    const item = await ShopItem.create({
+      name: 'test-flair-badkind', description: 'Bad', category: 'title', cost: 0, value: 'test-flair-badkind',
+    });
+
+    await expect(buildEarnedUser('test-flair-badkind-user', [
+      { item: item._id, source: { kind: 'raffle', refId: new mongoose.Types.ObjectId(), label: 'x' } },
+    ])).rejects.toThrow(/kind/);
+  });
+});

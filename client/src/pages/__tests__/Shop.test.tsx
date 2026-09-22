@@ -740,4 +740,105 @@ describe('Shop page', () => {
       expect(badge).toHaveTextContent('East Wind');
     });
   });
+
+  describe('earned items', () => {
+    const earnedTitle = {
+      _id: 'earned1',
+      name: '🏆 Spring Open',
+      description: 'Awarded for winning a tournament',
+      category: 'title',
+      cost: 0,
+      value: '🏆 Spring Open',
+      tier: 'prestige',
+      acquisition: 'earned',
+      sortOrder: 0,
+      isActive: true,
+    } as ShopItem;
+    const retiredTitle = {
+      _id: 'retiredTitle2',
+      name: 'Founding Player',
+      description: 'No longer sold',
+      category: 'title',
+      cost: 500,
+      value: 'Founding Player',
+      tier: 'premium',
+      sortOrder: 9,
+      isActive: false,
+    } as ShopItem;
+
+    const showTitles = () => fireEvent.click(screen.getByRole('button', { name: /titles/i }));
+
+    test('lists an earned title under "Earned" with Equip and no Buy', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: earnedTitle, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      showTitles();
+
+      expect(screen.getByRole('heading', { name: /^earned$/i })).toBeInTheDocument();
+      expect(screen.getByTestId('flair-item-card-earned1')).toHaveTextContent('🏆 Spring Open');
+      expect(screen.getByRole('button', { name: /^equip$/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^buy$/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /owned \(retired\)/i })).not.toBeInTheDocument();
+    });
+
+    test('keeps earned and retired titles in separate groups', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [
+          { item: earnedTitle, purchasedAt: '2026-01-01' },
+          { item: retiredTitle, purchasedAt: '2026-01-01' },
+        ],
+      });
+
+      render(<Shop />);
+      showTitles();
+
+      expect(screen.getByRole('heading', { name: /^earned$/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /owned \(retired\)/i })).toBeInTheDocument();
+    });
+
+    test('shows the earned title instead of the empty message', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: earnedTitle, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      showTitles();
+
+      expect(screen.queryByText(/no items available in this category/i)).not.toBeInTheDocument();
+    });
+
+    test('equips an earned title by id', async () => {
+      shopApi.equip.mockReset();
+      shopApi.equip.mockResolvedValue({});
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: earnedTitle, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      showTitles();
+      fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+      await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('earned1', 'title'));
+    });
+
+    test('renders an earned title with the prestige badge', () => {
+      mockShopUseApi(mockCatalog, {
+        ...mockInventory,
+        purchasedItems: [{ item: earnedTitle, purchasedAt: '2026-01-01' }],
+      });
+
+      render(<Shop />);
+      showTitles();
+
+      const card = screen.getByTestId('flair-item-card-earned1');
+      // eslint-disable-next-line testing-library/no-node-access -- the badge is a styled span with no accessible role
+      expect(card.querySelector('.flair-title-prestige')).toBeInTheDocument();
+    });
+  });
 });

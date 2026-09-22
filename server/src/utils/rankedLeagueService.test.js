@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const RankedLeague = require('../models/RankedLeague');
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
+const ShopItem = require('../models/ShopItem');
 const { getCurrentLeague, updateRankedPoints, reverseRankedPoints, RANKED_GAMES_THRESHOLD } = require('./rankedLeagueService');
 
 beforeAll(async () => {
@@ -436,6 +437,7 @@ describe('ranked season-end placement rewards', () => {
     await PointTransaction.deleteMany({ user: { $in: staleUsers.map(u => u._id) } });
     await RankedLeague.deleteMany({});
     await User.deleteMany({ displayName: /^test-ranked/ });
+    await ShopItem.deleteMany({ sourceKey: /^ranked_season:/ });
 
     players = await User.create([1, 2, 3, 4].map(n => ({
       displayName: `test-ranked-season-p${n}`,
@@ -565,5 +567,42 @@ describe('ranked season-end placement rewards', () => {
 
     expect(await placementTransactions()).toHaveLength(3);
     expect((await RankedLeague.findById(raceDuplicate._id)).rewardsAwardedAt).toBeInstanceOf(Date);
+  });
+
+  const seasonTitleItems = async player => {
+    const found = await User.findById(player._id).populate('purchasedItems.item');
+    return found.purchasedItems.filter(p => p.source && p.source.kind === 'ranked_season');
+  };
+
+  test('grants the champion title to the top qualified player when the season is paid', async () => {
+    const ended = await createExpiredLeague();
+
+    await getCurrentLeague();
+
+    const champion = await seasonTitleItems(players[0]);
+    expect(champion).toHaveLength(1);
+    expect(champion[0].item.acquisition).toBe('earned');
+    expect(champion[0].item.sourceKey).toBe(`ranked_season:${ended._id}`);
+    expect(await seasonTitleItems(players[1])).toHaveLength(0);
+    // players[3] has the most points but is unqualified
+    expect(await seasonTitleItems(players[3])).toHaveLength(0);
+  });
+
+  test('a retry after a failed grant pays points once and grants the title once', async () => {
+    const ended = await createExpiredLeague();
+    const grantSpy = jest.spyOn(ShopItem, 'findOneAndUpdate').mockRejectedValueOnce(new Error('db down'));
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await getCurrentLeague();
+
+    expect((await RankedLeague.findById(ended._id)).rewardsAwardedAt).toBeNull();
+    grantSpy.mockRestore();
+    errorSpy.mockRestore();
+
+    await getCurrentLeague();
+
+    expect(await seasonTitleItems(players[0])).toHaveLength(1);
+    expect(await balanceOf(players[0])).toBe(150);
+    expect((await RankedLeague.findById(ended._id)).rewardsAwardedAt).toBeInstanceOf(Date);
   });
 });

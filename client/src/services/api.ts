@@ -183,6 +183,7 @@ export interface Tournament {
   _id: string;
   name: string;
   description?: string;
+  winnerTitle?: string;
   date: string;
   isOnline?: boolean;
   location?: TournamentAddress;
@@ -570,6 +571,7 @@ export const tournamentsApi = {
   createTournament: async (tournamentData: {
     name: string;
     description?: string;
+    winnerTitle?: string;
     date: Date;
     isOnline?: boolean;
     location?: TournamentAddress;
@@ -590,6 +592,7 @@ export const tournamentsApi = {
   updateTournament: async (tournamentId: string, tournamentData: {
     name?: string;
     description?: string;
+    winnerTitle?: string;
     date?: Date;
     isOnline?: boolean;
     location?: TournamentAddress;
@@ -792,10 +795,12 @@ export interface ShopItem {
   category: FlairCategory;
   cost: number;
   value: string;
-  tier: 'entry' | 'mid' | 'premium';
+  tier: 'entry' | 'mid' | 'premium' | 'prestige';
   previewCss?: string | null;
   sortOrder: number;
   isActive: boolean;
+  acquisition?: 'shop' | 'earned';
+  availableUntil?: string | null;
 }
 
 // Each slot holds the equipped item's `value` (a CSS class or display text), not its `_id`.

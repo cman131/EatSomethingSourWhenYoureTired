@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { computePlayerUmaMap } = require('../utils/tournamentUma');
+const { WINNER_TITLE_MAX_LENGTH } = require('../utils/prestigeTitle');
 
 const playerEntrySchema = new mongoose.Schema({
   player: {
@@ -47,6 +48,12 @@ const tournamentSchema = new mongoose.Schema({
     type: String,
     trim: true,
     maxlength: [5000, 'Description cannot be more than 5000 characters']
+  },
+  // Text of the prestige title the winner earns. Blank falls back to the truncated name (see prestigeTitle.js).
+  winnerTitle: {
+    type: String,
+    trim: true,
+    maxlength: [WINNER_TITLE_MAX_LENGTH, `Winner title cannot be more than ${WINNER_TITLE_MAX_LENGTH} characters`]
   },
   date: {
     type: Date,

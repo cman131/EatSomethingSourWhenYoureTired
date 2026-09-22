@@ -42,4 +42,12 @@ describe('TitleBadge', () => {
     expect(screen.getByText('Chombo Chaser')).toHaveClass('flair-title-chombo');
     expect(screen.getByText('Chombo Chaser')).toHaveTextContent('⚡');
   });
+
+  test('renders earned titles with the prestige badge', () => {
+    render(<TitleBadge value="🏆 Spring Open" />);
+
+    const badge = screen.getByText('🏆 Spring Open');
+    expect(badge).toHaveClass('flair-title-prestige');
+    expect(badge).not.toHaveClass('bg-primary-100');
+  });
 });

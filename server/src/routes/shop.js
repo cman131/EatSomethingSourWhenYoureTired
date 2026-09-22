@@ -1,7 +1,7 @@
 const express = require('express');
 const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
-const { purchaseItem, PurchaseFailure } = require('../utils/shopService');
+const { purchaseItem, isPurchasable, purchasableItemsFilter, PurchaseFailure } = require('../utils/shopService');
 const {
   MAX_FLAIR_LOADOUTS,
   validateLoadoutSlots,
@@ -34,10 +34,10 @@ const PURCHASE_FAILURE_RESPONSES = {
   [PurchaseFailure.InsufficientBalance]: { status: 400, message: 'Insufficient points balance' },
 };
 
-// GET /api/shop — list active items grouped by category
+// GET /api/shop — list purchasable items (active, not earned, inside their window) grouped by category
 router.get('/', async (req, res) => {
   try {
-    const items = await ShopItem.find({ isActive: true }).sort({ sortOrder: 1, cost: 1 });
+    const items = await ShopItem.find(purchasableItemsFilter()).sort({ sortOrder: 1, cost: 1 });
     const grouped = {};
     for (const item of items) {
       if (!grouped[item.category]) {
@@ -79,7 +79,7 @@ router.post('/purchase', validateMongoIdBody('itemId'), async (req, res) => {
     const { itemId } = req.body;
 
     const item = await ShopItem.findById(itemId);
-    if (!item || !item.isActive) {
+    if (!item || !isPurchasable(item)) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
 
@@ -277,19 +277,29 @@ router.post('/seed', async (req, res) => {
 
     const catalogNames = SHOP_CATALOG.map(item => item.name);
 
-    // Deactivate items no longer in the catalog
+    // Deactivate shop items no longer in the catalog. Earned items are created at grant time and
+    // are never part of the catalog, so they are left alone.
     await ShopItem.updateMany(
-      { name: { $nin: catalogNames } },
+      { name: { $nin: catalogNames }, acquisition: { $ne: 'earned' } },
       { $set: { isActive: false } }
     );
 
     const results = await Promise.all(
-      SHOP_CATALOG.map(({ name, category, cost, tier, description, value, sortOrder }) =>
+      SHOP_CATALOG.map(({ name, category, cost, tier, description, value, sortOrder, availableFrom, availableUntil }) =>
         ShopItem.findOneAndUpdate(
-          { name },
+          { name, acquisition: { $ne: 'earned' } },
           {
-            $set: { cost, tier, description, value, sortOrder, isActive: true },
-            $setOnInsert: { name, category },
+            $set: {
+              cost,
+              tier,
+              description,
+              value,
+              sortOrder,
+              isActive: true,
+              availableFrom: availableFrom ?? null,
+              availableUntil: availableUntil ?? null,
+            },
+            $setOnInsert: { name, category, acquisition: 'shop' },
           },
           { upsert: true, new: true }
         )

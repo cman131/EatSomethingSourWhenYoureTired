@@ -289,6 +289,7 @@ const TournamentDetail: React.FC = () => {
   const handleUpdateTournament = async (data: {
     name?: string;
     description?: string;
+    winnerTitle?: string;
     date?: Date;
     isOnline?: boolean;
     location?: any;
