@@ -21,11 +21,12 @@ const { shopApi } = require('../../../services/api');
 
 const colorItem = { _id: 'item1', name: 'Jade Green', description: '', category: 'nameColor', cost: 250, value: 'text-emerald-600', tier: 'mid', sortOrder: 1, isActive: true };
 const retiredTitleItem = { _id: 'title1', name: 'Founding Player', description: '', category: 'title', cost: 500, value: 'Founding Player', tier: 'premium', sortOrder: 1, isActive: false };
+const backdropItem = { _id: 'backdrop1', name: 'Fuji Dawn', description: '', category: 'profileBackdrop', cost: 125, value: 'flair-backdrop-fuji', tier: 'mid', sortOrder: 1, isActive: true };
 
 function baseInventory(overrides: Partial<ShopInventory> = {}): ShopInventory {
   return {
     purchasedItems: [{ item: colorItem, purchasedAt: '2026-01-01' }],
-    equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, title: null },
+    equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null },
     pointsBalance: 500,
     flairLoadouts: [],
     ...overrides,
@@ -85,13 +86,30 @@ describe('MyFlairSection', () => {
   test('clicking an equipped item unequips it', async () => {
     shopApi.equip.mockResolvedValue({});
     mockInventory(baseInventory({
-      equippedFlair: { nameColor: colorItem.value, nameIcon: null, profileBorder: null, title: null },
+      equippedFlair: { nameColor: colorItem.value, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null },
     }));
 
     render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
     fireEvent.click(screen.getByRole('button', { name: /jade green/i }));
 
     await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith(null, 'nameColor'));
+  });
+
+  test('lists and equips an owned backdrop like any other slot', async () => {
+    shopApi.equip.mockResolvedValue({});
+    mockInventory(baseInventory({
+      purchasedItems: [
+        { item: colorItem, purchasedAt: '2026-01-01' },
+        { item: backdropItem, purchasedAt: '2026-01-01' },
+      ],
+    }));
+
+    render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
+    expect(screen.getByRole('button', { name: /fuji dawn/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /fuji dawn/i }));
+
+    await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('backdrop1', 'profileBackdrop'));
   });
 
   test('shows "no saved loadouts" when there are none', () => {
@@ -105,7 +123,7 @@ describe('MyFlairSection', () => {
   test('saves the current look as a new loadout', async () => {
     shopApi.createLoadout.mockResolvedValue({});
     mockInventory(baseInventory({
-      equippedFlair: { nameColor: colorItem.value, nameIcon: null, profileBorder: null, title: null },
+      equippedFlair: { nameColor: colorItem.value, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null },
     }));
 
     render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
@@ -118,6 +136,7 @@ describe('MyFlairSection', () => {
         nameColor: colorItem.value,
         nameIcon: null,
         profileBorder: null,
+        profileBackdrop: null,
         title: null,
       })
     );
@@ -136,7 +155,7 @@ describe('MyFlairSection', () => {
   test('lists saved loadouts with an Apply action', async () => {
     shopApi.applyLoadout.mockResolvedValue({});
     mockInventory(baseInventory({
-      flairLoadouts: [{ _id: 'l1', name: 'Tournament Look', nameColor: colorItem.value, nameIcon: null, profileBorder: null, title: null }],
+      flairLoadouts: [{ _id: 'l1', name: 'Tournament Look', nameColor: colorItem.value, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null }],
     }));
 
     render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
@@ -150,7 +169,7 @@ describe('MyFlairSection', () => {
   test('deletes a loadout', async () => {
     shopApi.deleteLoadout.mockResolvedValue({});
     mockInventory(baseInventory({
-      flairLoadouts: [{ _id: 'l1', name: 'Tournament Look', nameColor: colorItem.value, nameIcon: null, profileBorder: null, title: null }],
+      flairLoadouts: [{ _id: 'l1', name: 'Tournament Look', nameColor: colorItem.value, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null }],
     }));
 
     render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
@@ -162,7 +181,7 @@ describe('MyFlairSection', () => {
   test('renames a loadout', async () => {
     shopApi.renameLoadout.mockResolvedValue({});
     mockInventory(baseInventory({
-      flairLoadouts: [{ _id: 'l1', name: 'Tournament Look', nameColor: colorItem.value, nameIcon: null, profileBorder: null, title: null }],
+      flairLoadouts: [{ _id: 'l1', name: 'Tournament Look', nameColor: colorItem.value, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null }],
     }));
 
     render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
@@ -176,8 +195,8 @@ describe('MyFlairSection', () => {
   test('hides the "save current look" input once at the loadout cap and shows an explanation', () => {
     mockInventory(baseInventory({
       flairLoadouts: [
-        { _id: 'l1', name: 'Look 1', nameColor: null, nameIcon: null, profileBorder: null, title: null },
-        { _id: 'l2', name: 'Look 2', nameColor: null, nameIcon: null, profileBorder: null, title: null },
+        { _id: 'l1', name: 'Look 1', nameColor: null, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null },
+        { _id: 'l2', name: 'Look 2', nameColor: null, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null },
       ],
     }));
 

@@ -12,6 +12,7 @@ const SLOTS: { key: FlairCategory; label: string }[] = [
   { key: 'nameColor', label: 'Name Color' },
   { key: 'nameIcon', label: 'Icon' },
   { key: 'profileBorder', label: 'Border' },
+  { key: 'profileBackdrop', label: 'Backdrop' },
   { key: 'title', label: 'Title' },
 ];
 
@@ -20,7 +21,7 @@ const SLOTS: { key: FlairCategory; label: string }[] = [
 // hint so a player isn't shown a "Save" box that would just be rejected.
 const MAX_LOADOUTS = 2;
 
-const EMPTY_FLAIR = { nameColor: null, nameIcon: null, profileBorder: null, title: null };
+const EMPTY_FLAIR = { nameColor: null, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null };
 
 interface MyFlairSectionProps {
   onRefetchProfile: () => Promise<void>;
