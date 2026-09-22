@@ -84,10 +84,14 @@ const PointsHelpModal: React.FC<Props> = ({ onClose }) => (
         <section aria-label="Limits">
           <h3 className="text-base font-semibold text-gray-800 mb-3">Limits</h3>
           <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
-            <li>Game points are capped at {GAME_DAILY_CAP} points per rolling 24 hours.</li>
             <li>
-              The same group of players earns points from at most {REPEAT_GROUP_MAX_GAMES} games
-              per {REPEAT_GROUP_WINDOW_DAYS} days.
+              You can earn at most {GAME_DAILY_CAP} game points in any 24-hour period. Awards
+              beyond that are trimmed or skipped.
+            </li>
+            <li>
+              The same set of registered players (guests don't count) earns points from at most{' '}
+              {REPEAT_GROUP_MAX_GAMES} games per {REPEAT_GROUP_WINDOW_DAYS} days. Later games in
+              that window award no points.
             </li>
             <li>Tournament awards are not limited.</li>
           </ul>
