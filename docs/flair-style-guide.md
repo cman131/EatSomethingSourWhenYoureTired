@@ -17,6 +17,7 @@ The shop has three tiers. Each tier is visibly distinct in **every** category, s
 | Name color | Flat color | Static two-hue gradient text | Flowing multi-hue gradient text + three ✦ sparkles on the text corners |
 | Name icon | Plain emoji | Soft static golden glow | Emoji-specific motion + colored glow |
 | Border | Flat `box-shadow` ring | Static gradient wrapper | Spinning conic-gradient ring |
+| Backdrop | Flat color wash | Static gradient banner | Slowly drifting multi-hue gradient banner |
 | Title | Pale-blue pill (`bg-primary-100`) | Shared silver badge | Unique gradient badge with emoji and glow |
 
 ## Hard rules
@@ -50,6 +51,26 @@ A spinning conic gradient on a wrapper. **Only the `::before` layer rotates**; t
 - Mid: add a `flair-mid-*` class and add it to the shared selector list at the top of the mid section.
 - Premium: add a `flair-border-*` class, add it to the shared selector lists (base and `::before`, and the reduced-motion block), and set the three custom properties. The catalog test fails if the class is missing from any of those lists.
 - Prefix detection (`isPremiumBorder`, `isMidTierBorder`) is automatic.
+
+## Profile Backdrops (`flair-backdrop-*`)
+
+A decorative banner strip rendered by `ProfileBackdrop` above the header on the profile page (`UserInfoSection`) and in the shop preview. It is **profile-only**: `equippedFlair.profileBackdrop` is left out of `PLAYER_POPULATE_FIELDS` (which lists the inline slots explicitly), so it never rides along on game, tournament or member payloads, and a private-mode profile returns it as `null` (see `User.toJSON`).
+
+- **Entry:** a flat `background-color` wash.
+- **Mid:** a static 2-3 stop `linear-gradient(90deg, …)`.
+- **Premium:** a 5-stop gradient whose end hue repeats its start, with `background-size: 300% 100%` and a slow `flair-flow` animation (12s, slower than name colors so a large banner is calm).
+
+Rules specific to backdrops:
+
+- **Never draw text on a backdrop.** It is a separate strip, not a background behind the name, so no contrast fallbacks are needed; forced-colors and print simply drop the strip.
+- **The value is used as a class name, so `ProfileBackdrop` only renders values registered in `BACKDROP_STYLES`** (`flairUtils.ts`). A stale or hostile stored value renders nothing.
+- Add a backdrop by adding its class (premium ones also join the shared flow rule and the reduced-motion block), a `BACKDROP_STYLES` entry and a catalog item. `flairCatalog.test.ts` fails if any is missing.
+
+## Profile Showcase
+
+Not a shop category. A player pins up to 3 things to their profile (`User.showcase`, validated by `server/src/utils/showcaseService.js`), saved through `PUT /api/users/profile`. Pinnable: flair the player owns (checked against their purchases, retired items included), their favorite yaku or tile (only while set), and the stats `gamesWon`, `gamesPlayed`, `highestScore`, `averageScore` from `GET /api/users/:id/stats`. There is no new badge or achievement type. A private-mode profile returns an empty showcase, and the owner's editor is unavailable then.
+
+Flair pins render through `FlairSample`, which draws each category as it appears elsewhere. The entry cap and stat keys are duplicated in `showcaseUtils.ts`; its test fails if they drift from the server.
 
 ## Name Colors (`flair-color-*`)
 
@@ -95,6 +116,7 @@ Rendered by the shared `TitleBadge`, driven by `TITLE_STYLES`.
 | `flair-ring-*` | Entry | `box-shadow` direct on avatar |
 | `flair-mid-*` | Mid | Static gradient wrapper element |
 | `flair-border-*` | Premium | Wrapper with a spinning `::before` ring |
+| `flair-backdrop-*` | Any | Banner strip behind the profile header (`ProfileBackdrop`) |
 | `flair-color-*` | Any | Color class on the name span (`FlairName`) |
 | `flair-sparkle*` | Premium | Sparkle overlays and palettes (`FlairName`) |
 | `flair-icon-*` | Mid/Premium | Class on the icon wrapper (`FlairIcon`) |
@@ -105,3 +127,5 @@ Never embed flair class names directly in component logic; go through `flairUtil
 ### Guard tests
 
 `client/src/utils/__tests__/flairCatalog.test.ts` reads the server catalog (`server/src/data/shopCatalog.js`), the client registry and `flair.css` and checks that every item is registered at its catalog tier and appears in every hand-synced selector list. `server/src/data/shopCatalog.test.js` checks catalog integrity (unique names, value uniqueness per category, price bands, ordering, unchanged legacy items).
+
+The slot names live in one place, `server/src/data/flairCategories.js`; `ShopItem`, `User.equippedFlair` and the equip route are built from it. Two more guards keep the client in step: `flairCatalog.test.ts` checks that the `FlairCategory` union in `api.ts` and the Shop tabs list every server category.
