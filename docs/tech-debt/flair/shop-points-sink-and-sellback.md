@@ -2,7 +2,9 @@
 
 ## State
 
-New
+Cancelled
+
+Sell-back was explicitly excluded from scope, and the points-sink decision (loadout slots, prize pool, name-change tokens, etc.) was deferred rather than chosen. With both halves of the Suggested Fix out of scope, there is no remaining actionable work; re-open this plan (reset State to `New`) once a sink is chosen.
 
 ## Summary
 
