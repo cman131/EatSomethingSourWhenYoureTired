@@ -255,7 +255,7 @@ router.post('/loadouts/:loadoutId/apply', validateMongoId('loadoutId'), async (r
     const ownedItems = user.purchasedItems.filter(p => p.item).map(p => p.item);
     const validation = validateLoadoutSlots(ownedItems, loadout);
     if (!validation.valid) {
-      return res.status(400).json({ success: false, message: 'This loadout includes an item you no longer own' });
+      return res.status(400).json({ success: false, message: 'Loadout includes an item you do not own' });
     }
 
     await applyLoadout(user._id, loadout);
