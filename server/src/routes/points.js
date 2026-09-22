@@ -1,8 +1,23 @@
 const express = require('express');
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
+const { attachHistoryContext } = require('../utils/pointsHistoryContext');
 
 const router = express.Router();
+
+const DEFAULT_HISTORY_LIMIT = 20;
+const MAX_HISTORY_LIMIT = 100;
+
+function parseHistoryPaging(query) {
+  const page = parseInt(query.page, 10);
+  const limit = parseInt(query.limit, 10);
+  return {
+    page: Number.isNaN(page) ? 1 : Math.max(page, 1),
+    limit: limit === 0 || Number.isNaN(limit)
+      ? DEFAULT_HISTORY_LIMIT
+      : Math.min(Math.max(limit, 1), MAX_HISTORY_LIMIT),
+  };
+}
 
 // @route   GET /api/points/me
 // @desc    Get current user's points summary
@@ -33,17 +48,18 @@ router.get('/me', async (req, res) => {
 // @access  Private
 router.get('/me/history', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const { page, limit } = parseHistoryPaging(req.query);
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
+    const [transactions, total] = await Promise.all([
       PointTransaction.find({ user: req.user._id })
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit),
+        .limit(limit)
+        .lean(),
       PointTransaction.countDocuments({ user: req.user._id }),
     ]);
+    const items = await attachHistoryContext(transactions);
 
     res.json({
       success: true,
@@ -51,6 +67,7 @@ router.get('/me/history', async (req, res) => {
         items,
         total,
         page,
+        limit,
         totalPages: Math.ceil(total / limit),
       },
     });
