@@ -2,6 +2,15 @@ const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
 const Game = require('../models/Game');
 const { RANKED_GAMES_THRESHOLD } = require('./rankedLeagueConstants');
+const {
+  GAME_PLACEMENT_AMOUNTS,
+  GAME_SUBMITTED_AMOUNT,
+  GAME_VERIFIED_AMOUNT,
+  TOURNAMENT_PARTICIPATION_AMOUNT,
+  TOURNAMENT_PLACEMENT_AMOUNTS,
+  RANKED_QUALIFICATION_AMOUNT,
+  RANKED_PLACEMENT_AMOUNTS,
+} = require('./pointsConfig');
 
 const DUPLICATE_KEY_ERROR = 11000;
 
@@ -81,10 +90,6 @@ const GAME_PLACEMENT_TYPES = {
   4: 'game_placement_4',
 };
 
-const GAME_PLACEMENT_AMOUNTS = { 1: 10, 2: 7, 3: 4, 4: 2 };
-const GAME_SUBMITTED_AMOUNT = 2;
-const GAME_VERIFIED_AMOUNT = 1;
-
 function buildGameAwards(game, verifierId) {
   const metadata = { gameId: game._id };
 
@@ -121,16 +126,12 @@ async function awardGamePoints(game, verifierId) {
   await Game.updateOne({ _id: game._id }, { $set: { pointsAwardedAt: new Date() } });
 }
 
-const TOURNAMENT_PARTICIPATION_AMOUNT = 15;
-
 const TOURNAMENT_PLACEMENT_TYPES = [
   'tournament_placement_1',
   'tournament_placement_2',
   'tournament_placement_3',
   'tournament_placement_4',
 ];
-
-const TOURNAMENT_PLACEMENT_AMOUNTS = [200, 100, 70, 50];
 
 async function awardTournamentPoints(tournament) {
   const tournamentId = tournament._id;
@@ -163,8 +164,6 @@ async function awardTournamentPoints(tournament) {
   await awardAllOnce([...participationAwards, ...placementAwards]);
 }
 
-const RANKED_QUALIFICATION_AMOUNT = 10;
-
 async function awardRankedQualificationPoints(userId, leagueId) {
   await awardAllOnce([
     {
@@ -181,8 +180,6 @@ const RANKED_PLACEMENT_TYPES = [
   'ranked_league_placement_2',
   'ranked_league_placement_3',
 ];
-
-const RANKED_PLACEMENT_AMOUNTS = [150, 100, 50];
 
 // Standard competition ranking over qualified players: ties share a placement and the next placement is skipped (1, 1, 3).
 function rankQualifiedPlayers(league) {
