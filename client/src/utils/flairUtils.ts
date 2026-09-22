@@ -18,7 +18,12 @@ export interface NameColorStyle {
   sparkleClass?: string;
 }
 
-// The three tables below are the client-side source of truth for flair identity strings.
+// A backdrop's `value` is its CSS class, so the registry only records the tier.
+export interface BackdropStyle {
+  tier: FlairTier;
+}
+
+// The tables below are the client-side source of truth for flair identity strings.
 // Keys are the `value` strings the server stores in User.equippedFlair, so a key must
 // never be renamed for an item that already exists.
 
@@ -88,6 +93,20 @@ const NAME_COLOR_STYLES: Record<string, NameColorStyle> = {
   'flair-color-tanabata': { tier: 'premium', sparkleClass: 'flair-sparkles-tanabata' },
 };
 
+const ENTRY_BACKDROP: BackdropStyle = { tier: 'entry' };
+const MID_BACKDROP: BackdropStyle = { tier: 'mid' };
+const PREMIUM_BACKDROP: BackdropStyle = { tier: 'premium' };
+
+const BACKDROP_STYLES: Record<string, BackdropStyle> = {
+  'flair-backdrop-shoji': ENTRY_BACKDROP,
+  'flair-backdrop-tatami': ENTRY_BACKDROP,
+  'flair-backdrop-sumi': ENTRY_BACKDROP,
+  'flair-backdrop-fuji': MID_BACKDROP,
+  'flair-backdrop-bamboo': MID_BACKDROP,
+  'flair-backdrop-tanabata': PREMIUM_BACKDROP,
+  'flair-backdrop-koi': PREMIUM_BACKDROP,
+};
+
 // hasOwnProperty guard: values come from the server, and a plain object lookup
 // would return inherited members for keys like 'constructor'.
 function lookup<T>(table: Record<string, T>, key: string): T | null {
@@ -131,6 +150,10 @@ export function getIconClass(iconValue: string): string {
 
 export function getNameColorStyle(colorValue: string): NameColorStyle | null {
   return lookup(NAME_COLOR_STYLES, colorValue);
+}
+
+export function getBackdropStyle(backdropValue: string): BackdropStyle | null {
+  return lookup(BACKDROP_STYLES, backdropValue);
 }
 
 // The server stores the item's `value` (not its id) in User.equippedFlair.

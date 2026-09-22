@@ -3,11 +3,12 @@ const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
 const { purchaseItem, PurchaseFailure } = require('../utils/shopService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
+const { FLAIR_CATEGORIES } = require('../data/flairCategories');
 const { validateMongoIdBody, validateOptionalMongoIdBody } = require('../middleware/validation');
 
 const router = express.Router();
 
-const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+const VALID_SLOTS = FLAIR_CATEGORIES;
 
 const PURCHASE_FAILURE_RESPONSES = {
   [PurchaseFailure.UserNotFound]: { status: 404, message: 'User not found' },

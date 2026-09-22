@@ -296,7 +296,30 @@ describe('POST /api/shop/equip', () => {
     expect(updated.equippedFlair.nameColor).toBe(item.value);
   });
 
-  test.each(['nameIcon', 'profileBorder', 'title'])(
+  test('equips and unequips an owned backdrop in the profileBackdrop slot', async () => {
+    const backdrop = await ShopItem.create({
+      name: 'test-shop-route-backdrop',
+      description: 'A backdrop',
+      category: 'profileBackdrop',
+      cost: 50,
+      value: 'flair-backdrop-test',
+    });
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: backdrop._id } } });
+
+    const equipRes = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: backdrop._id.toString(), slot: 'profileBackdrop' });
+    expect(equipRes.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.profileBackdrop).toBe(backdrop.value);
+
+    const unequipRes = await request(app)
+      .post('/api/shop/equip')
+      .send({ itemId: null, slot: 'profileBackdrop' });
+    expect(unequipRes.status).toBe(200);
+    expect((await User.findById(user._id)).equippedFlair.profileBackdrop).toBeNull();
+  });
+
+  test.each(['nameIcon', 'profileBorder', 'profileBackdrop', 'title'])(
     'rejects a nameColor item equipped into the %s slot',
     async slot => {
       const res = await request(app)

@@ -3,6 +3,7 @@ import path from 'path';
 import {
   getTitleStyle,
   getIconStyle,
+  getBackdropStyle,
   getNameColorStyle,
   isPremiumBorder,
   isMidTierBorder,
@@ -12,6 +13,8 @@ import {
 // Needs the whole repo checked out (not just client/): this reads the server catalog directly.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { SHOP_CATALOG } = require('../../../../server/src/data/shopCatalog');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { FLAIR_CATEGORIES } = require('../../../../server/src/data/flairCategories');
 
 interface CatalogItem {
   name: string;
@@ -96,8 +99,32 @@ describe('shop catalog ↔ client registry ↔ flair.css', () => {
     expect(css).not.toMatch(/\.flair-border-[a-z]+\s*\{[^}]*animation:/);
   });
 
+  test.each(rowsIn('profileBackdrop'))('backdrop %s is registered and styled', (_name, item) => {
+    expect(getBackdropStyle(item.value)?.tier).toBe(item.tier);
+    expect(cssDefines(item.value)).toBe(true);
+  });
+
   test('reduced-motion rules are present', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+  });
+});
+
+describe('flair categories across server and client', () => {
+  const readSource = (relativePath: string): string =>
+    fs.readFileSync(path.join(__dirname, relativePath), 'utf8');
+
+  test('the client FlairCategory union lists every server flair category', () => {
+    const union = /export type FlairCategory =([^;]+);/.exec(readSource('../../services/api.ts'));
+    const clientCategories = Array.from((union?.[1] ?? '').matchAll(/'(\w+)'/g)).map(m => m[1]);
+
+    expect([...clientCategories].sort()).toEqual([...FLAIR_CATEGORIES].sort());
+  });
+
+  test('the Shop page has a tab for every server flair category', () => {
+    const shopSource = readSource('../../pages/Shop.tsx');
+    const tabKeys = Array.from(shopSource.matchAll(/\{ key: '(\w+)', label:/g)).map(m => m[1]);
+
+    expect([...tabKeys].sort()).toEqual([...FLAIR_CATEGORIES].sort());
   });
 });
 
@@ -106,6 +133,7 @@ describe('hand-synced selector lists in flair.css', () => {
   const premiumColors = rowsInTiers('nameColor', ['premium']);
   const premiumBorders = rowsInTiers('profileBorder', ['premium']);
   const premiumIcons = rowsInTiers('nameIcon', ['premium']);
+  const premiumBackdrops = rowsInTiers('profileBackdrop', ['premium']);
 
   const clipLists = selectorListsWith(cssNoComments, /background-clip:\s*text/);
   const transparentFillLists = selectorListsWith(cssNoComments, /-webkit-text-fill-color:\s*transparent/);
@@ -155,6 +183,14 @@ describe('hand-synced selector lists in flair.css', () => {
     const className = getIconStyle(item.value)?.className ?? '';
     expect(className).not.toBe('');
     expect(isListed(reducedMotionNoneLists, `.${className} .flair-icon-glyph`)).toBe(true);
+  });
+
+  test.each(premiumBackdrops)('premium backdrop %s flows', (_name, item) => {
+    expect(isListed(flowLists, `.${item.value}`)).toBe(true);
+  });
+
+  test.each(premiumBackdrops)('premium backdrop %s stops flowing under reduced motion', (_name, item) => {
+    expect(isListed(reducedMotionNoneLists, `.${item.value}`)).toBe(true);
   });
 
   test('sparkles stop twinkling under reduced motion', () => {

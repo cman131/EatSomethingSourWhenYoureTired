@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const { FLAIR_CATEGORIES } = require('../data/flairCategories');
 
 const shopItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
   category: {
     type: String,
-    enum: ['nameColor', 'nameIcon', 'profileBorder', 'title'],
+    enum: FLAIR_CATEGORIES,
     required: true,
   },
   cost: { type: Number, required: true },

@@ -61,6 +61,15 @@ const SHOP_CATALOG = [
   { name: 'Kitsune Fire',  description: 'Fox fire, spinning the other way',         category: 'profileBorder', cost: 300, tier: 'premium', value: 'flair-border-kitsune', sortOrder: 15 },
   { name: 'Yozakura',      description: 'Night cherry blossoms in the dark',        category: 'profileBorder', cost: 300, tier: 'premium', value: 'flair-border-yozakura', sortOrder: 16 },
 
+  // profileBackdrop — 7 items. A banner strip behind the profile header (profile page only).
+  { name: 'Shoji Paper',    description: 'Soft rice-paper white, like a sliding screen', category: 'profileBackdrop', cost: 50,  tier: 'entry',   value: 'flair-backdrop-shoji',    sortOrder: 1 },
+  { name: 'Tatami Weave',   description: 'Woven straw-mat green',                        category: 'profileBackdrop', cost: 50,  tier: 'entry',   value: 'flair-backdrop-tatami',   sortOrder: 2 },
+  { name: 'Sumi Wash',      description: 'A quiet wash of diluted ink',                  category: 'profileBackdrop', cost: 75,  tier: 'entry',   value: 'flair-backdrop-sumi',     sortOrder: 3 },
+  { name: 'Fuji Dawn',      description: 'First light over the mountain',                category: 'profileBackdrop', cost: 125, tier: 'mid',     value: 'flair-backdrop-fuji',     sortOrder: 4 },
+  { name: 'Bamboo Grove',   description: 'Green shade filtering into teal',              category: 'profileBackdrop', cost: 150, tier: 'mid',     value: 'flair-backdrop-bamboo',   sortOrder: 5 },
+  { name: 'Tanabata Night', description: 'A drifting starry sky, midnight to violet',    category: 'profileBackdrop', cost: 300, tier: 'premium', value: 'flair-backdrop-tanabata', sortOrder: 6 },
+  { name: 'Koi Pond',       description: 'Ripples of gold and vermilion sliding past',   category: 'profileBackdrop', cost: 300, tier: 'premium', value: 'flair-backdrop-koi',      sortOrder: 7 },
+
   // title — 14 items
   { name: 'Regular',             description: 'A familiar face at the table',                        category: 'title', cost: 50,  tier: 'entry',   value: 'Regular',             sortOrder: 1 },
   { name: 'Nakama',              description: 'Your crew, your comrades, your table',                category: 'title', cost: 50,  tier: 'entry',   value: 'Nakama',              sortOrder: 2 },
