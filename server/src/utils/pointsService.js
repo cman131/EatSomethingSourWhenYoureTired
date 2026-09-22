@@ -2,46 +2,23 @@ const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
 const Game = require('../models/Game');
 const { RANKED_GAMES_THRESHOLD } = require('./rankedLeagueConstants');
-
-const DUPLICATE_KEY_ERROR = 11000;
-
-async function removeLedgerRow(transaction) {
-  try {
-    await PointTransaction.deleteOne({ _id: transaction._id });
-  } catch (cleanupError) {
-    console.error(
-      `Point ledger drift: transaction ${transaction._id} has no matching balance update`,
-      cleanupError
-    );
-  }
-}
-
-// The ledger row is written first; if the balance update then fails the row is removed again,
-// so an error leaves the ledger and pointsBalance in agreement.
-async function recordAward({ userId, type, amount, metadata = {} }) {
-  const transaction = await PointTransaction.create({ user: userId, type, amount, metadata });
-  try {
-    await User.updateOne(
-      { _id: userId },
-      { $inc: { pointsBalance: amount, totalPointsEarned: amount } }
-    );
-  } catch (error) {
-    await removeLedgerRow(transaction);
-    throw error;
-  }
-}
-
-// Relies on the unique partial indexes on PointTransaction (per game / per tournament / per league):
-// a duplicate-key error means this award was already made, so it is skipped.
-async function recordAwardOnce(award) {
-  try {
-    await recordAward(award);
-  } catch (error) {
-    if (error.code !== DUPLICATE_KEY_ERROR) {
-      throw error;
-    }
-  }
-}
+const {
+  GAME_PLACEMENT_AMOUNTS,
+  GAME_SUBMITTED_AMOUNT,
+  GAME_VERIFIED_AMOUNT,
+  GAME_DAILY_CAP,
+  GAME_DAILY_WINDOW_MS,
+  REPEAT_GROUP_MAX_GAMES,
+  REPEAT_GROUP_WINDOW_MS,
+  TOURNAMENT_PARTICIPATION_AMOUNT,
+  TOURNAMENT_PLACEMENT_AMOUNTS,
+  RANKED_QUALIFICATION_AMOUNT,
+  RANKED_PLACEMENT_AMOUNTS,
+  QUIZ_COMPLETION_AMOUNT,
+  QUIZ_WEEKLY_CAP_COUNT,
+} = require('./pointsConfig');
+const { recordAward, recordAwardOnce, removeLedgerRow } = require('./pointsLedger');
+const { getWeekStart, getWeekEnd } = require('./weekWindow');
 
 // One query resolves the guests for the whole batch rather than one lookup per award.
 async function excludeGuestAwards(awards) {
@@ -140,12 +117,7 @@ const GAME_PLACEMENT_TYPES = {
   4: 'game_placement_4',
 };
 
-const GAME_PLACEMENT_AMOUNTS = { 1: 10, 2: 7, 3: 4, 4: 2 };
-const GAME_SUBMITTED_AMOUNT = 2;
-const GAME_VERIFIED_AMOUNT = 1;
 const GAME_POINT_TYPES = [...Object.values(GAME_PLACEMENT_TYPES), 'game_submitted', 'game_verified'];
-const GAME_DAILY_CAP = 60;
-const GAME_DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function logCappedAward(details) {
   console.warn('Points award capped', details);
@@ -185,9 +157,6 @@ async function awardCappedBatch(awards) {
   const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
   return { attempted: capped.length, failures };
 }
-
-const REPEAT_GROUP_MAX_GAMES = 6;
-const REPEAT_GROUP_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Counts games on the ledger, not the Game collection, because submitters can delete games.
 async function hasReachedRepeatGroupLimit(groupKey, gameId) {
@@ -261,16 +230,12 @@ async function awardGamePoints(game, verifierId) {
   await Game.updateOne({ _id: gameId }, { $set: { pointsAwardedAt: new Date() } });
 }
 
-const TOURNAMENT_PARTICIPATION_AMOUNT = 15;
-
 const TOURNAMENT_PLACEMENT_TYPES = [
   'tournament_placement_1',
   'tournament_placement_2',
   'tournament_placement_3',
   'tournament_placement_4',
 ];
-
-const TOURNAMENT_PLACEMENT_AMOUNTS = [200, 100, 70, 50];
 
 async function awardTournamentPoints(tournament) {
   const tournamentId = tournament._id;
@@ -303,8 +268,6 @@ async function awardTournamentPoints(tournament) {
   await awardAllOnce([...participationAwards, ...placementAwards]);
 }
 
-const RANKED_QUALIFICATION_AMOUNT = 10;
-
 async function awardRankedQualificationPoints(userId, leagueId) {
   await awardAllOnce([
     {
@@ -321,8 +284,6 @@ const RANKED_PLACEMENT_TYPES = [
   'ranked_league_placement_2',
   'ranked_league_placement_3',
 ];
-
-const RANKED_PLACEMENT_AMOUNTS = [150, 100, 50];
 
 // Standard competition ranking over qualified players: ties share a placement and the next placement is skipped (1, 1, 3).
 function rankQualifiedPlayers(league) {
@@ -350,6 +311,33 @@ async function awardRankedSeasonPlacementPoints(league) {
   await awardAllOnce(placementAwards);
 }
 
+async function hasQuizWeeklyCapRoom(userId, referenceDate = new Date()) {
+  const weekStart = getWeekStart(referenceDate);
+  const weekEnd = getWeekEnd(weekStart);
+  const earnedThisWeek = await PointTransaction.countDocuments({
+    user: userId,
+    type: 'quiz_completed',
+    createdAt: { $gte: weekStart, $lt: weekEnd },
+  });
+  return earnedThisWeek < QUIZ_WEEKLY_CAP_COUNT;
+}
+
+// Awards +QUIZ_COMPLETION_AMOUNT once per (user, quizId) via the ledger's unique index, unless the
+// user has already hit the weekly quiz cap. GET /generate/random (decisionQuizzes.js, discardQuizzes.js)
+// can produce unlimited quizzes on demand, so the cap is what keeps this path from being farmable.
+async function awardQuizCompletionPoints(userId, quizId) {
+  const eligibleAwards = await excludeGuestAwards([
+    { userId, type: 'quiz_completed', amount: QUIZ_COMPLETION_AMOUNT, metadata: { quizId } },
+  ]);
+  if (eligibleAwards.length === 0) {
+    return;
+  }
+  if (!(await hasQuizWeeklyCapRoom(userId))) {
+    return;
+  }
+  await recordAwardOnce(eligibleAwards[0]);
+}
+
 module.exports = {
   awardPoints,
   getRecentEarnings,
@@ -360,4 +348,5 @@ module.exports = {
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
+  awardQuizCompletionPoints,
 };

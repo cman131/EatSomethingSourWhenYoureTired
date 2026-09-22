@@ -4,6 +4,7 @@ const PointTransaction = require('../models/PointTransaction');
 const { attachHistoryContext } = require('../utils/pointsHistoryContext');
 const { adjustPoints, AdjustmentFailure } = require('../utils/pointsService');
 const { validateAdminAdjustment } = require('../middleware/validation');
+const pointsConfig = require('../utils/pointsConfig');
 
 const router = express.Router();
 
@@ -114,6 +115,36 @@ router.post('/admin/adjust', requireAdmin, validateAdminAdjustment, async (req, 
   } catch (error) {
     console.error('Admin point adjustment error:', error);
     res.status(500).json({ success: false, message: 'Failed to record adjustment' });
+  }
+});
+
+// @route   GET /api/points/config
+// @desc    Get the current award amounts, so the client never hardcodes them
+// @access  Private
+router.get('/config', async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: {
+        gamePlacementAmounts: pointsConfig.GAME_PLACEMENT_AMOUNTS,
+        gameSubmittedAmount: pointsConfig.GAME_SUBMITTED_AMOUNT,
+        gameVerifiedAmount: pointsConfig.GAME_VERIFIED_AMOUNT,
+        gameDailyCap: pointsConfig.GAME_DAILY_CAP,
+        gameDailyWindowHours: pointsConfig.GAME_DAILY_WINDOW_MS / (60 * 60 * 1000),
+        repeatGroupMaxGames: pointsConfig.REPEAT_GROUP_MAX_GAMES,
+        repeatGroupWindowDays: pointsConfig.REPEAT_GROUP_WINDOW_MS / (24 * 60 * 60 * 1000),
+        tournamentParticipationAmount: pointsConfig.TOURNAMENT_PARTICIPATION_AMOUNT,
+        tournamentPlacementAmounts: pointsConfig.TOURNAMENT_PLACEMENT_AMOUNTS,
+        rankedQualificationAmount: pointsConfig.RANKED_QUALIFICATION_AMOUNT,
+        rankedPlacementAmounts: pointsConfig.RANKED_PLACEMENT_AMOUNTS,
+        quizCompletionAmount: pointsConfig.QUIZ_COMPLETION_AMOUNT,
+        quizWeeklyCapCount: pointsConfig.QUIZ_WEEKLY_CAP_COUNT,
+        weeklyStreakAmounts: pointsConfig.WEEKLY_STREAK_AMOUNTS,
+      },
+    });
+  } catch (error) {
+    console.error('Get points config error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get points config' });
   }
 });
 

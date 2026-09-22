@@ -25,6 +25,8 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   ranked_league_placement_3: 'Ranked Season 3rd Place',
   shop_purchase: 'Shop Purchase',
   admin_adjustment: 'Admin Adjustment',
+  quiz_completed: 'Quiz Completed',
+  weekly_streak_bonus: 'Weekly Streak Bonus',
 };
 
 const CONTEXT_KIND_NAMES: Record<PointTransactionContext['kind'], string> = {

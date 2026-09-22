@@ -12,6 +12,7 @@ const {
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
+  awardQuizCompletionPoints,
 } = require('./pointsService');
 
 beforeAll(async () => {
@@ -1065,5 +1066,63 @@ describe('awardRankedSeasonPlacementPoints', () => {
     await awardRankedSeasonPlacementPoints(league);
 
     expect(await PointTransaction.countDocuments({ user: players[0]._id })).toBe(0);
+  });
+});
+
+describe('awardQuizCompletionPoints', () => {
+  test('awards 1 point with the quizId recorded', async () => {
+    await awardQuizCompletionPoints(user._id, 'quiz-abc');
+
+    const tx = await PointTransaction.findOne({ user: user._id, type: 'quiz_completed' });
+    expect(tx.amount).toBe(1);
+    expect(tx.metadata.quizId).toBe('quiz-abc');
+    expect((await User.findById(user._id)).pointsBalance).toBe(1);
+  });
+
+  test('awards only once for the same quizId', async () => {
+    await awardQuizCompletionPoints(user._id, 'quiz-abc');
+    await awardQuizCompletionPoints(user._id, 'quiz-abc');
+
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed' })).toBe(1);
+    expect((await User.findById(user._id)).pointsBalance).toBe(1);
+  });
+
+  test('awards again for a different quizId', async () => {
+    await awardQuizCompletionPoints(user._id, 'quiz-1');
+    await awardQuizCompletionPoints(user._id, 'quiz-2');
+
+    expect((await User.findById(user._id)).pointsBalance).toBe(2);
+  });
+
+  test('does not award a guest user', async () => {
+    const guest = await User.create({ displayName: 'test-points-guest', isGuest: true });
+
+    await awardQuizCompletionPoints(guest._id, 'quiz-abc');
+
+    expect(await PointTransaction.countDocuments({ user: guest._id })).toBe(0);
+  });
+
+  test('stops paying once the weekly cap of 5 is reached', async () => {
+    for (let i = 1; i <= 5; i++) {
+      await awardQuizCompletionPoints(user._id, `quiz-${i}`);
+    }
+    await awardQuizCompletionPoints(user._id, 'quiz-6');
+
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed' })).toBe(5);
+    expect((await User.findById(user._id)).pointsBalance).toBe(5);
+  });
+
+  test('resets the cap the following week', async () => {
+    // Mongoose marks `createdAt` immutable when timestamps:true, which makes updateOne/updateMany
+    // silently drop writes to it — go through the raw collection to backdate these fixture rows.
+    const backdated = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await PointTransaction.collection.insertMany([1, 2, 3, 4, 5].map(i => ({
+      user: user._id, type: 'quiz_completed', amount: 1, metadata: { quizId: `last-week-${i}` },
+      createdAt: backdated, updatedAt: backdated,
+    })));
+
+    await awardQuizCompletionPoints(user._id, 'this-week-1');
+
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed', 'metadata.quizId': 'this-week-1' })).toBe(1);
   });
 });

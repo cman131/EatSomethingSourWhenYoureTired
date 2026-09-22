@@ -19,6 +19,9 @@ jest.mock('../utils/rankedLeagueService', () => ({
 jest.mock('../utils/pointsService', () => ({
   awardGamePoints: jest.fn(),
 }));
+jest.mock('../utils/weeklyStreakService', () => ({
+  evaluateWeeklyStreakForPlayers: jest.fn(),
+}));
 
 const request = require('supertest');
 const express = require('express');
@@ -26,6 +29,7 @@ const Game = require('../models/Game');
 const Tournament = require('../models/Tournament');
 const { awardGamePoints } = require('../utils/pointsService');
 const { updateRankedPoints } = require('../utils/rankedLeagueService');
+const { evaluateWeeklyStreakForPlayers } = require('../utils/weeklyStreakService');
 
 const GAME_ID = '507f1f77bcf86cd799439011';
 const USER_ID = '507f191e810c19729de860ea';
@@ -121,6 +125,7 @@ describe('PUT /api/games/:id/verify — verification is atomic', () => {
     _id: GAME_ID,
     verified: true,
     isRanked: false,
+    players: [{ player: { toString: () => USER_ID } }],
     populate: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   });
@@ -166,5 +171,20 @@ describe('PUT /api/games/:id/verify — verification is atomic', () => {
 
     expect(res.status).toBe(200);
     expect(updateRankedPoints).toHaveBeenCalledWith(updated);
+  });
+
+  it('evaluates the weekly streak for every player after awarding points', async () => {
+    const updated = verifiedGame({
+      players: [
+        { player: { toString: () => 'p1' } },
+        { player: { toString: () => 'p2' } },
+      ],
+    });
+    Game.findOneAndUpdate.mockResolvedValue(updated);
+
+    const res = await request(buildTestApp()).put(`/api/games/${GAME_ID}/verify`);
+
+    expect(res.status).toBe(200);
+    expect(evaluateWeeklyStreakForPlayers).toHaveBeenCalledWith(updated.players.map(p => p.player));
   });
 });

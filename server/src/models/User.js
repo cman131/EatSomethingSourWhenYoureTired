@@ -160,6 +160,12 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Updated at most once per calendar week (see middleware/auth.js) — the "visited the site"
+  // signal for the weekly streak bonus (see utils/weeklyStreakService.js).
+  lastActiveAt: {
+    type: Date,
+    default: null,
+  },
   purchasedItems: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopItem' },
     purchasedAt: { type: Date, default: Date.now },

@@ -8,6 +8,7 @@ const { sendNewCommentNotificationEmail } = require('../utils/emailService');
 const { createGame } = require('../utils/gameService');
 const { getCurrentLeague, updateRankedPoints } = require('../utils/rankedLeagueService');
 const { awardGamePoints } = require('../utils/pointsService');
+const { evaluateWeeklyStreakForPlayers } = require('../utils/weeklyStreakService');
 
 const router = express.Router();
 
@@ -321,6 +322,12 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
       } catch (err) {
         console.error(`Failed to update ranked points for game ${verifiedGame._id}:`, err);
       }
+    }
+
+    try {
+      await evaluateWeeklyStreakForPlayers(verifiedGame.players.map(p => p.player));
+    } catch (err) {
+      console.error(`Failed to evaluate weekly streak for game ${verifiedGame._id}:`, err);
     }
 
     await verifiedGame.populate('submittedBy', PLAYER_POPULATE_FIELDS);
