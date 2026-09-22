@@ -126,6 +126,14 @@ describe('replayTournamentPoints', () => {
     expect(summary.replayed).not.toContain(inProgress._id.toString());
   });
 
+  test('a tournamentId pointed at a non-Completed tournament examines nothing', async () => {
+    const inProgress = await makeTournamentDoc({ status: 'InProgress' });
+
+    const summary = await replayTournamentPoints({ tournamentId: inProgress._id });
+
+    expect(summary).toEqual({ examined: 0, replayed: [], failed: [] });
+  });
+
   test('dry run makes no writes but reports the tournament as examined', async () => {
     const tournament = await makeTournamentDoc();
 
