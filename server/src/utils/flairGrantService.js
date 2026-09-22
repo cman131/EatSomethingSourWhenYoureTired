@@ -1,6 +1,7 @@
 const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
-const { prestigeTitleValue } = require('./prestigeTitle');
+const { prestigeTitleValue, resolveWinnerTitle } = require('./prestigeTitle');
+const { rankQualifiedPlayers } = require('./pointsService');
 
 const GRANT_KIND = {
   Tournament: 'tournament',
@@ -60,7 +61,48 @@ async function grantEarnedTitle(userId, { kind, refId, label }) {
   return item;
 }
 
+// top4 holds user ids in production but may hold populated users; the points code treats both alike.
+function idOf(entry) {
+  return entry._id || entry;
+}
+
+async function grantTournamentChampionTitle(tournament) {
+  const winner = Array.isArray(tournament.top4) ? tournament.top4[0] : undefined;
+  if (!winner) {
+    return;
+  }
+
+  const winnerId = idOf(winner);
+  const entry = tournament.players.find(p => p.player.toString() === winnerId.toString());
+  if (entry && entry.dropped) {
+    return;
+  }
+
+  await grantEarnedTitle(winnerId, {
+    kind: GRANT_KIND.Tournament,
+    refId: tournament._id,
+    label: resolveWinnerTitle(tournament),
+  });
+}
+
+function seasonChampionLabel(league) {
+  const month = league.startDate.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  return `Season Champion: ${month} ${league.startDate.getUTCFullYear()}`;
+}
+
+// Ties share placement 1, so every tied player is a champion.
+async function grantSeasonChampionTitles(league) {
+  const champions = rankQualifiedPlayers(league).filter(({ placement }) => placement === 1);
+  const label = seasonChampionLabel(league);
+
+  for (const { playerId } of champions) {
+    await grantEarnedTitle(playerId, { kind: GRANT_KIND.RankedSeason, refId: league._id, label });
+  }
+}
+
 module.exports = {
   GRANT_KIND,
   grantEarnedTitle,
+  grantTournamentChampionTitle,
+  grantSeasonChampionTitles,
 };

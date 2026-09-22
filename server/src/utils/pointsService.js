@@ -158,4 +158,5 @@ module.exports = {
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
+  rankQualifiedPlayers,
 };
