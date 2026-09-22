@@ -2,12 +2,34 @@ const express = require('express');
 const ShopItem = require('../models/ShopItem');
 const User = require('../models/User');
 const { purchaseItem, PurchaseFailure } = require('../utils/shopService');
+const {
+  MAX_FLAIR_LOADOUTS,
+  validateLoadoutSlots,
+  applyLoadout,
+} = require('../utils/flairLoadoutService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
-const { validateMongoIdBody, validateOptionalMongoIdBody } = require('../middleware/validation');
+const { validateMongoIdBody, validateOptionalMongoIdBody, validateMongoId, handleValidationErrors } = require('../middleware/validation');
+const { body } = require('express-validator');
 
 const router = express.Router();
 
 const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+
+const validateLoadoutName = [
+  body('name')
+    .trim()
+    .isLength({ min: 1, max: 30 })
+    .withMessage('Loadout name must be between 1 and 30 characters'),
+  handleValidationErrors,
+];
+
+function loadoutSlotsFromBody(body) {
+  const slots = { name: typeof body.name === 'string' ? body.name.trim() : body.name };
+  for (const slot of VALID_SLOTS) {
+    slots[slot] = body[slot] ?? null;
+  }
+  return slots;
+}
 
 const PURCHASE_FAILURE_RESPONSES = {
   [PurchaseFailure.UserNotFound]: { status: 404, message: 'User not found' },
@@ -111,6 +133,38 @@ router.post('/equip', validateOptionalMongoIdBody('itemId'), async (req, res) =>
     });
 
     res.json({ success: true, message: 'Item equipped' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /api/shop/loadouts — body: { name, nameColor, nameIcon, profileBorder, title }
+router.post('/loadouts', validateLoadoutName, async (req, res) => {
+  try {
+    const loadout = loadoutSlotsFromBody(req.body);
+
+    const user = await User.findById(req.user._id).populate('purchasedItems.item');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.flairLoadouts.length >= MAX_FLAIR_LOADOUTS) {
+      return res.status(400).json({
+        success: false,
+        message: `You can only save up to ${MAX_FLAIR_LOADOUTS} loadouts`,
+      });
+    }
+
+    const ownedItems = user.purchasedItems.filter(p => p.item).map(p => p.item);
+    const validation = validateLoadoutSlots(ownedItems, loadout);
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, message: 'Loadout includes an item you do not own' });
+    }
+
+    user.flairLoadouts.push(loadout);
+    await user.save();
+
+    res.json({ success: true, message: 'Loadout saved', data: user.flairLoadouts[user.flairLoadouts.length - 1] });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error' });
   }

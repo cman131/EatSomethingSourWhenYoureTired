@@ -405,6 +405,84 @@ describe('GET /api/shop/inventory', () => {
   });
 });
 
+describe('POST /api/shop/loadouts', () => {
+  beforeEach(async () => {
+    await User.findByIdAndUpdate(user._id, {
+      $push: { purchasedItems: { item: item._id } },
+    });
+  });
+
+  test('creates a loadout using an owned item', async () => {
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'Everyday', nameColor: item.value, nameIcon: null, profileBorder: null, title: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.name).toBe('Everyday');
+    expect(res.body.data.nameColor).toBe(item.value);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(1);
+    expect(updated.flairLoadouts[0].name).toBe('Everyday');
+  });
+
+  test('returns 400 for an empty name', async () => {
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: '  ', nameColor: item.value });
+
+    expect(res.status).toBe(400);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(0);
+  });
+
+  test('returns 400 for a slot value the user does not own', async () => {
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'Not owned', nameColor: 'text-some-unowned-color' });
+
+    expect(res.status).toBe(400);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(0);
+  });
+
+  test('allows a retired owned item in a loadout', async () => {
+    await ShopItem.findByIdAndUpdate(item._id, { isActive: false });
+
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'Retro', nameColor: item.value });
+
+    expect(res.status).toBe(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts[0].nameColor).toBe(item.value);
+  });
+
+  test('returns 400 once the user already has MAX_FLAIR_LOADOUTS loadouts', async () => {
+    const { MAX_FLAIR_LOADOUTS } = require('../utils/flairLoadoutService');
+    for (let i = 0; i < MAX_FLAIR_LOADOUTS; i++) {
+      const ok = await request(app)
+        .post('/api/shop/loadouts')
+        .send({ name: `Look ${i}`, nameColor: item.value });
+      expect(ok.status).toBe(200);
+    }
+
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'One too many', nameColor: item.value });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/loadout/i);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(MAX_FLAIR_LOADOUTS);
+  });
+});
+
 describe('POST /api/shop/seed', () => {
   // The seed endpoint deactivates every non-catalog ShopItem and upserts the real catalog,
   // so it must only ever run against a dedicated test database.
