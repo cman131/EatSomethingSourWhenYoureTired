@@ -29,14 +29,14 @@ Rejected alternative: storing earned titles as embedded strings on `User`. It wo
 - `tier` enum gains `'prestige'`.
 
 `server/src/models/User.js`, `purchasedItems` entries
-- `source`: optional `{ type: 'tournament' | 'ranked_season', refId: ObjectId, label: String }`. Absent for purchases.
+- `source`: optional `{ kind: 'tournament' | 'ranked_season', refId: ObjectId, label: String }`. Absent for purchases.
 
 `server/src/models/Tournament.js`
-- `winnerTitle`: optional `String`, `trim: true`, `maxlength: [30, ...]`. Single constant `WINNER_TITLE_MAX_LENGTH = 30` in `server/src/utils/winnerTitle.js`.
+- `winnerTitle`: optional `String`, `trim: true`, `maxlength: [30, ...]`. Single constant `WINNER_TITLE_MAX_LENGTH = 30` in `server/src/utils/prestigeTitle.js`.
 
 ## 2. Winner title text
 
-`server/src/utils/winnerTitle.js` exports:
+`server/src/utils/prestigeTitle.js` exports:
 - `WINNER_TITLE_MAX_LENGTH` (30).
 - `defaultWinnerTitle(name)`: `name.trim().slice(0, 30).trimEnd()`.
 - `resolveWinnerTitle(tournament)`: `tournament.winnerTitle` if non-blank, otherwise `defaultWinnerTitle(tournament.name)`. This covers tournaments created before the field existed and API callers that omit it.
@@ -74,23 +74,23 @@ Season (`server/src/utils/rankedLeagueService.js`, `payEndedSeason`): after `awa
 - `POST /api/shop/purchase`: rejects earned items and out-of-window items with 404 `Item not found`.
 - `POST /api/shop/seed`: the deactivation sweep and upsert only touch `acquisition: 'shop'` rows, so earned items are never deactivated. Catalog entries may carry `availableFrom` / `availableUntil`.
 - Inventory and equip already work for owned items regardless of `isActive` and window; no change.
-- `Shop.tsx`: earned items appear under an "Earned" group (source label, equip/unequip, no Buy) instead of "Owned (retired)".
+- `Shop.tsx`: earned items appear under an "Earned" group (item name and description, equip/unequip, no Buy) instead of "Owned (retired)".
 
 ## 6. Styling
 
 - `FlairTier` gains `'prestige'`.
 - `getTitleStyle` falls back to one `PRESTIGE_TITLE` style (`flair-title-prestige`) when the value starts with `🏆 `; no per-item registry entry. The marker is part of the stored value, so the style needs no separate emoji.
-- `.flair-title-prestige`: static gold-foil gradient badge with a subtle ring. No animation, so no reduced-motion rule is needed. Forced-colors and print fallbacks are added like other badges.
+- `.flair-title-prestige`: static gold-foil gradient badge with a subtle ring. No animation, so no reduced-motion rule is needed. A print fallback is added (the dark background is dropped when printing); forced-colors mode replaces badge colors on its own.
 - `docs/flair-style-guide.md` gets a Prestige section (tier table row, marker rule, never change the shipped marker).
 
 ## 7. Guard tests
 
 - `server/src/data/shopCatalog.test.js`: no catalog `value` starts with `🏆 `; `SHOP_CATALOG` contains no earned or `prestige` item; catalog entries with a window have `availableFrom` before `availableUntil`.
-- `client/src/utils/__tests__/flairCatalog.test.ts`: values starting with `🏆 ` resolve to the prestige tier, the class is defined in `flair.css`, and it is listed in the forced-colors and print blocks; the client winner-title limit equals the server constant.
+- `client/src/utils/__tests__/flairCatalog.test.ts`: values starting with `🏆 ` resolve to the prestige tier, the class is defined in `flair.css`; the client winner-title limit equals the server constant.
 
 ## 8. Behaviour tests
 
-Server (`flairGrantService.test.js`, `winnerTitle.test.js`, `shop.test.js`, tournaments and rankedLeague tests):
+Server (`flairGrantService.test.js`, `prestigeTitle.test.js`, `shop.test.js`, tournaments and rankedLeague tests):
 - Grant twice for one event: one `ShopItem`, one `purchasedItems` entry, points unchanged.
 - Concurrent grants for the same event converge on one item.
 - `resolveWinnerTitle` uses `winnerTitle` when set and the truncated name when blank or missing; `defaultWinnerTitle` never exceeds 30 characters or leaves trailing whitespace.
@@ -102,7 +102,7 @@ Server (`flairGrantService.test.js`, `winnerTitle.test.js`, `shop.test.js`, tour
 - Season payout grants placement 1 including ties, skips unqualified players, and a simulated crash then retry yields exactly one grant each.
 
 Client:
-- `TournamentSubmission` auto-fills the title from the name, keeps following name edits until the creator edits the title, then stops.
+- `useWinnerTitle` follows the name until the creator edits the title, then stops; reset restores a saved custom title.
 - `TitleBadge` renders the prestige style for `🏆 `-prefixed values.
 - `Shop.tsx` shows earned items under "Earned" with no Buy button.
 
