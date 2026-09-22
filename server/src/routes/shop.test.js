@@ -461,6 +461,27 @@ describe('POST /api/shop/loadouts', () => {
     expect(updated.flairLoadouts[0].name).toBe('Everyday');
   });
 
+  test('creates a loadout using an owned profileBackdrop item', async () => {
+    const backdrop = await ShopItem.create({
+      name: 'test-shop-route-create-backdrop',
+      description: 'A backdrop',
+      category: 'profileBackdrop',
+      cost: 50,
+      value: 'flair-backdrop-example',
+    });
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: backdrop._id } } });
+
+    const res = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'Backdrop look', profileBackdrop: backdrop.value });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.profileBackdrop).toBe(backdrop.value);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts[0].profileBackdrop).toBe(backdrop.value);
+  });
+
   test('returns 400 for an empty name', async () => {
     const res = await request(app)
       .post('/api/shop/loadouts')
@@ -661,7 +682,7 @@ describe('DELETE /api/shop/loadouts/:loadoutId', () => {
 });
 
 describe('POST /api/shop/loadouts/:loadoutId/apply', () => {
-  let secondItem, loadoutId;
+  let secondItem, thirdItem, loadoutId;
 
   beforeEach(async () => {
     secondItem = await ShopItem.create({
@@ -671,16 +692,28 @@ describe('POST /api/shop/loadouts/:loadoutId/apply', () => {
       cost: 100,
       value: '🐉',
     });
-    await User.findByIdAndUpdate(user._id, {
-      $push: { purchasedItems: { $each: [{ item: item._id }, { item: secondItem._id }] } },
+    thirdItem = await ShopItem.create({
+      name: 'test-shop-route-apply-backdrop',
+      description: 'A backdrop',
+      category: 'profileBackdrop',
+      cost: 50,
+      value: 'flair-backdrop-example',
     });
-    const created = await request(app)
-      .post('/api/shop/loadouts')
-      .send({ name: 'Full look', nameColor: item.value, nameIcon: secondItem.value });
+    await User.findByIdAndUpdate(user._id, {
+      $push: {
+        purchasedItems: { $each: [{ item: item._id }, { item: secondItem._id }, { item: thirdItem._id }] },
+      },
+    });
+    const created = await request(app).post('/api/shop/loadouts').send({
+      name: 'Full look',
+      nameColor: item.value,
+      nameIcon: secondItem.value,
+      profileBackdrop: thirdItem.value,
+    });
     loadoutId = created.body.data._id;
   });
 
-  test('applies all four slots atomically from the loadout', async () => {
+  test('applies all five slots atomically from the loadout', async () => {
     const res = await request(app).post(`/api/shop/loadouts/${loadoutId}/apply`);
 
     expect(res.status).toBe(200);
@@ -689,6 +722,7 @@ describe('POST /api/shop/loadouts/:loadoutId/apply', () => {
     expect(updated.equippedFlair.nameColor).toBe(item.value);
     expect(updated.equippedFlair.nameIcon).toBe(secondItem.value);
     expect(updated.equippedFlair.profileBorder).toBeNull();
+    expect(updated.equippedFlair.profileBackdrop).toBe(thirdItem.value);
     expect(updated.equippedFlair.title).toBeNull();
   });
 

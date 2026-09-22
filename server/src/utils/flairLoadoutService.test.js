@@ -3,6 +3,7 @@ const { MAX_FLAIR_LOADOUTS, validateLoadoutSlots } = require('./flairLoadoutServ
 const ownedItems = [
   { category: 'nameColor', value: 'flair-color-pink' },
   { category: 'nameIcon', value: '🏮' },
+  { category: 'profileBackdrop', value: 'flair-backdrop-shoji' },
   { category: 'title', value: 'Regular' },
 ];
 
@@ -20,6 +21,15 @@ describe('validateLoadoutSlots', () => {
       nameIcon: '🏮',
       profileBorder: null,
       title: 'Regular',
+    });
+
+    expect(result).toEqual({ valid: true });
+  });
+
+  test('accepts a loadout using an owned profileBackdrop item', () => {
+    const result = validateLoadoutSlots(ownedItems, {
+      name: 'Scenic',
+      profileBackdrop: 'flair-backdrop-shoji',
     });
 
     expect(result).toEqual({ valid: true });
