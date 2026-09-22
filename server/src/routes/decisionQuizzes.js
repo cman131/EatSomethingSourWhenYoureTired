@@ -2,6 +2,8 @@ const express = require('express');
 const DecisionQuiz = require('../models/DecisionQuiz');
 const Tile = require('../models/Tile');
 const { generateDecisionQuiz } = require('../utils/decisionQuizService');
+const { awardQuizCompletionPoints } = require('../utils/pointsService');
+const { evaluateWeeklyStreak } = require('../utils/weeklyStreakService');
 
 const router = express.Router();
 
@@ -385,6 +387,17 @@ router.put('/:id/response', async (req, res) => {
     // Mark the responses Map as modified so Mongoose saves it
     quiz.markModified('responses');
     await quiz.save();
+
+    try {
+      await awardQuizCompletionPoints(userId, quizId);
+    } catch (err) {
+      console.error(`Failed to award quiz completion points for user ${userId}, quiz ${quizId}:`, err);
+    }
+    try {
+      await evaluateWeeklyStreak(userId);
+    } catch (err) {
+      console.error(`Failed to evaluate weekly streak for user ${userId} after quiz ${quizId}:`, err);
+    }
 
     // Reload quiz to get fresh data
     const updatedQuiz = await DecisionQuiz.findOne({ id: quizId });

@@ -1368,6 +1368,7 @@ function mockQuiz({ responses = new Map(), hand = ['M1'] } = {}) {
   return {
     id: QUIZ_ID,
     players: [{ isUser: true, hand, discard: [], melds: [] }],
+    doraIndicators: [],
     responses,
     markModified: jest.fn(),
     save: jest.fn().mockResolvedValue(undefined),
