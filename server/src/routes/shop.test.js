@@ -580,6 +580,52 @@ describe('PUT /api/shop/loadouts/:loadoutId', () => {
   });
 });
 
+describe('DELETE /api/shop/loadouts/:loadoutId', () => {
+  let loadoutId;
+
+  beforeEach(async () => {
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: item._id } } });
+    const created = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'To delete', nameColor: item.value });
+    loadoutId = created.body.data._id;
+  });
+
+  test('deletes a loadout the user owns', async () => {
+    const res = await request(app).delete(`/api/shop/loadouts/${loadoutId}`);
+
+    expect(res.status).toBe(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(0);
+  });
+
+  test('returns 404 for a loadout id that does not belong to the user', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app).delete(`/api/shop/loadouts/${fakeId}`);
+
+    expect(res.status).toBe(404);
+
+    const updated = await User.findById(user._id);
+    expect(updated.flairLoadouts).toHaveLength(1);
+  });
+
+  test('deleting one loadout leaves the user free to save a new one at the cap', async () => {
+    const { MAX_FLAIR_LOADOUTS } = require('../utils/flairLoadoutService');
+    for (let i = 0; i < MAX_FLAIR_LOADOUTS - 1; i++) {
+      await request(app).post('/api/shop/loadouts').send({ name: `Extra ${i}`, nameColor: item.value });
+    }
+    // Now at the cap (the one from beforeEach plus these).
+    const overCap = await request(app).post('/api/shop/loadouts').send({ name: 'Over', nameColor: item.value });
+    expect(overCap.status).toBe(400);
+
+    await request(app).delete(`/api/shop/loadouts/${loadoutId}`);
+
+    const afterDelete = await request(app).post('/api/shop/loadouts').send({ name: 'Fits now', nameColor: item.value });
+    expect(afterDelete.status).toBe(200);
+  });
+});
+
 describe('POST /api/shop/seed', () => {
   // The seed endpoint deactivates every non-catalog ShopItem and upserts the real catalog,
   // so it must only ever run against a dedicated test database.

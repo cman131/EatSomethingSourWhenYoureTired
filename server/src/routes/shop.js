@@ -213,6 +213,30 @@ router.put('/loadouts/:loadoutId', validateMongoId('loadoutId'), async (req, res
   }
 });
 
+// DELETE /api/shop/loadouts/:loadoutId
+router.delete('/loadouts/:loadoutId', validateMongoId('loadoutId'), async (req, res) => {
+  try {
+    const { loadoutId } = req.params;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const loadout = user.flairLoadouts.id(loadoutId);
+    if (!loadout) {
+      return res.status(404).json({ success: false, message: 'Loadout not found' });
+    }
+
+    user.flairLoadouts.pull(loadoutId);
+    await user.save();
+
+    res.json({ success: true, message: 'Loadout deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // POST /api/shop/seed — admin only, idempotent catalog seeding
 router.post('/seed', async (req, res) => {
   try {
