@@ -237,6 +237,35 @@ router.delete('/loadouts/:loadoutId', validateMongoId('loadoutId'), async (req, 
   }
 });
 
+// POST /api/shop/loadouts/:loadoutId/apply — atomically sets all four equippedFlair slots
+router.post('/loadouts/:loadoutId/apply', validateMongoId('loadoutId'), async (req, res) => {
+  try {
+    const { loadoutId } = req.params;
+
+    const user = await User.findById(req.user._id).populate('purchasedItems.item');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const loadout = user.flairLoadouts.id(loadoutId);
+    if (!loadout) {
+      return res.status(404).json({ success: false, message: 'Loadout not found' });
+    }
+
+    const ownedItems = user.purchasedItems.filter(p => p.item).map(p => p.item);
+    const validation = validateLoadoutSlots(ownedItems, loadout);
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, message: 'This loadout includes an item you no longer own' });
+    }
+
+    await applyLoadout(user._id, loadout);
+
+    res.json({ success: true, message: 'Loadout applied' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // POST /api/shop/seed — admin only, idempotent catalog seeding
 router.post('/seed', async (req, res) => {
   try {

@@ -626,6 +626,77 @@ describe('DELETE /api/shop/loadouts/:loadoutId', () => {
   });
 });
 
+describe('POST /api/shop/loadouts/:loadoutId/apply', () => {
+  let secondItem, loadoutId;
+
+  beforeEach(async () => {
+    secondItem = await ShopItem.create({
+      name: 'test-shop-route-apply-icon',
+      description: 'An icon',
+      category: 'nameIcon',
+      cost: 100,
+      value: '🐉',
+    });
+    await User.findByIdAndUpdate(user._id, {
+      $push: { purchasedItems: { $each: [{ item: item._id }, { item: secondItem._id }] } },
+    });
+    const created = await request(app)
+      .post('/api/shop/loadouts')
+      .send({ name: 'Full look', nameColor: item.value, nameIcon: secondItem.value });
+    loadoutId = created.body.data._id;
+  });
+
+  test('applies all four slots atomically from the loadout', async () => {
+    const res = await request(app).post(`/api/shop/loadouts/${loadoutId}/apply`);
+
+    expect(res.status).toBe(200);
+
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.nameColor).toBe(item.value);
+    expect(updated.equippedFlair.nameIcon).toBe(secondItem.value);
+    expect(updated.equippedFlair.profileBorder).toBeNull();
+    expect(updated.equippedFlair.title).toBeNull();
+  });
+
+  test('overwrites whatever was equipped before, including slots the loadout leaves empty', async () => {
+    await User.findByIdAndUpdate(user._id, { 'equippedFlair.profileBorder': 'flair-mid-old' });
+
+    const res = await request(app).post(`/api/shop/loadouts/${loadoutId}/apply`);
+
+    expect(res.status).toBe(200);
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.profileBorder).toBeNull();
+  });
+
+  test('applies a loadout containing a retired owned item', async () => {
+    await ShopItem.findByIdAndUpdate(item._id, { isActive: false });
+
+    const res = await request(app).post(`/api/shop/loadouts/${loadoutId}/apply`);
+
+    expect(res.status).toBe(200);
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.nameColor).toBe(item.value);
+  });
+
+  test('returns 400 and leaves equippedFlair unchanged when the loadout references an item deleted from the catalog', async () => {
+    await ShopItem.deleteOne({ _id: item._id });
+
+    const res = await request(app).post(`/api/shop/loadouts/${loadoutId}/apply`);
+
+    expect(res.status).toBe(400);
+    const updated = await User.findById(user._id);
+    expect(updated.equippedFlair.nameColor).toBeNull();
+    expect(updated.equippedFlair.nameIcon).toBeNull();
+  });
+
+  test('returns 404 for a loadout id that does not belong to the user', async () => {
+    const fakeId = new mongoose.Types.ObjectId();
+    const res = await request(app).post(`/api/shop/loadouts/${fakeId}/apply`);
+
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('POST /api/shop/seed', () => {
   // The seed endpoint deactivates every non-catalog ShopItem and upserts the real catalog,
   // so it must only ever run against a dedicated test database.
