@@ -21,6 +21,11 @@ const TOURNAMENT_ROWS: [string, string][] = [
   ['4th place', '+50'],
 ];
 
+// Mirrors GAME_DAILY_CAP and REPEAT_GROUP_* in server/src/utils/pointsService.js — keep in sync.
+const GAME_DAILY_CAP = 60;
+const REPEAT_GROUP_MAX_GAMES = 6;
+const REPEAT_GROUP_WINDOW_DAYS = 7;
+
 function PointsTable({ rows }: { rows: [string, string][] }) {
   return (
     <table className="min-w-full text-sm">
@@ -75,6 +80,17 @@ const PointsHelpModal: React.FC<Props> = ({ onClose }) => (
               </tr>
             </tbody>
           </table>
+        </section>
+        <section aria-label="Limits">
+          <h3 className="text-base font-semibold text-gray-800 mb-3">Limits</h3>
+          <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+            <li>Game points are capped at {GAME_DAILY_CAP} points per rolling 24 hours.</li>
+            <li>
+              The same group of players earns points from at most {REPEAT_GROUP_MAX_GAMES} games
+              per {REPEAT_GROUP_WINDOW_DAYS} days.
+            </li>
+            <li>Tournament awards are not limited.</li>
+          </ul>
         </section>
       </div>
     </div>

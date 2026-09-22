@@ -56,6 +56,14 @@ describe('PointsHelpModal', () => {
     expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
   });
 
+  test('Limits section explains the game caps and that tournament awards are not limited', () => {
+    render(<PointsHelpModal onClose={jest.fn()} />);
+    const section = screen.getByRole('region', { name: 'Limits' });
+    expect(within(section).getByText(/60 points per rolling 24 hours/i)).toBeInTheDocument();
+    expect(within(section).getByText(/6 games per 7 days/i)).toBeInTheDocument();
+    expect(within(section).getByText(/tournament awards are not limited/i)).toBeInTheDocument();
+  });
+
   test('calls onClose when the X button is clicked', () => {
     const onClose = jest.fn();
     render(<PointsHelpModal onClose={onClose} />);
