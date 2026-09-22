@@ -16,10 +16,10 @@
 
 - Work in the worktree `C:\Users\conor\workbench\mahjong-site\.claude\worktrees\points-titles-backfill-script` (branch `worktree-points-titles-backfill-script`). All paths below are relative to it.
 - **Run server tests against a private database.** Sibling sessions share `mahjong-test` and cause flaky `E11000` failures. Every server test command below sets `MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill`.
+- **Always pass `--runInBand` to jest.** This suite's tests share collections (e.g. `RankedLeague`) that aren't scoped per test file, so Jest's default parallel workers race across suites on the same database and produce flaky failures that have nothing to do with your change. `--runInBand` runs suites serially and eliminates that noise. Verified clean baseline: `npx jest --runInBand` → 32 suites, 487 tests, all passing (no known pre-existing failures).
 - **Never push.** Commit locally only.
 - Do not modify `awardTournamentPoints` (`server/src/utils/pointsService.js`), `grantTournamentChampionTitle` (`server/src/utils/flairGrantService.js`), `replayGamePoints`/`gamePointsReplay.js`, or the "end round" route handler (`server/src/routes/tournaments.js`). This plan only adds new call sites for the first two and reuses the third unchanged.
 - Code style: 2-space indent, K&R braces, braces on every `if`, `async`/`await` only, final newline, no trailing whitespace.
-- Known baseline failure, unrelated: `server/src/models/DecisionQuiz.test.js` ("should create a valid DecisionQuiz").
 - Commit trailer on every commit: `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`.
 
 ## File structure
@@ -210,7 +210,7 @@ describe('replayTournamentPoints', () => {
 - [ ] **Step 2: Run the tests to verify they fail**
 
 ```bash
-cd server && MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill npx jest src/utils/tournamentPointsReplay.test.js
+cd server && MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill npx jest --runInBand src/utils/tournamentPointsReplay.test.js
 ```
 Expected: FAIL — `Cannot find module './tournamentPointsReplay'`.
 
@@ -279,7 +279,7 @@ module.exports = { replayTournamentPoints };
 - [ ] **Step 4: Run the tests to verify they pass**
 
 ```bash
-cd server && MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill npx jest src/utils/tournamentPointsReplay.test.js
+cd server && MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill npx jest --runInBand src/utils/tournamentPointsReplay.test.js
 ```
 Expected: PASS, all 8 tests.
 
@@ -540,9 +540,9 @@ EOF
 - [ ] **Step 1: Run the full server suite on the private database**
 
 ```bash
-cd server && MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill npx jest 2>&1 | tail -15
+cd server && MONGO_URI=mongodb://localhost:27017/mahjong-test-points-titles-backfill npx jest --runInBand 2>&1 | tail -15
 ```
-Expected: exactly one failing suite, `src/models/DecisionQuiz.test.js` (pre-existing, unrelated). Everything else passes, including the new `tournamentPointsReplay.test.js`. If anything else fails, investigate before continuing.
+Expected: all 32 suites pass (487+ tests, the exact new total including `tournamentPointsReplay.test.js`'s 8 tests). No pre-existing failures are expected — the verified clean baseline (see Ground rules) had 0 failures. If anything fails, investigate before continuing.
 
 - [ ] **Step 2: Check formatting of the changed files**
 
@@ -563,4 +563,4 @@ Expected: exits with no output.
 ```bash
 git status --short && git log --oneline main..HEAD
 ```
-Expected: clean working tree, and commits for the spec, plan, Tasks 1–3.
+Expected: clean working tree, and commits for bringing the spec/plan into the worktree plus Tasks 1–3 (this worktree branched from `origin/main`, which predates the spec/plan commits already on local `main` — that's fine, see the branch-base commit at the top of this log).

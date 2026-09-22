@@ -9,7 +9,8 @@
     "test": "jest",
     "seed": "node scripts/seedDatabase.js",
     "seed:shop": "node scripts/seedShop.js",
-    "seed:guest-users": "node scripts/seedGuestPlayers.js"
+    "seed:guest-users": "node scripts/seedGuestPlayers.js",
+    "backfill:points": "node scripts/backfillPoints.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
