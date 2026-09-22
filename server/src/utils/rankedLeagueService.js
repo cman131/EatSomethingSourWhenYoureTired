@@ -1,6 +1,7 @@
 const RankedLeague = require('../models/RankedLeague');
 const { awardRankedQualificationPoints, awardRankedSeasonPlacementPoints } = require('./pointsService');
 const { RANKED_GAMES_THRESHOLD } = require('./rankedLeagueConstants');
+const { grantSeasonChampionTitles } = require('./flairGrantService');
 
 const SEASON_DURATION_DAYS = 90;
 const RANKED_STARTING_POINT = 30000;
@@ -47,6 +48,7 @@ async function payEndedSeason(endedLeagueId) {
 
   try {
     await awardRankedSeasonPlacementPoints(claimedLeague);
+    await grantSeasonChampionTitles(claimedLeague);
   } catch (err) {
     await RankedLeague.updateOne({ _id: endedLeagueId }, { $set: { rewardsClaimedAt: null } });
     throw err;
