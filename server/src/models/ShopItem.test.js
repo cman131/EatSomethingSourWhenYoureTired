@@ -49,7 +49,7 @@ describe('ShopItem model', () => {
   });
 
   test('accepts all valid categories', async () => {
-    const categories = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+    const categories = ['nameColor', 'nameIcon', 'profileBorder', 'profileBackdrop', 'title'];
     for (const category of categories) {
       const item = await ShopItem.create({
         name: `test-shop-${category}`,

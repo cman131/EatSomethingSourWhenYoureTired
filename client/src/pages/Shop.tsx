@@ -14,6 +14,7 @@ import { isPremiumBorder, isMidTierBorder, isFlairEquipped } from '../utils/flai
 import FlairName from '../components/user/FlairName';
 import FlairIcon from '../components/user/FlairIcon';
 import TitleBadge from '../components/user/TitleBadge';
+import ProfileBackdrop from '../components/user/ProfileBackdrop';
 import FlairItemPreview from '../components/shop/FlairItemPreview';
 import PurchaseConfirmDialog from '../components/shop/PurchaseConfirmDialog';
 
@@ -30,6 +31,7 @@ const TABS: Tab[] = [
   { key: 'nameColor', label: 'Name Effects' },
   { key: 'nameIcon', label: 'Icons' },
   { key: 'profileBorder', label: 'Borders' },
+  { key: 'profileBackdrop', label: 'Backdrops' },
   { key: 'title', label: 'Titles' },
 ];
 
@@ -138,7 +140,13 @@ const Shop: React.FC = () => {
   const ownedItems = (inventory?.purchasedItems ?? []).flatMap(p => (p.item ? [p.item] : []));
   const ownedIds = new Set(ownedItems.map(item => item._id));
   const catalogIds = new Set(TABS.flatMap(tab => catalog?.[tab.key] ?? []).map(item => item._id));
-  const equippedFlair = inventory?.equippedFlair ?? { nameColor: null, nameIcon: null, profileBorder: null, title: null };
+  const equippedFlair = inventory?.equippedFlair ?? {
+    nameColor: null,
+    nameIcon: null,
+    profileBorder: null,
+    profileBackdrop: null,
+    title: null,
+  };
 
   const refreshInventory = () => setInventoryKey(k => k + 1);
 
@@ -192,6 +200,7 @@ const Shop: React.FC = () => {
   const previewNameColor = previewUser.equippedFlair.nameColor ?? null;
   const previewIcon = previewUser.equippedFlair.nameIcon ?? '';
   const previewBorder = previewUser.equippedFlair.profileBorder ?? '';
+  const previewBackdrop = previewUser.equippedFlair.profileBackdrop ?? null;
   const previewNeedsGradientBorder = isPremiumBorder(previewBorder) || isMidTierBorder(previewBorder);
 
   const previewTitleValue = previewUser.equippedFlair.title;
@@ -261,6 +270,7 @@ const Shop: React.FC = () => {
       {/* Live preview */}
       <div data-testid="preview-box" className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
+        <ProfileBackdrop value={previewBackdrop} className="h-10 mb-3" testId="preview-backdrop" />
         <div className="flex items-center gap-3">
           {previewNeedsGradientBorder ? (
             <div className={previewBorder} data-testid="preview-avatar">

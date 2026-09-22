@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Shop from '../Shop';
-import { ShopItem, PurchasedItem, EquippedFlair } from '../../services/api';
+import { ShopItem, ShopCatalog, PurchasedItem, EquippedFlair } from '../../services/api';
 
 jest.mock('react-router-dom', () => ({
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
@@ -48,7 +48,7 @@ const mockInventory = {
   pointsBalance: 500,
 };
 
-function mockShopUseApi(catalog = mockCatalog, inventory = mockInventory) {
+function mockShopUseApi(catalog: ShopCatalog = mockCatalog, inventory = mockInventory) {
   let callCount = 0;
   useApi.mockImplementation(() => {
     callCount++;
@@ -78,6 +78,79 @@ describe('Shop page', () => {
     expect(screen.getByRole('button', { name: /icons/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /borders/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /titles/i })).toBeInTheDocument();
+  });
+
+  describe('profile backdrops', () => {
+    const backdropItem = {
+      _id: 'backdrop1',
+      name: 'Fuji Dawn',
+      description: 'First light over the mountain',
+      category: 'profileBackdrop' as const,
+      cost: 125,
+      value: 'flair-backdrop-fuji',
+      tier: 'mid' as const,
+      sortOrder: 4,
+      isActive: true,
+    } as ShopItem;
+    const catalogWithBackdrop = { ...mockCatalog, profileBackdrop: [backdropItem] };
+
+    test('renders a Backdrops tab', () => {
+      render(<Shop />);
+
+      expect(screen.getByRole('button', { name: /backdrops/i })).toBeInTheDocument();
+    });
+
+    test('lists backdrop items with a swatch of their class', () => {
+      mockShopUseApi(catalogWithBackdrop);
+      render(<Shop />);
+
+      fireEvent.click(screen.getByRole('button', { name: /backdrops/i }));
+
+      const card = screen.getByTestId('flair-item-card-backdrop1');
+      expect(card).toHaveTextContent('Fuji Dawn');
+      expect(card.querySelector('.flair-backdrop-fuji')).not.toBeNull();
+    });
+
+    test('the preview has no backdrop until one is equipped or hovered', () => {
+      mockShopUseApi(catalogWithBackdrop);
+      render(<Shop />);
+
+      expect(screen.queryByTestId('preview-backdrop')).not.toBeInTheDocument();
+    });
+
+    test('hovering a backdrop item shows it in the preview banner', () => {
+      mockShopUseApi(catalogWithBackdrop);
+      render(<Shop />);
+      fireEvent.click(screen.getByRole('button', { name: /backdrops/i }));
+
+      fireEvent.mouseEnter(screen.getByTestId('flair-item-card-backdrop1'));
+
+      expect(screen.getByTestId('preview-backdrop')).toHaveClass('flair-backdrop-fuji');
+    });
+
+    test('an equipped backdrop shows in the preview without hovering', () => {
+      mockShopUseApi(catalogWithBackdrop, {
+        ...mockInventory,
+        equippedFlair: { ...mockInventory.equippedFlair, profileBackdrop: 'flair-backdrop-fuji' },
+      });
+      render(<Shop />);
+
+      expect(screen.getByTestId('preview-backdrop')).toHaveClass('flair-backdrop-fuji');
+    });
+
+    test('equips an owned backdrop into the profileBackdrop slot', async () => {
+      shopApi.equip.mockResolvedValue({});
+      mockShopUseApi(catalogWithBackdrop, {
+        ...mockInventory,
+        purchasedItems: [{ item: backdropItem, purchasedAt: '2024-01-01' }],
+      });
+      render(<Shop />);
+      fireEvent.click(screen.getByRole('button', { name: /backdrops/i }));
+
+      fireEvent.click(screen.getByRole('button', { name: /^equip$/i }));
+
+      await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('backdrop1', 'profileBackdrop'));
+    });
   });
 
   test('displays items for the active tab', () => {

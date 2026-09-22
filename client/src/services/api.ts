@@ -43,6 +43,7 @@ export interface User {
   pointsBalance?: number;
   totalPointsEarned?: number;
   equippedFlair?: EquippedFlair;
+  showcase?: ShowcaseEntry[];
   purchasedItems?: PurchasedItem[];
 }
 
@@ -759,7 +760,7 @@ export const pointsApi = {
   },
 };
 
-export type FlairCategory = 'nameColor' | 'nameIcon' | 'profileBorder' | 'title';
+export type FlairCategory = 'nameColor' | 'nameIcon' | 'profileBorder' | 'profileBackdrop' | 'title';
 
 export interface ShopItem {
   _id: string;
@@ -775,24 +776,33 @@ export interface ShopItem {
 }
 
 // Each slot holds the equipped item's `value` (a CSS class or display text), not its `_id`.
+// `profileBackdrop` is profile-only: player payloads in game rows and member lists omit it, and
+// a private-mode profile returns it as null.
 export interface EquippedFlair {
   nameColor: string | null;
   nameIcon: string | null;
   profileBorder: string | null;
+  profileBackdrop?: string | null;
   title: string | null;
 }
+
+// A pinned profile showcase entry. `flair` entries carry the item's category and value;
+// `stat` entries carry a key of UserStats; favorites resolve from the user's own fields.
+export type ShowcaseEntry =
+  | { type: 'flair'; category: FlairCategory; value: string }
+  | { type: 'favoriteYaku' }
+  | { type: 'favoriteTile' }
+  | { type: 'stat'; key: ShowcaseStatKey };
+
+// Mirrors SHOWCASE_STAT_KEYS in server/src/utils/showcaseService.js.
+export type ShowcaseStatKey = 'gamesWon' | 'gamesPlayed' | 'highestScore' | 'averageScore';
 
 export interface PurchasedItem {
   item: ShopItem;
   purchasedAt: string;
 }
 
-export interface ShopCatalog {
-  nameColor?: ShopItem[];
-  nameIcon?: ShopItem[];
-  profileBorder?: ShopItem[];
-  title?: ShopItem[];
-}
+export type ShopCatalog = { [category in FlairCategory]?: ShopItem[] };
 
 export interface ShopInventory {
   purchasedItems: PurchasedItem[];

@@ -4,6 +4,7 @@ import { isPremiumBorder, isMidTierBorder } from '../../utils/flairUtils';
 import FlairName from '../user/FlairName';
 import FlairIcon from '../user/FlairIcon';
 import TitleBadge from '../user/TitleBadge';
+import ProfileBackdrop from '../user/ProfileBackdrop';
 
 interface FlairItemPreviewProps {
   item: ShopItem;
@@ -27,6 +28,9 @@ const FlairItemPreview: React.FC<FlairItemPreviewProps> = ({ item }) => (
       ) : (
         <div className={`w-8 h-8 rounded-full bg-gray-300 ${item.value}`} />
       )
+    )}
+    {item.category === 'profileBackdrop' && (
+      <ProfileBackdrop value={item.value} className="w-16 h-8" testId={`backdrop-swatch-${item._id}`} />
     )}
     {item.category === 'title' && (
       <TitleBadge value={item.value} />
