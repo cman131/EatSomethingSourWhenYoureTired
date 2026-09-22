@@ -6,12 +6,15 @@ import {
   getNameColorStyle,
   isPremiumBorder,
   isMidTierBorder,
+  PRESTIGE_TITLE_MARKER,
 } from '../flairUtils';
 
 // Reads the server catalog directly so the two packages cannot drift apart.
 // Needs the whole repo checked out (not just client/): this reads the server catalog directly.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { SHOP_CATALOG } = require('../../../../server/src/data/shopCatalog');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PRESTIGE_TITLE_MARKER: SERVER_PRESTIGE_TITLE_MARKER } = require('../../../../server/src/utils/prestigeTitle');
 
 interface CatalogItem {
   name: string;
@@ -98,6 +101,29 @@ describe('shop catalog ↔ client registry ↔ flair.css', () => {
 
   test('reduced-motion rules are present', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+  });
+});
+
+describe('prestige titles', () => {
+  test('use the same marker as the server', () => {
+    expect(PRESTIGE_TITLE_MARKER).toBe(SERVER_PRESTIGE_TITLE_MARKER);
+  });
+
+  test('any value starting with the marker resolves to the prestige style', () => {
+    const style = getTitleStyle(`${PRESTIGE_TITLE_MARKER}Spring Open`);
+
+    expect(style?.tier).toBe('prestige');
+    expect(cssDefines(style?.className ?? '')).toBe(true);
+  });
+
+  test('the marker only counts at the start of the value', () => {
+    expect(getTitleStyle(`Spring ${PRESTIGE_TITLE_MARKER}Open`)).toBeNull();
+  });
+
+  test('no shop catalog title resolves to the prestige style', () => {
+    for (const item of itemsIn('title')) {
+      expect(getTitleStyle(item.value)?.tier).not.toBe('prestige');
+    }
   });
 });
 
