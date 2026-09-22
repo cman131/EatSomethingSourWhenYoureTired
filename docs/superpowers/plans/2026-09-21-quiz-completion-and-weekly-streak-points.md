@@ -839,7 +839,7 @@ describe('evaluateWeeklyStreak — qualification', () => {
 
     await evaluateWeeklyStreak(guest._id, midWeek(WEEK1));
 
-    expect(await PointTransaction.countDocuments({ user: guest._id })).toBe(0);
+    expect(await PointTransaction.countDocuments({ user: guest._id, type: 'weekly_streak_bonus' })).toBe(0);
     await User.deleteOne({ _id: guest._id });
   });
 });
