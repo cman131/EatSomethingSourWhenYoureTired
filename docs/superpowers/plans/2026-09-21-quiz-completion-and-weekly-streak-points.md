@@ -2063,7 +2063,24 @@ const POINT_TYPE_LABELS: Record<string, string> = {
 - [ ] **Step 7: Run the full client suite to confirm nothing else broke**
 
 Run: `cd client && npm test -- --watchAll=false --testMatch "**/src/**/*.test.{ts,tsx}"`
-Expected: PASS (same 18 suites as the Task 0 baseline, no new failures — `Points.test.tsx` and `PointsHelpModal.test.tsx` both green)
+Expected initially FAILS: `Points.test.tsx` mocks `../../services/api` with only `getSummary`/`getHistory`, and its `mockApis` helper routes anything that isn't `pointsApi.getSummary` to the history state — so once `PointsHelpModal` calls `pointsApi.getConfig` too, opening the modal in that test file feeds it `mockHistory` shaped data instead of a `PointsConfig`, crashing on `config.gamePlacementAmounts[1]`.
+
+Fix `client/src/pages/__tests__/Points.test.tsx`:
+1. Add `getConfig: jest.fn()` to the `jest.mock('../../services/api', ...)` factory.
+2. Add a `mockPointsConfig` fixture (same shape as `mockConfig` in `PointsHelpModal.test.tsx`).
+3. Update `mockApis` to branch three ways instead of two, defaulting the config branch so existing call sites don't need to change:
+
+```ts
+function mockApis({ summary, history, config = loaded(mockPointsConfig) }: { summary: ApiState; history: ApiState; config?: ApiState }) {
+  useApi.mockImplementation((apiCall: unknown) => {
+    const state = apiCall === pointsApi.getSummary ? summary : apiCall === pointsApi.getConfig ? config : history;
+    return { data: null, loading: false, error: null, ...state };
+  });
+}
+```
+
+Then re-run: `cd client && npm test -- --watchAll=false --testMatch "**/src/**/*.test.{ts,tsx}"`
+Expected: PASS, 19 suites, 337 tests.
 
 - [ ] **Step 8: Commit**
 

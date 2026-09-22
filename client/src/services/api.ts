@@ -749,6 +749,19 @@ export interface PointsHistory {
   totalPages: number;
 }
 
+export interface PointsConfig {
+  gamePlacementAmounts: { 1: number; 2: number; 3: number; 4: number };
+  gameSubmittedAmount: number;
+  gameVerifiedAmount: number;
+  tournamentParticipationAmount: number;
+  tournamentPlacementAmounts: number[];
+  rankedQualificationAmount: number;
+  rankedPlacementAmounts: number[];
+  quizCompletionAmount: number;
+  quizWeeklyCapCount: number;
+  weeklyStreakAmounts: number[];
+}
+
 export const pointsApi = {
   getSummary: async () => {
     return apiRequest<ApiResponse<PointsSummary>>('/points/me');
@@ -756,6 +769,10 @@ export const pointsApi = {
 
   getHistory: async (page = 1, limit = 20) => {
     return apiRequest<ApiResponse<PointsHistory>>(`/points/me/history?page=${page}&limit=${limit}`);
+  },
+
+  getConfig: async () => {
+    return apiRequest<ApiResponse<PointsConfig>>('/points/config');
   },
 };
 
