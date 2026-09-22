@@ -43,6 +43,7 @@ export interface User {
   pointsBalance?: number;
   totalPointsEarned?: number;
   equippedFlair?: EquippedFlair;
+  showcase?: ShowcaseEntry[];
   purchasedItems?: PurchasedItem[];
 }
 
@@ -712,8 +713,8 @@ export const rankedLeaguesApi = {
 
 // Points API
 export interface PointTransactionContext {
-  kind: 'game' | 'tournament' | 'rankedSeason' | 'shopItem';
-  id: string;
+  kind: 'game' | 'tournament' | 'rankedSeason' | 'shopItem' | 'adjustment';
+  id: string | null;
   label: string | null;
   missing: boolean;
 }
@@ -729,6 +730,8 @@ export interface PointTransaction {
     tournamentId?: string | null;
     leagueId?: string | null;
     placement?: number | null;
+    adjustedBy?: string | null;
+    reason?: string | null;
   };
   // Present on history rows; absent on the summary's recentTransactions.
   context?: PointTransactionContext | null;
@@ -749,6 +752,23 @@ export interface PointsHistory {
   totalPages: number;
 }
 
+export interface PointsConfig {
+  gamePlacementAmounts: { 1: number; 2: number; 3: number; 4: number };
+  gameSubmittedAmount: number;
+  gameVerifiedAmount: number;
+  gameDailyCap: number;
+  gameDailyWindowHours: number;
+  repeatGroupMaxGames: number;
+  repeatGroupWindowDays: number;
+  tournamentParticipationAmount: number;
+  tournamentPlacementAmounts: number[];
+  rankedQualificationAmount: number;
+  rankedPlacementAmounts: number[];
+  quizCompletionAmount: number;
+  quizWeeklyCapCount: number;
+  weeklyStreakAmounts: number[];
+}
+
 export const pointsApi = {
   getSummary: async () => {
     return apiRequest<ApiResponse<PointsSummary>>('/points/me');
@@ -757,9 +777,13 @@ export const pointsApi = {
   getHistory: async (page = 1, limit = 20) => {
     return apiRequest<ApiResponse<PointsHistory>>(`/points/me/history?page=${page}&limit=${limit}`);
   },
+
+  getConfig: async () => {
+    return apiRequest<ApiResponse<PointsConfig>>('/points/config');
+  },
 };
 
-export type FlairCategory = 'nameColor' | 'nameIcon' | 'profileBorder' | 'title';
+export type FlairCategory = 'nameColor' | 'nameIcon' | 'profileBorder' | 'profileBackdrop' | 'title';
 
 export interface ShopItem {
   _id: string;
@@ -775,33 +799,46 @@ export interface ShopItem {
 }
 
 // Each slot holds the equipped item's `value` (a CSS class or display text), not its `_id`.
+// `profileBackdrop` is profile-only: player payloads in game rows and member lists omit it, and
+// a private-mode profile returns it as null.
 export interface EquippedFlair {
   nameColor: string | null;
   nameIcon: string | null;
   profileBorder: string | null;
+  profileBackdrop?: string | null;
   title: string | null;
 }
+
+// A pinned profile showcase entry. `flair` entries carry the item's category and value;
+// `stat` entries carry a key of UserStats; favorites resolve from the user's own fields.
+export type ShowcaseEntry =
+  | { type: 'flair'; category: FlairCategory; value: string }
+  | { type: 'favoriteYaku' }
+  | { type: 'favoriteTile' }
+  | { type: 'stat'; key: ShowcaseStatKey };
+
+// Mirrors SHOWCASE_STAT_KEYS in server/src/utils/showcaseService.js.
+export type ShowcaseStatKey = 'gamesWon' | 'gamesPlayed' | 'highestScore' | 'averageScore';
 
 export interface PurchasedItem {
   item: ShopItem;
   purchasedAt: string;
 }
 
+// Same explicit-fields shape as EquippedFlair (rather than a mapped type over FlairCategory), since
+// a saved loadout is never subject to the profile-privacy filtering that makes EquippedFlair's
+// profileBackdrop field optional — every slot is always present here.
 export interface FlairLoadout {
   _id: string;
   name: string;
   nameColor: string | null;
   nameIcon: string | null;
   profileBorder: string | null;
+  profileBackdrop: string | null;
   title: string | null;
 }
 
-export interface ShopCatalog {
-  nameColor?: ShopItem[];
-  nameIcon?: ShopItem[];
-  profileBorder?: ShopItem[];
-  title?: ShopItem[];
-}
+export type ShopCatalog = { [category in FlairCategory]?: ShopItem[] };
 
 export interface ShopInventory {
   purchasedItems: PurchasedItem[];

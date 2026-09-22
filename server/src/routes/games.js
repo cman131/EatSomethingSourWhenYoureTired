@@ -6,8 +6,9 @@ const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const { validateGameCreation, validateMongoId } = require('../middleware/validation');
 const { sendNewCommentNotificationEmail } = require('../utils/emailService');
 const { createGame } = require('../utils/gameService');
-const { getCurrentLeague, updateRankedPoints } = require('../utils/rankedLeagueService');
-const { awardGamePoints } = require('../utils/pointsService');
+const { getCurrentLeague, updateRankedPoints, reverseRankedPoints } = require('../utils/rankedLeagueService');
+const { awardGamePoints, reverseGamePoints, undoGamePoints } = require('../utils/pointsService');
+const { evaluateWeeklyStreakForPlayers } = require('../utils/weeklyStreakService');
 
 const router = express.Router();
 
@@ -306,18 +307,27 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
       });
     }
 
+    // The game stays verified if an award fails; it keeps no pointsAwardedAt marker, so
+    // `node scripts/replayGamePoints.js --game=<id>` can safely finish the missing awards.
     try {
+      // Must run before players.player is populated below — see the comment on awardGamePoints.
       await awardGamePoints(verifiedGame, req.user._id);
     } catch (err) {
-      console.error('Failed to award game points:', err);
+      console.error(`Failed to award game points for game ${verifiedGame._id}:`, err);
     }
 
     if (verifiedGame.isRanked) {
       try {
         await updateRankedPoints(verifiedGame);
       } catch (err) {
-        console.error('Failed to update ranked points:', err);
+        console.error(`Failed to update ranked points for game ${verifiedGame._id}:`, err);
       }
+    }
+
+    try {
+      await evaluateWeeklyStreakForPlayers(verifiedGame.players.map(p => p.player));
+    } catch (err) {
+      console.error(`Failed to evaluate weekly streak for game ${verifiedGame._id}:`, err);
     }
 
     await verifiedGame.populate('submittedBy', PLAYER_POPULATE_FIELDS);
@@ -551,6 +561,26 @@ router.patch('/:id', validateMongoId('id'), async (req, res) => {
       }
     }
 
+    const wasVerified = game.verified;
+
+    // Undo the points and ranked delta awarded under the old scores/ranks before they are
+    // overwritten below, so the re-award after save starts from a clean slate.
+    if (wasVerified) {
+      try {
+        await undoGamePoints(game._id);
+        // undoGamePoints clears pointsAwardedAt on the DB row directly; mirror it here so the
+        // save() below doesn't write the in-memory document's stale value back over it.
+        game.pointsAwardedAt = undefined;
+      } catch (err) {
+        console.error(`Failed to undo game points before editing game ${game._id}:`, err);
+      }
+      try {
+        await reverseRankedPoints(game);
+      } catch (err) {
+        console.error(`Failed to reverse ranked points before editing game ${game._id}:`, err);
+      }
+    }
+
     for (const reqPlayer of playersBody) {
       const playerId = reqPlayer.player.toString ? reqPlayer.player.toString() : String(reqPlayer.player);
       const gamePlayer = game.players.find(
@@ -564,6 +594,23 @@ router.patch('/:id', validateMongoId('id'), async (req, res) => {
     game.markModified('players');
 
     await game.save();
+
+    // Re-award from the updated ranks/scores. Must run before players.player is populated below —
+    // see the comment on awardGamePoints.
+    if (wasVerified) {
+      try {
+        await awardGamePoints(game, game.verifiedBy);
+      } catch (err) {
+        console.error(`Failed to re-award game points for edited game ${game._id}:`, err);
+      }
+      if (game.isRanked) {
+        try {
+          await updateRankedPoints(game);
+        } catch (err) {
+          console.error(`Failed to reapply ranked points for edited game ${game._id}:`, err);
+        }
+      }
+    }
 
     await game.populate('submittedBy', PLAYER_POPULATE_FIELDS);
     await game.populate('players.player', PLAYER_POPULATE_FIELDS);
@@ -607,7 +654,30 @@ router.delete('/:id', validateMongoId('id'), async (req, res) => {
       });
     }
 
+    // A verified game has already paid out points and (if ranked) a league delta, so only an
+    // admin may remove one — a submitter deleting their own verified game would keep every point
+    // it earned with no trace left behind.
+    if (game.verified && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only admins can delete a verified game'
+      });
+    }
+
     const gameId = game._id;
+
+    if (game.verified) {
+      try {
+        await reverseGamePoints(gameId);
+      } catch (err) {
+        console.error(`Failed to reverse points for deleted game ${gameId}:`, err);
+      }
+      try {
+        await reverseRankedPoints(game);
+      } catch (err) {
+        console.error(`Failed to reverse ranked points for deleted game ${gameId}:`, err);
+      }
+    }
 
     // Remove game references from tournament pairings
     const tournaments = await Tournament.find({

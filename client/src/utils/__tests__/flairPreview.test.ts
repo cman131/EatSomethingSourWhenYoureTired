@@ -1,7 +1,7 @@
 import { composeFlairPreview } from '../flairPreview';
 import { EquippedFlair, ShopItem } from '../../services/api';
 
-const noFlair: EquippedFlair = { nameColor: null, nameIcon: null, profileBorder: null, title: null };
+const noFlair: EquippedFlair = { nameColor: null, nameIcon: null, profileBorder: null, profileBackdrop: null, title: null };
 
 const titleItem: ShopItem = {
   _id: 't1',
@@ -19,21 +19,48 @@ describe('composeFlairPreview', () => {
   test('with no hovered item and nothing equipped, previews an empty look', () => {
     const preview = composeFlairPreview(noFlair, null, []);
 
-    expect(preview).toEqual({ nameColor: null, nameIcon: '', border: '', titleValue: null });
+    expect(preview).toEqual({ nameColor: null, nameIcon: '', border: '', backdrop: null, titleValue: null });
   });
 
   test('reflects the currently equipped flair when nothing is hovered', () => {
-    const equipped: EquippedFlair = { nameColor: 'text-emerald-600', nameIcon: '🐉', profileBorder: 'flair-mid-jade', title: null };
+    const equipped: EquippedFlair = {
+      nameColor: 'text-emerald-600',
+      nameIcon: '🐉',
+      profileBorder: 'flair-mid-jade',
+      profileBackdrop: 'flair-backdrop-fuji',
+      title: null,
+    };
 
     const preview = composeFlairPreview(equipped, null, []);
 
     expect(preview.nameColor).toBe('text-emerald-600');
     expect(preview.nameIcon).toBe('🐉');
     expect(preview.border).toBe('flair-mid-jade');
+    expect(preview.backdrop).toBe('flair-backdrop-fuji');
+  });
+
+  test('a hovered backdrop item overrides the backdrop slot only', () => {
+    const equipped: EquippedFlair = { ...noFlair, nameColor: 'text-emerald-600' };
+    const hoveredBackdrop: ShopItem = {
+      _id: 'bd1',
+      name: 'Fuji Dawn',
+      description: '',
+      category: 'profileBackdrop',
+      cost: 125,
+      value: 'flair-backdrop-fuji',
+      tier: 'mid',
+      sortOrder: 1,
+      isActive: true,
+    };
+
+    const preview = composeFlairPreview(equipped, hoveredBackdrop, []);
+
+    expect(preview.nameColor).toBe('text-emerald-600');
+    expect(preview.backdrop).toBe('flair-backdrop-fuji');
   });
 
   test('a hovered item overrides only its own slot', () => {
-    const equipped: EquippedFlair = { nameColor: 'text-emerald-600', nameIcon: null, profileBorder: null, title: null };
+    const equipped: EquippedFlair = { nameColor: 'text-emerald-600', nameIcon: null, profileBorder: null, profileBackdrop: null, title: null };
     const hovered: ShopItem = {
       _id: 'b1',
       name: 'Jade Ring',

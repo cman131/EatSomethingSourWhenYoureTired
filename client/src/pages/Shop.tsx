@@ -16,6 +16,12 @@ import { useFlairEquip } from '../hooks/useFlairEquip';
 import FlairName from '../components/user/FlairName';
 import FlairIcon from '../components/user/FlairIcon';
 import TitleBadge from '../components/user/TitleBadge';
+import ProfileBackdrop from '../components/user/ProfileBackdrop';
+import FlairItemPreview from '../components/shop/FlairItemPreview';
+import PurchaseConfirmDialog from '../components/shop/PurchaseConfirmDialog';
+import { getErrorMessage } from '../utils/apiError';
+
+const PURCHASE_FAILED_MESSAGE = 'Purchase failed. Please try again.';
 
 type Tab = { key: FlairCategory; label: string };
 
@@ -23,6 +29,7 @@ const TABS: Tab[] = [
   { key: 'nameColor', label: 'Name Effects' },
   { key: 'nameIcon', label: 'Icons' },
   { key: 'profileBorder', label: 'Borders' },
+  { key: 'profileBackdrop', label: 'Backdrops' },
   { key: 'title', label: 'Titles' },
 ];
 
@@ -31,6 +38,7 @@ interface FlairItemCardProps {
   owned: boolean;
   equipped: boolean;
   canAfford: boolean;
+  equipDisabled: boolean;
   onBuy: (item: ShopItem) => void;
   onEquip: (item: ShopItem) => void;
   onHover: (item: ShopItem | null) => void;
@@ -41,6 +49,7 @@ const FlairItemCard: React.FC<FlairItemCardProps> = ({
   owned,
   equipped,
   canAfford,
+  equipDisabled,
   onBuy,
   onEquip,
   onHover,
@@ -52,28 +61,8 @@ const FlairItemCard: React.FC<FlairItemCardProps> = ({
     onMouseLeave={() => onHover(null)}
   >
     {/* Item preview */}
-    <div className="flex items-center gap-2 mb-3">
-      {item.category === 'nameColor' && (
-        <span className="font-semibold text-base">
-          <FlairName name="Aa" colorValue={item.value} />
-        </span>
-      )}
-      {item.category === 'nameIcon' && (
-        <FlairIcon value={item.value} className="text-2xl" />
-      )}
-      {item.category === 'profileBorder' && (
-        (isPremiumBorder(item.value) || isMidTierBorder(item.value)) ? (
-          <div className={item.value}>
-            <div className="flair-border-inner w-8 h-8 bg-gray-300" />
-          </div>
-        ) : (
-          <div className={`w-8 h-8 rounded-full bg-gray-300 ${item.value}`} />
-        )
-      )}
-      {item.category === 'title' && (
-        <TitleBadge value={item.value} />
-      )}
-      <span className="font-medium text-gray-900 text-sm">{item.name}</span>
+    <div className="mb-3">
+      <FlairItemPreview item={item} />
     </div>
 
     <p className="text-xs text-gray-500 mb-4">{item.description}</p>
@@ -98,7 +87,8 @@ const FlairItemCard: React.FC<FlairItemCardProps> = ({
       {owned && equipped && (
         <button
           onClick={() => onEquip(item)}
-          className="w-full px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors"
+          disabled={equipDisabled}
+          className="w-full px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
         >
           Equipped ✓
         </button>
@@ -106,7 +96,8 @@ const FlairItemCard: React.FC<FlairItemCardProps> = ({
       {owned && !equipped && (
         <button
           onClick={() => onEquip(item)}
-          className="w-full px-3 py-1.5 text-sm font-medium text-primary-700 border border-primary-300 hover:bg-primary-50 rounded-md transition-colors"
+          disabled={equipDisabled}
+          className="w-full px-3 py-1.5 text-sm font-medium text-primary-700 border border-primary-300 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
         >
           Equip
         </button>
@@ -120,6 +111,8 @@ const Shop: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<FlairCategory>('nameColor');
   const [hoveredItem, setHoveredItem] = useState<ShopItem | null>(null);
+  const [itemToConfirm, setItemToConfirm] = useState<ShopItem | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   const { data: catalogRes, loading: catalogLoading } = useApi<{ data: ShopCatalog }>(
     shopApi.getCatalog,
@@ -142,21 +135,34 @@ const Shop: React.FC = () => {
   const ownedItems = (inventory?.purchasedItems ?? []).flatMap(p => (p.item ? [p.item] : []));
   const ownedIds = new Set(ownedItems.map(item => item._id));
   const catalogIds = new Set(TABS.flatMap(tab => catalog?.[tab.key] ?? []).map(item => item._id));
-  const equippedFlair = inventory?.equippedFlair ?? { nameColor: null, nameIcon: null, profileBorder: null, title: null };
+  const equippedFlair = inventory?.equippedFlair ?? {
+    nameColor: null,
+    nameIcon: null,
+    profileBorder: null,
+    profileBackdrop: null,
+    title: null,
+  };
 
   const refreshInventory = () => setInventoryKey(k => k + 1);
 
-  const { actionError, actionSuccess, equipItem, setActionError, setActionSuccess } = useFlairEquip(equippedFlair, refreshInventory);
+  const { actionError, actionSuccess, isEquipping, equipItem, setActionError, setActionSuccess } = useFlairEquip(equippedFlair, refreshInventory);
 
   const handlePurchase = async (item: ShopItem) => {
+    if (isPurchasing) {
+      return;
+    }
     setActionError(null);
     setActionSuccess(null);
+    setIsPurchasing(true);
     try {
       await shopApi.purchase(item._id);
       setActionSuccess(`Purchased ${item.name}!`);
       refreshInventory();
-    } catch {
-      setActionError('Purchase failed. Please try again.');
+    } catch (err) {
+      setActionError(getErrorMessage(err, PURCHASE_FAILED_MESSAGE));
+    } finally {
+      setIsPurchasing(false);
+      setItemToConfirm(null);
     }
   };
 
@@ -177,7 +183,8 @@ const Shop: React.FC = () => {
       owned={ownedIds.has(item._id)}
       equipped={isFlairEquipped(equippedFlair, item)}
       canAfford={(inventory?.pointsBalance ?? 0) >= item.cost}
-      onBuy={handlePurchase}
+      equipDisabled={isEquipping}
+      onBuy={setItemToConfirm}
       onEquip={equipItem}
       onHover={setHoveredItem}
     />
@@ -211,12 +218,12 @@ const Shop: React.FC = () => {
 
       {/* Feedback */}
       {actionSuccess && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
+        <div role="status" className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-800">
           {actionSuccess}
         </div>
       )}
       {actionError && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
+        <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
           {actionError}
         </div>
       )}
@@ -224,6 +231,7 @@ const Shop: React.FC = () => {
       {/* Live preview */}
       <div data-testid="preview-box" className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
+        <ProfileBackdrop value={preview.backdrop} className="h-10 mb-3" testId="preview-backdrop" />
         <div className="flex items-center gap-3">
           {previewNeedsGradientBorder ? (
             <div className={preview.border} data-testid="preview-avatar">
@@ -286,6 +294,16 @@ const Shop: React.FC = () => {
             {retiredItems.map(renderCard)}
           </div>
         </section>
+      )}
+
+      {itemToConfirm && (
+        <PurchaseConfirmDialog
+          item={itemToConfirm}
+          pointsBalance={inventory?.pointsBalance ?? 0}
+          isPurchasing={isPurchasing}
+          onConfirm={() => handlePurchase(itemToConfirm)}
+          onCancel={() => setItemToConfirm(null)}
+        />
       )}
     </div>
   );

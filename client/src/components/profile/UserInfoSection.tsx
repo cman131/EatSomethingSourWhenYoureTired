@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { usersApi, User, NotificationPreferences } from '../../services/api';
+import { usersApi, User, NotificationPreferences, ShowcaseEntry } from '../../services/api';
 import { getTileImagePath } from '../../utils/tileUtils';
 import NotificationPreferencesModal from '../NotificationPreferencesModal';
 import RiichiMusicModal from '../RiichiMusicModal';
 import EditProfileModal from '../EditProfileModal';
 import RiichiMusicDisplay from './RiichiMusicDisplay';
+import ProfileShowcase from './ProfileShowcase';
+import ProfileBackdrop from '../user/ProfileBackdrop';
 import UserAvatar from '../user/UserAvatar';
 import TitleBadge from '../user/TitleBadge';
 import FlairName from '../user/FlairName';
@@ -55,6 +57,12 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
     await onRefetchProfile();
   };
 
+  // Handle showcase save: goes through the profile update so the auth user stays in step
+  const handleShowcaseSave = async (showcase: ShowcaseEntry[]) => {
+    await onUpdateProfile({ showcase });
+    await onRefetchProfile();
+  };
+
   return (
     <>
     <div className="card">
@@ -94,6 +102,11 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
       )}
 
       <div className="space-y-4">
+          {/* Backdrop banner: profile-only flair, hidden in private mode */}
+          {!user?.privateMode && (
+            <ProfileBackdrop value={user?.equippedFlair?.profileBackdrop} className="h-20" />
+          )}
+
           {/* Avatar and Display Name */}
           <div className="flex items-center gap-6">
             <div className="flex-shrink-0">
@@ -122,6 +135,9 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
           {!user?.privateMode && user?.riichiMusic && (
             <RiichiMusicDisplay riichiMusic={user.riichiMusic} />
           )}
+
+          {/* Showcase */}
+          <ProfileShowcase user={user} isOwnProfile={isOwnProfile} onSave={handleShowcaseSave} />
 
           {/* Other Information */}
           {(!user.privateMode && (user?.realName || user?.discordName || user?.mahjongSoulName || user?.favoriteYaku || user?.favoriteTile || user?.clubAffiliation || (isOwnProfile && user?.email))) && (

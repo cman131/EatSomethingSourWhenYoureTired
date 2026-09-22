@@ -333,10 +333,41 @@
 }
 
 /* ==========================================================================
+   Profile backdrops: a decorative banner strip behind the profile header (ProfileBackdrop).
+   No text is ever drawn on it, so the gradient text-clip fallbacks above do not apply; when
+   forced-colors or print drop the background the strip simply disappears.
+   ========================================================================== */
+
+/* Entry: a flat wash */
+.flair-backdrop-shoji  { background-color: #f5f0e6; }
+.flair-backdrop-tatami { background-color: #a3b58a; }
+.flair-backdrop-sumi   { background-color: #94a3b8; }
+
+/* Mid: a static gradient */
+.flair-backdrop-fuji   { background-image: linear-gradient(90deg, #fb923c, #e879f9, #6366f1); }
+.flair-backdrop-bamboo { background-image: linear-gradient(90deg, #166534, #4d7c0f, #0d9488); }
+
+/* Premium: a long gradient that drifts sideways. The end hue repeats the start so the loop is seamless. */
+.flair-backdrop-tanabata { background-image: linear-gradient(90deg, #1e1b4b, #4338ca, #a5b4fc, #7c3aed, #1e1b4b); }
+.flair-backdrop-koi      { background-image: linear-gradient(90deg, #b91c1c, #f97316, #fde047, #f97316, #b91c1c); }
+
+.flair-backdrop-tanabata,
+.flair-backdrop-koi {
+  background-size: 300% 100%;
+  animation: flair-flow 12s linear infinite;
+}
+
+/* ==========================================================================
    Reduced motion: stop every flair animation. Premium items keep their static look.
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
+  .flair-backdrop-tanabata,
+  .flair-backdrop-koi {
+    animation: none;
+    background-size: 100% 100%;
+  }
+
   .flair-border-rainbow::before,
   .flair-border-dragon::before,
   .flair-border-hanabi::before,

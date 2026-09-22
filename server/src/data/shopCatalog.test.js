@@ -1,4 +1,5 @@
 const { SHOP_CATALOG } = require('./shopCatalog');
+const { FLAIR_CATEGORIES } = require('./flairCategories');
 
 // The pre-expansion catalog (30 items) with the original prices. An existing item's `value`
 // is stored verbatim in User.equippedFlair, so these values must never change.
@@ -35,7 +36,9 @@ const LEGACY_ITEMS = Object.freeze([
   { name: 'Chombo Chaser', category: 'title', tier: 'premium', value: 'Chombo Chaser', oldCost: 600 },
 ]);
 
-const CATEGORIES = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+const CATEGORIES = ['nameColor', 'nameIcon', 'profileBorder', 'profileBackdrop', 'title'];
+// The four categories that shipped before the backdrop; each got the full 6/5/3 expansion.
+const EXPANDED_CATEGORIES = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
 const TIER_ORDER = { entry: 0, mid: 1, premium: 2 };
 const PRICE_BANDS = { entry: [50, 75], mid: [100, 175], premium: [250, 300] };
 const BORDER_PREFIX_BY_TIER = {
@@ -100,12 +103,29 @@ describe('SHOP_CATALOG', () => {
     }
   });
 
-  test('every category keeps its post-expansion tier coverage', () => {
-    for (const category of CATEGORIES) {
+  test('the shared category list matches the categories the catalog is checked against', () => {
+    expect([...FLAIR_CATEGORIES].sort()).toEqual([...CATEGORIES].sort());
+  });
+
+  test('every expanded category keeps its post-expansion tier coverage', () => {
+    for (const category of EXPANDED_CATEGORIES) {
       const tiers = SHOP_CATALOG.filter(i => i.category === category).map(i => i.tier);
       expect(tiers.filter(t => t === 'entry').length).toBeGreaterThanOrEqual(6);
       expect(tiers.filter(t => t === 'mid').length).toBeGreaterThanOrEqual(5);
       expect(tiers.filter(t => t === 'premium').length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  test('the backdrop category offers at least three entry, two mid and two premium items', () => {
+    const tiers = SHOP_CATALOG.filter(i => i.category === 'profileBackdrop').map(i => i.tier);
+    expect(tiers.filter(t => t === 'entry').length).toBeGreaterThanOrEqual(3);
+    expect(tiers.filter(t => t === 'mid').length).toBeGreaterThanOrEqual(2);
+    expect(tiers.filter(t => t === 'premium').length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('backdrop values use the flair-backdrop- class prefix', () => {
+    for (const item of SHOP_CATALOG.filter(i => i.category === 'profileBackdrop')) {
+      expect(item.value.startsWith('flair-backdrop-')).toBe(true);
     }
   });
 

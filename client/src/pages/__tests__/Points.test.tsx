@@ -21,6 +21,7 @@ jest.mock('../../services/api', () => ({
   pointsApi: {
     getSummary: jest.fn(),
     getHistory: jest.fn(),
+    getConfig: jest.fn(),
   },
 }));
 
@@ -44,17 +45,33 @@ const mockHistory = {
   totalPages: 1,
 };
 
+// Loaded by default whenever the help modal mounts and calls pointsApi.getConfig; individual tests
+// don't otherwise care about its contents.
+const mockPointsConfig = {
+  gamePlacementAmounts: { 1: 10, 2: 7, 3: 4, 4: 2 },
+  gameSubmittedAmount: 2,
+  gameVerifiedAmount: 1,
+  tournamentParticipationAmount: 15,
+  tournamentPlacementAmounts: [200, 100, 70, 50],
+  rankedQualificationAmount: 10,
+  rankedPlacementAmounts: [150, 100, 50],
+  quizCompletionAmount: 1,
+  quizWeeklyCapCount: 5,
+  weeklyStreakAmounts: [2, 3, 4, 5],
+};
+
 type ApiState = { data?: unknown; loading?: boolean; error?: string | null };
 
-// The summary call is identified by its function; anything else is the history call.
-function mockApis({ summary, history }: { summary: ApiState; history: ApiState }) {
+const loaded = (data: unknown): ApiState => ({ data: { data } });
+
+// The summary and config calls are identified by their function reference; anything else
+// (the history call, wrapped in an arrow function so page/limit can vary) falls back to history.
+function mockApis({ summary, history, config = loaded(mockPointsConfig) }: { summary: ApiState; history: ApiState; config?: ApiState }) {
   useApi.mockImplementation((apiCall: unknown) => {
-    const state = apiCall === pointsApi.getSummary ? summary : history;
+    const state = apiCall === pointsApi.getSummary ? summary : apiCall === pointsApi.getConfig ? config : history;
     return { data: null, loading: false, error: null, ...state };
   });
 }
-
-const loaded = (data: unknown): ApiState => ({ data: { data } });
 
 function renderLoaded(history: unknown = mockHistory) {
   mockApis({ summary: loaded(mockSummary), history: loaded(history) });

@@ -55,8 +55,8 @@ describe('useFlairEquip', () => {
     expect(result.current.actionSuccess).toBe('Unequipped Jade Green');
   });
 
-  test('sets actionError and does not call onEquipped when the API call fails', async () => {
-    shopApi.equip.mockRejectedValue(new Error('boom'));
+  test('surfaces the server error message when the API call fails', async () => {
+    shopApi.equip.mockRejectedValue(new Error('You do not own this item'));
     const onEquipped = jest.fn();
     const { result } = renderHook(() => useFlairEquip(noFlair, onEquipped));
 
@@ -64,9 +64,44 @@ describe('useFlairEquip', () => {
       await result.current.equipItem(item);
     });
 
-    expect(result.current.actionError).toBe('Failed to equip item. Please try again.');
+    expect(result.current.actionError).toBe('You do not own this item');
     expect(result.current.actionSuccess).toBeNull();
     expect(onEquipped).not.toHaveBeenCalled();
+  });
+
+  test('falls back to a generic message when the equip error has none', async () => {
+    shopApi.equip.mockRejectedValue(new Error(''));
+    const { result } = renderHook(() => useFlairEquip(noFlair, jest.fn()));
+
+    await act(async () => {
+      await result.current.equipItem(item);
+    });
+
+    expect(result.current.actionError).toBe('Failed to equip item. Please try again.');
+  });
+
+  test('ignores a second equipItem call while the first is still in flight', async () => {
+    let resolveEquip: (() => void) | undefined;
+    shopApi.equip.mockReturnValue(new Promise<void>(resolve => { resolveEquip = resolve; }));
+    const { result } = renderHook(() => useFlairEquip(noFlair, jest.fn()));
+
+    let firstCall: Promise<void>;
+    act(() => {
+      firstCall = result.current.equipItem(item);
+    });
+    expect(result.current.isEquipping).toBe(true);
+
+    await act(async () => {
+      await result.current.equipItem(item);
+    });
+
+    expect(shopApi.equip).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveEquip?.();
+      await firstCall;
+    });
+    expect(result.current.isEquipping).toBe(false);
   });
 
   test('clears a previous error on a new attempt', async () => {

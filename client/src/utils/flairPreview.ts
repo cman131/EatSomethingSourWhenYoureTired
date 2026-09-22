@@ -4,6 +4,9 @@ export interface FlairPreview {
   nameColor: string | null;
   nameIcon: string;
   border: string;
+  // Null when nothing is equipped/hovered in this slot, so callers can pass it straight to
+  // ProfileBackdrop (which itself renders nothing for a null/unknown value).
+  backdrop: string | null;
   // The equipped/hovered title's value, but only when it matches a known title item — otherwise
   // null, so callers can gate rendering a title badge on this alone.
   titleValue: string | null;
@@ -29,6 +32,7 @@ export function composeFlairPreview(
     nameColor: previewFlair.nameColor ?? null,
     nameIcon: previewFlair.nameIcon ?? '',
     border: previewFlair.profileBorder ?? '',
+    backdrop: previewFlair.profileBackdrop ?? null,
     titleValue: isKnownTitle ? titleValue : null,
   };
 }

@@ -206,6 +206,35 @@ const validateLoadoutName = [
   handleValidationErrors
 ];
 
+// Admin point adjustment body: a target user, a non-zero signed amount, and a required reason.
+const validateAdminAdjustment = [
+  body('userId')
+    .exists({ values: 'null' })
+    .withMessage('userId is required')
+    .bail()
+    .isString()
+    .withMessage('Invalid userId')
+    .bail()
+    .isMongoId()
+    .withMessage('Invalid userId'),
+
+  body('amount')
+    .isInt()
+    .withMessage('amount must be a non-zero integer')
+    .bail()
+    .custom(value => Number(value) !== 0)
+    .withMessage('amount must be a non-zero integer'),
+
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('reason is required')
+    .isLength({ max: 500 })
+    .withMessage('reason cannot be more than 500 characters'),
+
+  handleValidationErrors
+];
+
 module.exports = {
   handleValidationErrors,
   validateUserRegistration,
@@ -217,6 +246,7 @@ module.exports = {
   validateMongoId,
   validateMongoIdBody,
   validateOptionalMongoIdBody,
-  validateLoadoutName
+  validateLoadoutName,
+  validateAdminAdjustment
 };
 

@@ -93,13 +93,40 @@ async function awardQualificationPoints(playerIds, leagueId) {
   }
 }
 
+function findLeaguePlayer(league, playerId) {
+  return league.players.find(p => p.player.toString() === playerId.toString());
+}
+
+function hasAppliedGame(league, game) {
+  return Boolean(game._id) && league.appliedGames.some(id => id.toString() === game._id.toString());
+}
+
+// Qualification awards are once-per-league, so a replay of an applied game can safely re-offer them
+// to every qualified player in it; this is what recovers an award that failed on the first attempt.
+async function retryQualificationPoints(game, league) {
+  const qualifiedPlayerIds = game.players
+    .map(({ player }) => findLeaguePlayer(league, player))
+    .filter(leaguePlayer => leaguePlayer && leaguePlayer.gamesPlayed >= RANKED_GAMES_THRESHOLD)
+    .map(leaguePlayer => leaguePlayer.player);
+
+  await awardQualificationPoints(qualifiedPlayerIds, league._id);
+}
+
+// Applying a game is idempotent when it has an _id: the id is saved on the league together with the
+// points, so a repeated call (a retry or an admin replay) applies nothing the second time.
 async function updateRankedPoints(game) {
   const league = await getCurrentLeague();
+
+  if (hasAppliedGame(league, game)) {
+    await retryQualificationPoints(game, league);
+    return;
+  }
+
   const newlyQualifiedPlayerIds = [];
 
   for (const gamePlayer of game.players) {
     const playerId = gamePlayer.player.toString ? gamePlayer.player.toString() : String(gamePlayer.player);
-    const leaguePlayer = league.players.find(p => p.player.toString() === playerId);
+    const leaguePlayer = findLeaguePlayer(league, playerId);
     if (!leaguePlayer) continue;
 
     const umaBase = (Number(gamePlayer.score) - RANKED_STARTING_POINT) / 1000;
@@ -113,10 +140,44 @@ async function updateRankedPoints(game) {
     }
   }
 
+  if (game._id) {
+    league.appliedGames.push(game._id);
+  }
   league.markModified('players');
   await league.save();
 
   await awardQualificationPoints(newlyQualifiedPlayerIds, league._id);
 }
 
-module.exports = { getCurrentLeague, updateRankedPoints, RANKED_GAMES_THRESHOLD };
+// Reverses the ranked delta and gamesPlayed applied for this game, leaving any ranked_league_qualified
+// bonus already paid in place — qualification is not revoked by a later delete or edit. A game
+// verified in an earlier season is looked up by which league's appliedGames contains it, not
+// getCurrentLeague(), so the right season's standings are adjusted. Idempotent: removing gameId from
+// appliedGames means a repeat call finds nothing to reverse.
+async function reverseRankedPoints(game) {
+  if (!game.isRanked || !game._id) {
+    return;
+  }
+
+  const league = await RankedLeague.findOne({ appliedGames: game._id });
+  if (!league) {
+    return;
+  }
+
+  for (const gamePlayer of game.players) {
+    const playerId = gamePlayer.player.toString ? gamePlayer.player.toString() : String(gamePlayer.player);
+    const leaguePlayer = findLeaguePlayer(league, playerId);
+    if (!leaguePlayer) continue;
+
+    const umaBase = (Number(gamePlayer.score) - RANKED_STARTING_POINT) / 1000;
+    const rankBonus = RANK_UMA_BONUS[gamePlayer.rank] ?? 0;
+    leaguePlayer.rankedPoints -= umaBase + rankBonus;
+    leaguePlayer.gamesPlayed = Math.max(0, leaguePlayer.gamesPlayed - 1);
+  }
+
+  league.appliedGames = league.appliedGames.filter(id => id.toString() !== game._id.toString());
+  league.markModified('players');
+  await league.save();
+}
+
+module.exports = { getCurrentLeague, updateRankedPoints, reverseRankedPoints, RANKED_GAMES_THRESHOLD };

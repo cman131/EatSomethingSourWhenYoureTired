@@ -19,9 +19,106 @@ beforeEach(async () => {
 });
 
 describe('PLAYER_POPULATE_FIELDS', () => {
-  test('includes equippedFlair so flair renders in game rows and member lists', () => {
-    const { PLAYER_POPULATE_FIELDS } = require('./User');
-    expect(PLAYER_POPULATE_FIELDS).toContain('equippedFlair');
+  const populateFields = () => require('./User').PLAYER_POPULATE_FIELDS.split(/\s+/);
+
+  test.each(['nameColor', 'nameIcon', 'profileBorder', 'title'])(
+    'includes equippedFlair.%s so flair renders in game rows and member lists',
+    slot => {
+      expect(populateFields()).toContain(`equippedFlair.${slot}`);
+    }
+  );
+
+  test('leaves the profile-only backdrop and showcase out of player payloads', () => {
+    expect(populateFields()).not.toContain('equippedFlair');
+    expect(populateFields()).not.toContain('equippedFlair.profileBackdrop');
+    expect(populateFields()).not.toContain('showcase');
+  });
+
+  test('selecting it returns the four inline slots but not the backdrop', async () => {
+    const created = await User.create({
+      displayName: 'test-flair-populate',
+      email: 'test-flair-populate@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+      equippedFlair: { nameColor: 'flair-color-pink', profileBackdrop: 'flair-backdrop-shoji' },
+    });
+
+    const found = await User.findById(created._id).select(require('./User').PLAYER_POPULATE_FIELDS);
+
+    expect(found.equippedFlair.nameColor).toBe('flair-color-pink');
+    expect(found.equippedFlair.profileBackdrop).toBeUndefined();
+  });
+});
+
+describe('User.equippedFlair schema', () => {
+  test('has exactly one slot per shared flair category', () => {
+    const { FLAIR_CATEGORIES } = require('../data/flairCategories');
+    const slots = Object.keys(User.schema.paths)
+      .filter(p => p.startsWith('equippedFlair.'))
+      .map(p => p.replace('equippedFlair.', ''));
+    expect(slots.sort()).toEqual([...FLAIR_CATEGORIES].sort());
+  });
+});
+
+describe('User private mode', () => {
+  const buildPrivateUser = privateMode => new User({
+    displayName: 'test-flair-private',
+    email: 'test-flair-private@example.com',
+    password: 'password123',
+    clubAffiliation: 'Charleston',
+    privateMode,
+    equippedFlair: { nameColor: 'flair-color-pink', profileBackdrop: 'flair-backdrop-shoji' },
+    showcase: [{ type: 'favoriteYaku' }],
+  });
+
+  test('toJSON hides the backdrop and showcase but keeps inline flair in private mode', () => {
+    const json = buildPrivateUser(true).toJSON();
+    expect(json.equippedFlair.profileBackdrop).toBeNull();
+    expect(json.equippedFlair.nameColor).toBe('flair-color-pink');
+    expect(json.showcase).toEqual([]);
+  });
+
+  test('toJSON keeps the backdrop and showcase when the profile is public', () => {
+    const json = buildPrivateUser(false).toJSON();
+    expect(json.equippedFlair.profileBackdrop).toBe('flair-backdrop-shoji');
+    expect(json.showcase).toEqual([{ type: 'favoriteYaku' }]);
+  });
+});
+
+describe('User showcase', () => {
+  const buildWithShowcase = showcase => new User({
+    displayName: 'test-flair-showcase',
+    email: 'test-flair-showcase@example.com',
+    password: 'password123',
+    clubAffiliation: 'Charleston',
+    showcase,
+  });
+
+  test('defaults to an empty list', () => {
+    expect(buildWithShowcase(undefined).showcase).toHaveLength(0);
+  });
+
+  test('accepts up to three entries', async () => {
+    const user = buildWithShowcase([
+      { type: 'flair', category: 'title', value: 'Regular' },
+      { type: 'stat', key: 'gamesWon' },
+      { type: 'favoriteTile' },
+    ]);
+    await expect(user.validate()).resolves.toBeUndefined();
+  });
+
+  test('rejects more than three entries', async () => {
+    const user = buildWithShowcase([
+      { type: 'favoriteYaku' },
+      { type: 'favoriteTile' },
+      { type: 'stat', key: 'gamesWon' },
+      { type: 'stat', key: 'gamesPlayed' },
+    ]);
+    await expect(user.validate()).rejects.toThrow(/showcase/);
+  });
+
+  test('rejects an unknown entry type', async () => {
+    await expect(buildWithShowcase([{ type: 'achievement' }]).validate()).rejects.toThrow();
   });
 });
 

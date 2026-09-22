@@ -8,6 +8,7 @@ const {
   applyLoadout,
 } = require('../utils/flairLoadoutService');
 const { SHOP_CATALOG } = require('../data/shopCatalog');
+const { FLAIR_CATEGORIES } = require('../data/flairCategories');
 const {
   validateMongoIdBody,
   validateOptionalMongoIdBody,
@@ -17,7 +18,7 @@ const {
 
 const router = express.Router();
 
-const VALID_SLOTS = ['nameColor', 'nameIcon', 'profileBorder', 'title'];
+const VALID_SLOTS = FLAIR_CATEGORIES;
 
 function loadoutFromBody(reqBody) {
   const slots = { name: typeof reqBody.name === 'string' ? reqBody.name.trim() : reqBody.name };

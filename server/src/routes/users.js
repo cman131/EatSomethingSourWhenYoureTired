@@ -4,8 +4,28 @@ const { PLAYER_POPULATE_FIELDS } = require('../models/User');
 const Game = require('../models/Game');
 const DiscardQuiz = require('../models/DiscardQuiz');
 const { validateUserUpdate } = require('../middleware/validation');
+const ShopItem = require('../models/ShopItem');
+const { validateShowcase, ShowcaseEntryType } = require('../utils/showcaseService');
+const { toUserProfileResponse } = require('../utils/userProfileContract');
 
 const router = express.Router();
+
+// The flair a user owns, as { category, value } pairs, for checking what they may pin. Looked up
+// separately so the user document is not populated. Retired items still count as owned;
+// purchases whose ShopItem no longer exists match nothing and are skipped.
+async function getOwnedFlair(user) {
+  const items = await ShopItem.find({ _id: { $in: user.purchasedItems.map(p => p.item) } })
+    .select('category value');
+  return items.map(({ category, value }) => ({ category, value }));
+}
+
+// A favorite pin is only meaningful while that favorite is set.
+function withoutClearedFavoritePins(showcase, user) {
+  const isKept = entry =>
+    !(entry.type === ShowcaseEntryType.FavoriteYaku && !user.favoriteYaku) &&
+    !(entry.type === ShowcaseEntryType.FavoriteTile && !user.favoriteTile);
+  return showcase.filter(isKept);
+}
 
 // @route   GET /api/users/profile
 // @desc    Get current user profile
@@ -34,8 +54,22 @@ router.get('/profile', async (req, res) => {
 router.put('/profile', validateUserUpdate, async (req, res) => {
   try {
 
-    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode, riichiMusic } = req.body;
+    const { displayName, avatar, realName, discordName, mahjongSoulName, favoriteYaku, favoriteTile, clubAffiliation, privateMode, riichiMusic, showcase } = req.body;
     const user = await User.findById(req.user._id);
+
+    // Validated before any field is applied, against the favorites this same request sets.
+    let validatedShowcase;
+    if (showcase !== undefined) {
+      const result = validateShowcase(showcase, {
+        ownedFlair: await getOwnedFlair(user),
+        favoriteYaku: favoriteYaku !== undefined ? favoriteYaku : user.favoriteYaku,
+        favoriteTile: favoriteTile !== undefined ? favoriteTile : user.favoriteTile,
+      });
+      if (!result.valid) {
+        return res.status(400).json({ success: false, message: result.message });
+      }
+      validatedShowcase = result.entries;
+    }
 
     if (displayName !== undefined) {
       // Check if displayName is already taken by another user
@@ -85,6 +119,11 @@ router.put('/profile', validateUserUpdate, async (req, res) => {
     if (privateMode !== undefined) {
       user.privateMode = privateMode;
     }
+
+    if (validatedShowcase !== undefined) {
+      user.showcase = validatedShowcase;
+    }
+    user.showcase = withoutClearedFavoritePins(user.showcase, user);
 
     if (riichiMusic !== undefined) {
       // Handle new object format: { url: string, type: 'youtube' | 'spotify' }
@@ -644,7 +683,7 @@ router.get('/:id', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: user.toJSON()
+        user: toUserProfileResponse(user, req.user)
       }
     });
   } catch (error) {

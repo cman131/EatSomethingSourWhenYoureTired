@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { getAllYaku } = require('./Yaku');
+const { FLAIR_CATEGORIES, INLINE_FLAIR_CATEGORIES } = require('../data/flairCategories');
+const { SHOWCASE_MAX_ENTRIES, SHOWCASE_ENTRY_TYPES } = require('../utils/showcaseService');
 
 const userSchema = new mongoose.Schema({
   isAdmin: {
@@ -158,15 +160,34 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Updated at most once per calendar week (see middleware/auth.js) — the "visited the site"
+  // signal for the weekly streak bonus (see utils/weeklyStreakService.js).
+  lastActiveAt: {
+    type: Date,
+    default: null,
+  },
   purchasedItems: [{
     item: { type: mongoose.Schema.Types.ObjectId, ref: 'ShopItem' },
     purchasedAt: { type: Date, default: Date.now },
   }],
-  equippedFlair: {
-    nameColor:     { type: String, default: null },
-    nameIcon:      { type: String, default: null },
-    profileBorder: { type: String, default: null },
-    title:         { type: String, default: null },
+  // One slot per flair category, holding the equipped item's `value`.
+  equippedFlair: Object.fromEntries(
+    FLAIR_CATEGORIES.map(category => [category, { type: String, default: null }])
+  ),
+  // Things the player pins to their profile; entry shapes are validated by showcaseService.
+  showcase: {
+    type: [{
+      _id: false,
+      type: { type: String, enum: SHOWCASE_ENTRY_TYPES, required: true },
+      category: { type: String, enum: FLAIR_CATEGORIES },
+      value: { type: String },
+      key: { type: String },
+    }],
+    default: [],
+    validate: {
+      validator: entries => entries.length <= SHOWCASE_MAX_ENTRIES,
+      message: `showcase can hold at most ${SHOWCASE_MAX_ENTRIES} entries`,
+    },
   },
   // Up to MAX_FLAIR_LOADOUTS (server/src/utils/flairLoadoutService.js) named looks a player can
   // save and one-click apply. Same slot shape as equippedFlair.
@@ -178,10 +199,9 @@ const userSchema = new mongoose.Schema({
       minlength: [1, 'Loadout name is required'],
       maxlength: [30, 'Loadout name cannot be more than 30 characters'],
     },
-    nameColor:     { type: String, default: null },
-    nameIcon:      { type: String, default: null },
-    profileBorder: { type: String, default: null },
-    title:         { type: String, default: null },
+    ...Object.fromEntries(
+      FLAIR_CATEGORIES.map(category => [category, { type: String, default: null }])
+    ),
   }],
 }, {
   timestamps: true
@@ -273,13 +293,26 @@ userSchema.methods.toJSON = function() {
     userObject.favoriteYaku = undefined;
     userObject.favoriteTile = undefined;
     userObject.clubAffiliation = undefined;
+    // Profile-only flair: the inline slots (name, icon, border, title) stay visible.
+    if (userObject.equippedFlair) {
+      userObject.equippedFlair.profileBackdrop = null;
+    }
+    userObject.showcase = [];
   }
-  
+
   return userObject;
 };
 
-// Common fields to populate when fetching player data
-const PLAYER_POPULATE_FIELDS = 'displayName avatar privateMode isGuest equippedFlair';
+// Common fields to populate when fetching player data. Inline flair only: the profile backdrop
+// is drawn on the profile page alone, so it is served with the user profile and does not ride
+// along on every game, tournament and member list.
+const PLAYER_POPULATE_FIELDS = [
+  'displayName',
+  'avatar',
+  'privateMode',
+  'isGuest',
+  ...INLINE_FLAIR_CATEGORIES.map(category => `equippedFlair.${category}`),
+].join(' ');
 
 module.exports = mongoose.model('User', userSchema);
 module.exports.PLAYER_POPULATE_FIELDS = PLAYER_POPULATE_FIELDS;
