@@ -10,6 +10,7 @@ const { generateRoundPairings, getFinalsMatchCount } = require('../utils/roundGe
 const { createGame } = require('../utils/gameService');
 const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
 const { awardTournamentPoints } = require('../utils/pointsService');
+const { grantTournamentChampionTitle } = require('../utils/flairGrantService');
 
 /** Populate rounds.pairings.game when tournament has rounds so player.uma virtual can compute from games. */
 async function prepareTournamentForResponse(tournament) {
@@ -1287,6 +1288,12 @@ router.put('/:id/rounds/:roundNumber/end', authenticateToken, validateMongoId('i
         await awardTournamentPoints(tournament);
       } catch (err) {
         console.error('Failed to award tournament points:', err);
+      }
+
+      try {
+        await grantTournamentChampionTitle(tournament);
+      } catch (err) {
+        console.error('Failed to grant tournament champion title:', err);
       }
     }
 
