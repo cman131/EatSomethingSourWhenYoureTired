@@ -1,4 +1,5 @@
 const { SHOP_CATALOG } = require('./shopCatalog');
+const { PRESTIGE_TITLE_MARKER } = require('../utils/prestigeTitle');
 
 // The pre-expansion catalog (30 items) with the original prices. An existing item's `value`
 // is stored verbatim in User.equippedFlair, so these values must never change.
@@ -130,5 +131,31 @@ describe('SHOP_CATALOG', () => {
   test('the torii gate icon keeps its emoji variation selector', () => {
     const torii = SHOP_CATALOG.find(i => i.name === 'Torii Gate');
     expect(torii.value).toBe('\u26E9\uFE0F');
+  });
+
+  test('no catalog name or value can be mistaken for an earned prestige title', () => {
+    for (const item of SHOP_CATALOG) {
+      expect(item.name.startsWith(PRESTIGE_TITLE_MARKER)).toBe(false);
+      expect(item.value.startsWith(PRESTIGE_TITLE_MARKER)).toBe(false);
+    }
+  });
+
+  test('the catalog contains only purchasable shop items', () => {
+    for (const item of SHOP_CATALOG) {
+      expect(item.tier).not.toBe('prestige');
+      expect(item.acquisition === undefined || item.acquisition === 'shop').toBe(true);
+    }
+  });
+
+  test('an availability window opens before it closes', () => {
+    for (const item of SHOP_CATALOG) {
+      if (item.availableFrom && item.availableUntil) {
+        const fromMs = new Date(item.availableFrom).getTime();
+        const untilMs = new Date(item.availableUntil).getTime();
+        // NaN < NaN (and NaN < number) is false, so a malformed date would silently pass below.
+        expect(Number.isNaN(fromMs) || Number.isNaN(untilMs)).toBe(false);
+        expect(fromMs).toBeLessThan(untilMs);
+      }
+    }
   });
 });
