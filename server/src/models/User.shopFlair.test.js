@@ -170,6 +170,6 @@ describe('User flairLoadouts', () => {
     });
 
     user.flairLoadouts.push({ nameColor: 'flair-color-pink' });
-    await expect(user.save()).rejects.toThrow();
+    await expect(user.save()).rejects.toThrow(/name/i);
   });
 });

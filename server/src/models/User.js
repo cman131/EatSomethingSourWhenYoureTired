@@ -171,7 +171,13 @@ const userSchema = new mongoose.Schema({
   // Up to MAX_FLAIR_LOADOUTS (server/src/utils/flairLoadoutService.js) named looks a player can
   // save and one-click apply. Same slot shape as equippedFlair.
   flairLoadouts: [{
-    name:          { type: String, required: [true, 'Loadout name is required'], trim: true, minlength: 1, maxlength: 30 },
+    name: {
+      type: String,
+      required: [true, 'Loadout name is required'],
+      trim: true,
+      minlength: [1, 'Loadout name is required'],
+      maxlength: [30, 'Loadout name cannot be more than 30 characters'],
+    },
     nameColor:     { type: String, default: null },
     nameIcon:      { type: String, default: null },
     profileBorder: { type: String, default: null },
