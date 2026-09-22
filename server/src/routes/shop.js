@@ -50,20 +50,21 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/shop/inventory — current user's purchasedItems + equippedFlair.
+// GET /api/shop/inventory — current user's purchasedItems + equippedFlair + flairLoadouts.
 // Owned items are returned even when retired (isActive: false) so owners can still equip or
 // unequip them; purchases whose ShopItem no longer exists are skipped.
 router.get('/inventory', async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
       .populate('purchasedItems.item')
-      .select('purchasedItems equippedFlair pointsBalance');
+      .select('purchasedItems equippedFlair pointsBalance flairLoadouts');
     res.json({
       success: true,
       data: {
         purchasedItems: user.purchasedItems.filter(p => p.item),
         equippedFlair: user.equippedFlair,
         pointsBalance: user.pointsBalance,
+        flairLoadouts: user.flairLoadouts,
       },
     });
   } catch (err) {

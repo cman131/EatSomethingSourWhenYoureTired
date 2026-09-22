@@ -403,6 +403,17 @@ describe('GET /api/shop/inventory', () => {
     expect(res.body.data.purchasedItems).toHaveLength(1);
     expect(res.body.data.purchasedItems[0].item.name).toBe('test-shop-route-jade');
   });
+
+  test('includes flairLoadouts', async () => {
+    await User.findByIdAndUpdate(user._id, { $push: { purchasedItems: { item: item._id } } });
+    await request(app).post('/api/shop/loadouts').send({ name: 'Everyday', nameColor: item.value });
+
+    const res = await request(app).get('/api/shop/inventory');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.flairLoadouts).toHaveLength(1);
+    expect(res.body.data.flairLoadouts[0].name).toBe('Everyday');
+  });
 });
 
 describe('POST /api/shop/loadouts', () => {
