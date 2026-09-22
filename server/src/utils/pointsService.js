@@ -124,6 +124,10 @@ async function hasReachedRepeatGroupLimit(groupKey, gameId) {
   return otherGames.length >= REPEAT_GROUP_MAX_GAMES;
 }
 
+// Must run before `game.players.player` is populated to a User document: `.toString()` on a
+// populated player would compare by object identity instead of id and silently defeat the
+// submitter/verifier membership check below. The only caller (routes/games.js) awards points
+// before populating; keep it that way, or normalize with `player._id ?? player` first.
 async function awardGamePoints(game, verifierId) {
   const gameId = game._id;
   const groupKey = await findGameGroupKey(game);

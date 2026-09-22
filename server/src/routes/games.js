@@ -307,6 +307,7 @@ router.put('/:id/verify', validateMongoId('id'), async (req, res) => {
     }
 
     try {
+      // Must run before players.player is populated below — see the comment on awardGamePoints.
       await awardGamePoints(verifiedGame, req.user._id);
     } catch (err) {
       console.error('Failed to award game points:', err);
