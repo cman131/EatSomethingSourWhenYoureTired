@@ -195,7 +195,9 @@ const Shop: React.FC = () => {
     : null;
 
   const currentItems: ShopItem[] = catalog?.[activeTab] ?? [];
-  const retiredItems = ownedItems.filter(i => i.category === activeTab && !catalogIds.has(i._id));
+  const ownedInTab = ownedItems.filter(i => i.category === activeTab);
+  const earnedItems = ownedInTab.filter(i => i.acquisition === 'earned');
+  const retiredItems = ownedInTab.filter(i => i.acquisition !== 'earned' && !catalogIds.has(i._id));
 
   const renderCard = (item: ShopItem) => (
     <FlairItemCard
@@ -293,7 +295,7 @@ const Shop: React.FC = () => {
       </div>
 
       {/* Item grid */}
-      {currentItems.length === 0 && retiredItems.length === 0 && (
+      {currentItems.length === 0 && earnedItems.length === 0 && retiredItems.length === 0 && (
         <div className="text-center py-12 text-gray-500">No items available in this category.</div>
       )}
       {currentItems.length > 0 && (
@@ -302,9 +304,22 @@ const Shop: React.FC = () => {
         </div>
       )}
 
+      {/* Awarded for achievements — equippable by their owners, never buyable */}
+      {earnedItems.length > 0 && (
+        <section className={currentItems.length > 0 ? 'mt-8' : undefined}>
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">Earned</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Awarded for winning tournaments and ranked seasons. These cannot be bought.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {earnedItems.map(renderCard)}
+          </div>
+        </section>
+      )}
+
       {/* Owned items that are no longer sold — still equippable, never buyable */}
       {retiredItems.length > 0 && (
-        <section className={currentItems.length > 0 ? 'mt-8' : undefined}>
+        <section className={currentItems.length > 0 || earnedItems.length > 0 ? 'mt-8' : undefined}>
           <h2 className="text-sm font-semibold text-gray-700 mb-1">Owned (retired)</h2>
           <p className="text-xs text-gray-500 mb-4">
             These items are no longer sold, but you can still equip or unequip them.

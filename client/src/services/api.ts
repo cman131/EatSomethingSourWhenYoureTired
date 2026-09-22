@@ -760,10 +760,12 @@ export interface ShopItem {
   category: FlairCategory;
   cost: number;
   value: string;
-  tier: 'entry' | 'mid' | 'premium';
+  tier: 'entry' | 'mid' | 'premium' | 'prestige';
   previewCss?: string | null;
   sortOrder: number;
   isActive: boolean;
+  acquisition?: 'shop' | 'earned';
+  availableUntil?: string | null;
 }
 
 // Each slot holds the equipped item's `value` (a CSS class or display text), not its `_id`.
