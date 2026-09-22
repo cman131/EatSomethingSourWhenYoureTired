@@ -24,6 +24,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   ranked_league_placement_2: 'Ranked Season 2nd Place',
   ranked_league_placement_3: 'Ranked Season 3rd Place',
   shop_purchase: 'Shop Purchase',
+  admin_adjustment: 'Admin Adjustment',
 };
 
 const CONTEXT_KIND_NAMES: Record<PointTransactionContext['kind'], string> = {
@@ -31,9 +32,10 @@ const CONTEXT_KIND_NAMES: Record<PointTransactionContext['kind'], string> = {
   tournament: 'Tournament',
   rankedSeason: 'Ranked season',
   shopItem: 'Item',
+  adjustment: 'Adjustment',
 };
 
-const buildContextLink = (context: PointTransactionContext): string => {
+const buildContextLink = (context: PointTransactionContext): string | null => {
   switch (context.kind) {
     case 'game':
       return `/games/${context.id}`;
@@ -43,6 +45,8 @@ const buildContextLink = (context: PointTransactionContext): string => {
       return '/ranked';
     case 'shopItem':
       return '/shop';
+    case 'adjustment':
+      return null;
   }
 };
 
@@ -57,8 +61,13 @@ const TransactionContext: React.FC<{ context?: PointTransactionContext | null }>
     );
   }
 
+  const link = buildContextLink(context);
+  if (!link) {
+    return <p className="text-xs text-gray-500">{context.label}</p>;
+  }
+
   return (
-    <Link to={buildContextLink(context)} className="text-xs text-indigo-600 hover:text-indigo-800">
+    <Link to={link} className="text-xs text-indigo-600 hover:text-indigo-800">
       {context.label}
     </Link>
   );

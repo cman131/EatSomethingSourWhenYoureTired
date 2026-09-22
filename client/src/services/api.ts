@@ -713,8 +713,8 @@ export const rankedLeaguesApi = {
 
 // Points API
 export interface PointTransactionContext {
-  kind: 'game' | 'tournament' | 'rankedSeason' | 'shopItem';
-  id: string;
+  kind: 'game' | 'tournament' | 'rankedSeason' | 'shopItem' | 'adjustment';
+  id: string | null;
   label: string | null;
   missing: boolean;
 }
@@ -730,6 +730,8 @@ export interface PointTransaction {
     tournamentId?: string | null;
     leagueId?: string | null;
     placement?: number | null;
+    adjustedBy?: string | null;
+    reason?: string | null;
   };
   // Present on history rows; absent on the summary's recentTransactions.
   context?: PointTransactionContext | null;

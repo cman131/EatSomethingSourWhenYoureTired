@@ -54,6 +54,12 @@ async function loadLabels(transactions) {
 }
 
 function buildContext(transaction, labelsByKind) {
+  // The reason is stored inline on the transaction rather than resolved from another
+  // collection, so it skips the id/label batching the other context sources use.
+  if (transaction.type === 'admin_adjustment') {
+    return { kind: 'adjustment', id: null, label: transaction.metadata?.reason ?? null, missing: false };
+  }
+
   const source = findSource(transaction);
   if (!source) {
     return null;

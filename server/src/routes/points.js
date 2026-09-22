@@ -2,8 +2,22 @@ const express = require('express');
 const User = require('../models/User');
 const PointTransaction = require('../models/PointTransaction');
 const { attachHistoryContext } = require('../utils/pointsHistoryContext');
+const { adjustPoints, AdjustmentFailure } = require('../utils/pointsService');
+const { validateAdminAdjustment } = require('../middleware/validation');
 
 const router = express.Router();
+
+const ADJUSTMENT_FAILURE_RESPONSES = {
+  [AdjustmentFailure.UserNotFound]: { status: 404, message: 'User not found' },
+  [AdjustmentFailure.InsufficientBalance]: { status: 400, message: 'Adjustment would drop the balance below zero' },
+};
+
+function requireAdmin(req, res, next) {
+  if (!req.user.isAdmin) {
+    return res.status(403).json({ success: false, message: 'Admin only' });
+  }
+  next();
+}
 
 const DEFAULT_HISTORY_LIMIT = 20;
 const MAX_HISTORY_LIMIT = 100;
@@ -74,6 +88,32 @@ router.get('/me/history', async (req, res) => {
   } catch (error) {
     console.error('Get points history error:', error);
     res.status(500).json({ success: false, message: 'Failed to get points history' });
+  }
+});
+
+// @route   POST /api/points/admin/adjust
+// @desc    Manually adjust a player's points balance with a required reason
+// @access  Private (admin only)
+router.post('/admin/adjust', requireAdmin, validateAdminAdjustment, async (req, res) => {
+  try {
+    const { userId, amount, reason } = req.body;
+
+    const result = await adjustPoints({
+      userId,
+      amount: Number(amount),
+      adjustedBy: req.user._id,
+      reason: reason.trim(),
+    });
+
+    if (!result.adjusted) {
+      const failure = ADJUSTMENT_FAILURE_RESPONSES[result.reason];
+      return res.status(failure.status).json({ success: false, message: failure.message });
+    }
+
+    res.json({ success: true, message: 'Adjustment recorded' });
+  } catch (error) {
+    console.error('Admin point adjustment error:', error);
+    res.status(500).json({ success: false, message: 'Failed to record adjustment' });
   }
 });
 

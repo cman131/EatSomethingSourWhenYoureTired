@@ -88,6 +88,51 @@ async function spendPoints(userId, amount, metadata = {}) {
   await User.findByIdAndUpdate(userId, { $inc: { pointsBalance: -amount } });
 }
 
+const AdjustmentFailure = {
+  UserNotFound: 'user_not_found',
+  InsufficientBalance: 'insufficient_balance',
+};
+
+// Adjustments intentionally skip totalPointsEarned: that counter reflects points earned through
+// play, and an admin correction (in either direction) is not a play event.
+async function applyAdjustmentBalance(userId, amount) {
+  if (amount >= 0) {
+    return User.findOneAndUpdate(
+      { _id: userId },
+      { $inc: { pointsBalance: amount } },
+      { projection: { _id: 1 } }
+    );
+  }
+  // Guarded so a negative adjustment cannot race a spend/award below zero.
+  return User.findOneAndUpdate(
+    { _id: userId, pointsBalance: { $gte: -amount } },
+    { $inc: { pointsBalance: amount } },
+    { projection: { _id: 1 } }
+  );
+}
+
+async function adjustPoints({ userId, amount, adjustedBy, reason }) {
+  const userExists = await User.exists({ _id: userId });
+  if (!userExists) {
+    return { adjusted: false, reason: AdjustmentFailure.UserNotFound };
+  }
+
+  const transaction = await PointTransaction.create({
+    user: userId,
+    type: 'admin_adjustment',
+    amount,
+    metadata: { adjustedBy, reason },
+  });
+
+  const updated = await applyAdjustmentBalance(userId, amount);
+  if (!updated) {
+    await removeLedgerRow(transaction);
+    return { adjusted: false, reason: AdjustmentFailure.InsufficientBalance };
+  }
+
+  return { adjusted: true };
+}
+
 const GAME_PLACEMENT_TYPES = {
   1: 'game_placement_1',
   2: 'game_placement_2',
@@ -309,6 +354,8 @@ module.exports = {
   awardPoints,
   getRecentEarnings,
   spendPoints,
+  adjustPoints,
+  AdjustmentFailure,
   awardGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,

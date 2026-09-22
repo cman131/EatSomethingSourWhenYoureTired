@@ -18,6 +18,7 @@ const POINT_TRANSACTION_TYPES = [
   'ranked_league_placement_2',
   'ranked_league_placement_3',
   'shop_purchase',
+  'admin_adjustment',
 ];
 
 const pointTransactionSchema = new mongoose.Schema({
@@ -43,6 +44,8 @@ const pointTransactionSchema = new mongoose.Schema({
     leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'RankedLeague', default: null },
     placement: { type: Number, default: null },
     groupKey: { type: String, default: null },
+    adjustedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    reason: { type: String, default: null },
   },
 }, {
   timestamps: true,

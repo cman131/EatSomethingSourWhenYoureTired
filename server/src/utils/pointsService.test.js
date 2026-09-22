@@ -6,6 +6,8 @@ const {
   awardPoints,
   getRecentEarnings,
   spendPoints,
+  adjustPoints,
+  AdjustmentFailure,
   awardGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,
@@ -136,6 +138,76 @@ describe('spendPoints', () => {
     await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
 
     await expect(spendPoints(user._id, 20, {})).rejects.toThrow('Insufficient points balance');
+  });
+});
+
+describe('adjustPoints', () => {
+  let admin;
+
+  beforeEach(async () => {
+    admin = await User.create({
+      displayName: 'test-points-admin',
+      email: 'test-points-admin@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+      isAdmin: true,
+    });
+  });
+
+  test('increments pointsBalance for a positive adjustment', async () => {
+    const result = await adjustPoints({ userId: user._id, amount: 25, adjustedBy: admin._id, reason: 'missed award' });
+
+    expect(result).toEqual({ adjusted: true });
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(25);
+  });
+
+  test('does not change totalPointsEarned for a positive adjustment', async () => {
+    await adjustPoints({ userId: user._id, amount: 25, adjustedBy: admin._id, reason: 'missed award' });
+
+    const updated = await User.findById(user._id);
+    expect(updated.totalPointsEarned).toBe(0);
+  });
+
+  test('decrements pointsBalance for a negative adjustment', async () => {
+    await User.findByIdAndUpdate(user._id, { pointsBalance: 50, totalPointsEarned: 50 });
+
+    const result = await adjustPoints({ userId: user._id, amount: -20, adjustedBy: admin._id, reason: 'correcting overpay' });
+
+    expect(result).toEqual({ adjusted: true });
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(30);
+    expect(updated.totalPointsEarned).toBe(50);
+  });
+
+  test('creates an admin_adjustment ledger row with adjustedBy and reason', async () => {
+    await adjustPoints({ userId: user._id, amount: 25, adjustedBy: admin._id, reason: 'missed award' });
+
+    const tx = await PointTransaction.findOne({ user: user._id });
+    expect(tx.type).toBe('admin_adjustment');
+    expect(tx.amount).toBe(25);
+    expect(tx.metadata.adjustedBy.toString()).toBe(admin._id.toString());
+    expect(tx.metadata.reason).toBe('missed award');
+  });
+
+  test('rejects a negative adjustment that would drop the balance below zero', async () => {
+    await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
+
+    const result = await adjustPoints({ userId: user._id, amount: -20, adjustedBy: admin._id, reason: 'penalty' });
+
+    expect(result).toEqual({ adjusted: false, reason: AdjustmentFailure.InsufficientBalance });
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(10);
+    expect(await PointTransaction.countDocuments({ user: user._id })).toBe(0);
+  });
+
+  test('reports user not found without writing a ledger row', async () => {
+    const missingUserId = new mongoose.Types.ObjectId();
+
+    const result = await adjustPoints({ userId: missingUserId, amount: 10, adjustedBy: admin._id, reason: 'test' });
+
+    expect(result).toEqual({ adjusted: false, reason: AdjustmentFailure.UserNotFound });
+    expect(await PointTransaction.countDocuments({ user: missingUserId })).toBe(0);
   });
 });
 
