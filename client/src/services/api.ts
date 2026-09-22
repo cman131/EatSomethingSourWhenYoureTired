@@ -787,6 +787,15 @@ export interface PurchasedItem {
   purchasedAt: string;
 }
 
+export interface FlairLoadout {
+  _id: string;
+  name: string;
+  nameColor: string | null;
+  nameIcon: string | null;
+  profileBorder: string | null;
+  title: string | null;
+}
+
 export interface ShopCatalog {
   nameColor?: ShopItem[];
   nameIcon?: ShopItem[];
@@ -798,6 +807,7 @@ export interface ShopInventory {
   purchasedItems: PurchasedItem[];
   equippedFlair: EquippedFlair;
   pointsBalance: number;
+  flairLoadouts: FlairLoadout[];
 }
 
 export const shopApi = {
@@ -820,6 +830,32 @@ export const shopApi = {
     return apiRequest<ApiResponse<null>>('/shop/equip', {
       method: 'POST',
       body: JSON.stringify({ itemId, slot }),
+    });
+  },
+
+  createLoadout: async (loadout: { name: string } & EquippedFlair) => {
+    return apiRequest<ApiResponse<FlairLoadout>>('/shop/loadouts', {
+      method: 'POST',
+      body: JSON.stringify(loadout),
+    });
+  },
+
+  renameLoadout: async (loadoutId: string, name: string) => {
+    return apiRequest<ApiResponse<FlairLoadout>>(`/shop/loadouts/${loadoutId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  deleteLoadout: async (loadoutId: string) => {
+    return apiRequest<ApiResponse<null>>(`/shop/loadouts/${loadoutId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  applyLoadout: async (loadoutId: string) => {
+    return apiRequest<ApiResponse<null>>(`/shop/loadouts/${loadoutId}/apply`, {
+      method: 'POST',
     });
   },
 
