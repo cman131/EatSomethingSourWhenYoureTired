@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useMutation } from '../hooks/useApi';
 import { tournamentsApi, TournamentAddress } from '../services/api';
+import { useWinnerTitle } from '../hooks/useWinnerTitle';
+import { WINNER_TITLE_MAX_LENGTH } from '../utils/winnerTitle';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/airbnb.css';
 
@@ -65,6 +67,7 @@ const TournamentSubmission: React.FC = () => {
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
+  const { winnerTitle, setWinnerTitle } = useWinnerTitle(name);
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date());
   const [isOnline, setIsOnline] = useState(false);
@@ -93,6 +96,7 @@ const TournamentSubmission: React.FC = () => {
     (tournamentData: {
       name: string;
       description?: string;
+      winnerTitle?: string;
       date: Date;
       isOnline?: boolean;
       location?: TournamentAddress;
@@ -244,6 +248,7 @@ const TournamentSubmission: React.FC = () => {
       const tournamentData: {
         name: string;
         description?: string;
+        winnerTitle?: string;
         date: Date;
         isOnline?: boolean;
         location?: TournamentAddress;
@@ -257,6 +262,7 @@ const TournamentSubmission: React.FC = () => {
       } = {
         name: name.trim(),
         description: description.trim() || undefined,
+        winnerTitle: winnerTitle.trim() || undefined,
         date,
         isOnline,
         modifications: modifications.length > 0 ? modifications.filter(m => m.trim().length > 0) : undefined,
@@ -326,6 +332,25 @@ const TournamentSubmission: React.FC = () => {
               placeholder="Enter tournament name"
             />
             <p className="mt-1 text-xs text-gray-500">{name.length}/100 characters</p>
+          </div>
+
+          <div>
+            <label htmlFor="winnerTitle" className="block text-sm font-medium text-gray-700 mb-2">
+              Winner Title
+            </label>
+            <input
+              id="winnerTitle"
+              type="text"
+              value={winnerTitle}
+              onChange={(e) => setWinnerTitle(e.target.value)}
+              className="input-field"
+              maxLength={WINNER_TITLE_MAX_LENGTH}
+              placeholder="Title the winner earns"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Shown on the winner&apos;s badge. Starts as the tournament name; edit it to change.{' '}
+              {winnerTitle.length}/{WINNER_TITLE_MAX_LENGTH} characters
+            </p>
           </div>
 
           <div>

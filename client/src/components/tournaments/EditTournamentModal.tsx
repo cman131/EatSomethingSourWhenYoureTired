@@ -3,6 +3,8 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import Flatpickr from 'react-flatpickr';
 import 'flatpickr/dist/themes/airbnb.css';
 import { Tournament, TournamentAddress } from '../../services/api';
+import { useWinnerTitle } from '../../hooks/useWinnerTitle';
+import { WINNER_TITLE_MAX_LENGTH } from '../../utils/winnerTitle';
 
 interface EditTournamentModalProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface EditTournamentModalProps {
   onSave: (data: {
     name?: string;
     description?: string;
+    winnerTitle?: string;
     date?: Date;
     isOnline?: boolean;
     location?: TournamentAddress;
@@ -85,6 +88,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   tournament,
 }) => {
   const [name, setName] = useState('');
+  const { winnerTitle, setWinnerTitle, resetWinnerTitle } = useWinnerTitle(name);
   const [description, setDescription] = useState('');
   const [date, setDate] = useState<Date | null>(null);
   const [isOnline, setIsOnline] = useState(false);
@@ -116,6 +120,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
   useEffect(() => {
     if (isOpen && tournament) {
       setName(tournament.name || '');
+      resetWinnerTitle(tournament.name || '', tournament.winnerTitle);
       setDescription(tournament.description || '');
       setDate(tournament.date ? new Date(tournament.date) : null);
       setIsOnline(tournament.isOnline || false);
@@ -151,7 +156,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       setActiveTab('details');
       setError(null);
     }
-  }, [isOpen, tournament]);
+  }, [isOpen, tournament, resetWinnerTitle]);
 
   // Detect if address or scheduled date changed (for optional notify checkbox)
   const addressOrDateChanged = React.useMemo(() => {
@@ -286,6 +291,7 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
       const updateData: {
         name?: string;
         description?: string;
+        winnerTitle?: string;
         date?: Date;
         isOnline?: boolean;
         location?: TournamentAddress;
@@ -338,6 +344,11 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
 
       if (addressOrDateChanged && notifyParticipants) {
         updateData.notifyParticipants = true;
+      }
+
+      // The server locks the title once the tournament is completed.
+      if (tournament?.status !== 'Completed') {
+        updateData.winnerTitle = winnerTitle.trim();
       }
 
       await onSave(updateData);
@@ -427,6 +438,27 @@ const EditTournamentModal: React.FC<EditTournamentModalProps> = ({
                   maxLength={100}
                   placeholder="Tournament Name"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="winnerTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                  Winner Title
+                </label>
+                <input
+                  id="winnerTitle"
+                  type="text"
+                  value={winnerTitle}
+                  onChange={(e) => setWinnerTitle(e.target.value)}
+                  className="input-field"
+                  maxLength={WINNER_TITLE_MAX_LENGTH}
+                  disabled={tournament?.status === 'Completed'}
+                  placeholder="Title the winner earns"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  {tournament?.status === 'Completed'
+                    ? 'The winner title cannot be changed after the tournament is completed.'
+                    : `Shown on the winner's badge. ${winnerTitle.length}/${WINNER_TITLE_MAX_LENGTH} characters`}
+                </p>
               </div>
 
               <div>

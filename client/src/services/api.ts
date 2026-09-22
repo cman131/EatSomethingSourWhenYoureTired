@@ -182,6 +182,7 @@ export interface Tournament {
   _id: string;
   name: string;
   description?: string;
+  winnerTitle?: string;
   date: string;
   isOnline?: boolean;
   location?: TournamentAddress;
@@ -569,6 +570,7 @@ export const tournamentsApi = {
   createTournament: async (tournamentData: {
     name: string;
     description?: string;
+    winnerTitle?: string;
     date: Date;
     isOnline?: boolean;
     location?: TournamentAddress;
@@ -589,6 +591,7 @@ export const tournamentsApi = {
   updateTournament: async (tournamentId: string, tournamentData: {
     name?: string;
     description?: string;
+    winnerTitle?: string;
     date?: Date;
     isOnline?: boolean;
     location?: TournamentAddress;
