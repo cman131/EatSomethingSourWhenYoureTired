@@ -784,6 +784,13 @@ export const pointsApi = {
   getConfig: async () => {
     return apiRequest<ApiResponse<PointsConfig>>('/points/config');
   },
+
+  adjustBalance: async ({ userId, amount, reason }: { userId: string; amount: number; reason: string }) => {
+    return apiRequest<ApiResponse<{ message: string }>>('/points/admin/adjust', {
+      method: 'POST',
+      body: JSON.stringify({ userId, amount, reason }),
+    });
+  },
 };
 
 export type FlairCategory = 'nameColor' | 'nameIcon' | 'profileBorder' | 'profileBackdrop' | 'title';
