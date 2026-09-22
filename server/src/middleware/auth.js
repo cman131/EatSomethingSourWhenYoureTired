@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getWeekStart, getWeekEnd } = require('../utils/weekWindow');
 
 // Authenticate JWT token
 const authenticateToken = async (req, res, next) => {
@@ -31,6 +32,19 @@ const authenticateToken = async (req, res, next) => {
         success: false,
         message: 'Guest users cannot access authenticated routes'
       });
+    }
+
+    // Track "visited the site" for the weekly streak bonus (utils/weeklyStreakService.js), at
+    // most once per week so this doesn't add a write to every authenticated request.
+    const now = new Date();
+    const weekStart = getWeekStart(now);
+    if (!user.lastActiveAt || user.lastActiveAt < weekStart || user.lastActiveAt >= getWeekEnd(weekStart)) {
+      try {
+        await User.updateOne({ _id: user._id }, { $set: { lastActiveAt: now } });
+        user.lastActiveAt = now;
+      } catch (err) {
+        console.error(`Failed to update lastActiveAt for user ${user._id}:`, err);
+      }
     }
 
     req.user = user;

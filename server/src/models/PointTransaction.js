@@ -19,6 +19,9 @@ const POINT_TRANSACTION_TYPES = [
   'ranked_league_placement_2',
   'ranked_league_placement_3',
   'shop_purchase',
+  'admin_adjustment',
+  'quiz_completed',
+  'weekly_streak_bonus',
 ];
 
 const pointTransactionSchema = new mongoose.Schema({
@@ -50,6 +53,10 @@ const pointTransactionSchema = new mongoose.Schema({
     // reversal rows (which share one type value) don't collide with the per-game unique index below
     // — a user can have several original transactions, and so several reversals, for the same game.
     reversedGameId: { type: mongoose.Schema.Types.ObjectId, ref: 'Game', default: null },
+    adjustedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    reason: { type: String, default: null },
+    quizId: { type: String, default: null },
+    weekStart: { type: Date, default: null },
   },
 }, {
   timestamps: true,
@@ -78,6 +85,14 @@ pointTransactionSchema.index(
 pointTransactionSchema.index(
   { user: 1, type: 1, 'metadata.reversalOf': 1 },
   { unique: true, partialFilterExpression: { 'metadata.reversalOf': { $type: 'objectId' } } }
+);
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.quizId': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.quizId': { $type: 'string' } } }
+);
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.weekStart': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.weekStart': { $type: 'date' } } }
 );
 
 module.exports = mongoose.model('PointTransaction', pointTransactionSchema);

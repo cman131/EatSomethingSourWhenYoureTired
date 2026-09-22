@@ -6,12 +6,15 @@ const {
   awardPoints,
   getRecentEarnings,
   spendPoints,
+  adjustPoints,
+  AdjustmentFailure,
   awardGamePoints,
   reverseGamePoints,
   undoGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
+  awardQuizCompletionPoints,
 } = require('./pointsService');
 
 beforeAll(async () => {
@@ -138,6 +141,76 @@ describe('spendPoints', () => {
     await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
 
     await expect(spendPoints(user._id, 20, {})).rejects.toThrow('Insufficient points balance');
+  });
+});
+
+describe('adjustPoints', () => {
+  let admin;
+
+  beforeEach(async () => {
+    admin = await User.create({
+      displayName: 'test-points-admin',
+      email: 'test-points-admin@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+      isAdmin: true,
+    });
+  });
+
+  test('increments pointsBalance for a positive adjustment', async () => {
+    const result = await adjustPoints({ userId: user._id, amount: 25, adjustedBy: admin._id, reason: 'missed award' });
+
+    expect(result).toEqual({ adjusted: true });
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(25);
+  });
+
+  test('does not change totalPointsEarned for a positive adjustment', async () => {
+    await adjustPoints({ userId: user._id, amount: 25, adjustedBy: admin._id, reason: 'missed award' });
+
+    const updated = await User.findById(user._id);
+    expect(updated.totalPointsEarned).toBe(0);
+  });
+
+  test('decrements pointsBalance for a negative adjustment', async () => {
+    await User.findByIdAndUpdate(user._id, { pointsBalance: 50, totalPointsEarned: 50 });
+
+    const result = await adjustPoints({ userId: user._id, amount: -20, adjustedBy: admin._id, reason: 'correcting overpay' });
+
+    expect(result).toEqual({ adjusted: true });
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(30);
+    expect(updated.totalPointsEarned).toBe(50);
+  });
+
+  test('creates an admin_adjustment ledger row with adjustedBy and reason', async () => {
+    await adjustPoints({ userId: user._id, amount: 25, adjustedBy: admin._id, reason: 'missed award' });
+
+    const tx = await PointTransaction.findOne({ user: user._id });
+    expect(tx.type).toBe('admin_adjustment');
+    expect(tx.amount).toBe(25);
+    expect(tx.metadata.adjustedBy.toString()).toBe(admin._id.toString());
+    expect(tx.metadata.reason).toBe('missed award');
+  });
+
+  test('rejects a negative adjustment that would drop the balance below zero', async () => {
+    await User.findByIdAndUpdate(user._id, { pointsBalance: 10 });
+
+    const result = await adjustPoints({ userId: user._id, amount: -20, adjustedBy: admin._id, reason: 'penalty' });
+
+    expect(result).toEqual({ adjusted: false, reason: AdjustmentFailure.InsufficientBalance });
+    const updated = await User.findById(user._id);
+    expect(updated.pointsBalance).toBe(10);
+    expect(await PointTransaction.countDocuments({ user: user._id })).toBe(0);
+  });
+
+  test('reports user not found without writing a ledger row', async () => {
+    const missingUserId = new mongoose.Types.ObjectId();
+
+    const result = await adjustPoints({ userId: missingUserId, amount: 10, adjustedBy: admin._id, reason: 'test' });
+
+    expect(result).toEqual({ adjusted: false, reason: AdjustmentFailure.UserNotFound });
+    expect(await PointTransaction.countDocuments({ user: missingUserId })).toBe(0);
   });
 });
 
@@ -1150,5 +1223,63 @@ describe('awardRankedSeasonPlacementPoints', () => {
     await awardRankedSeasonPlacementPoints(league);
 
     expect(await PointTransaction.countDocuments({ user: players[0]._id })).toBe(0);
+  });
+});
+
+describe('awardQuizCompletionPoints', () => {
+  test('awards 1 point with the quizId recorded', async () => {
+    await awardQuizCompletionPoints(user._id, 'quiz-abc');
+
+    const tx = await PointTransaction.findOne({ user: user._id, type: 'quiz_completed' });
+    expect(tx.amount).toBe(1);
+    expect(tx.metadata.quizId).toBe('quiz-abc');
+    expect((await User.findById(user._id)).pointsBalance).toBe(1);
+  });
+
+  test('awards only once for the same quizId', async () => {
+    await awardQuizCompletionPoints(user._id, 'quiz-abc');
+    await awardQuizCompletionPoints(user._id, 'quiz-abc');
+
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed' })).toBe(1);
+    expect((await User.findById(user._id)).pointsBalance).toBe(1);
+  });
+
+  test('awards again for a different quizId', async () => {
+    await awardQuizCompletionPoints(user._id, 'quiz-1');
+    await awardQuizCompletionPoints(user._id, 'quiz-2');
+
+    expect((await User.findById(user._id)).pointsBalance).toBe(2);
+  });
+
+  test('does not award a guest user', async () => {
+    const guest = await User.create({ displayName: 'test-points-guest', isGuest: true });
+
+    await awardQuizCompletionPoints(guest._id, 'quiz-abc');
+
+    expect(await PointTransaction.countDocuments({ user: guest._id })).toBe(0);
+  });
+
+  test('stops paying once the weekly cap of 5 is reached', async () => {
+    for (let i = 1; i <= 5; i++) {
+      await awardQuizCompletionPoints(user._id, `quiz-${i}`);
+    }
+    await awardQuizCompletionPoints(user._id, 'quiz-6');
+
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed' })).toBe(5);
+    expect((await User.findById(user._id)).pointsBalance).toBe(5);
+  });
+
+  test('resets the cap the following week', async () => {
+    // Mongoose marks `createdAt` immutable when timestamps:true, which makes updateOne/updateMany
+    // silently drop writes to it — go through the raw collection to backdate these fixture rows.
+    const backdated = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+    await PointTransaction.collection.insertMany([1, 2, 3, 4, 5].map(i => ({
+      user: user._id, type: 'quiz_completed', amount: 1, metadata: { quizId: `last-week-${i}` },
+      createdAt: backdated, updatedAt: backdated,
+    })));
+
+    await awardQuizCompletionPoints(user._id, 'this-week-1');
+
+    expect(await PointTransaction.countDocuments({ user: user._id, type: 'quiz_completed', 'metadata.quizId': 'this-week-1' })).toBe(1);
   });
 });

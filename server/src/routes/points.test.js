@@ -243,4 +243,164 @@ describe('GET /api/points/me/history context', () => {
 
     expect(tx.context).toBeNull();
   });
+
+  test('surfaces the reason as context for an admin adjustment', async () => {
+    await PointTransaction.create({
+      user: user._id,
+      type: 'admin_adjustment',
+      amount: 25,
+      metadata: { adjustedBy: user._id, reason: 'missed award' },
+    });
+
+    const tx = await getOnlyItem();
+
+    expect(tx.context).toEqual({ kind: 'adjustment', id: null, label: 'missed award', missing: false });
+  });
+});
+
+describe('POST /api/points/admin/adjust', () => {
+  let admin, target;
+
+  beforeEach(async () => {
+    admin = await User.create({
+      displayName: 'test-points-route-admin',
+      email: 'test-points-route-admin@example.com',
+      password: 'password123',
+      clubAffiliation: 'Charleston',
+      isAdmin: true,
+    });
+    target = user;
+  });
+
+  test('rejects a non-admin caller', async () => {
+    const res = await request(app)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: 10, reason: 'test' });
+
+    expect(res.status).toBe(403);
+    expect(await PointTransaction.countDocuments({ user: target._id })).toBe(0);
+  });
+
+  test('applies a positive adjustment for an admin caller', async () => {
+    const adminApp = buildTestApp(admin);
+
+    const res = await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: 25, reason: 'missed award' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const updated = await User.findById(target._id);
+    expect(updated.pointsBalance).toBe(25);
+    expect(updated.totalPointsEarned).toBe(0);
+  });
+
+  test('applies a negative adjustment for an admin caller', async () => {
+    await User.findByIdAndUpdate(target._id, { pointsBalance: 50 });
+    const adminApp = buildTestApp(admin);
+
+    const res = await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: -20, reason: 'correcting overpay' });
+
+    expect(res.status).toBe(200);
+    const updated = await User.findById(target._id);
+    expect(updated.pointsBalance).toBe(30);
+  });
+
+  test('rejects a negative adjustment that would drop the balance below zero', async () => {
+    await User.findByIdAndUpdate(target._id, { pointsBalance: 5 });
+    const adminApp = buildTestApp(admin);
+
+    const res = await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: -20, reason: 'penalty' });
+
+    expect(res.status).toBe(400);
+    const updated = await User.findById(target._id);
+    expect(updated.pointsBalance).toBe(5);
+  });
+
+  test('rejects an unknown userId', async () => {
+    const adminApp = buildTestApp(admin);
+    const missingUserId = new mongoose.Types.ObjectId().toString();
+
+    const res = await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: missingUserId, amount: 10, reason: 'test' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('rejects a zero amount', async () => {
+    const adminApp = buildTestApp(admin);
+
+    const res = await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: 0, reason: 'test' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('rejects a missing reason', async () => {
+    const adminApp = buildTestApp(admin);
+
+    const res = await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: 10 });
+
+    expect(res.status).toBe(400);
+    expect(await PointTransaction.countDocuments({ user: target._id })).toBe(0);
+  });
+
+  test('records adjustedBy and reason on the ledger row', async () => {
+    const adminApp = buildTestApp(admin);
+
+    await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: 15, reason: 'missed award' });
+
+    const tx = await PointTransaction.findOne({ user: target._id });
+    expect(tx.type).toBe('admin_adjustment');
+    expect(tx.metadata.adjustedBy.toString()).toBe(admin._id.toString());
+    expect(tx.metadata.reason).toBe('missed award');
+  });
+
+  test('the adjustment appears in the affected player\'s own history with its reason', async () => {
+    const adminApp = buildTestApp(admin);
+    await request(adminApp)
+      .post('/api/points/admin/adjust')
+      .send({ userId: target._id.toString(), amount: 15, reason: 'missed award' });
+
+    const res = await request(app).get('/api/points/me/history');
+
+    expect(res.body.data.items).toHaveLength(1);
+    expect(res.body.data.items[0].context).toEqual({
+      kind: 'adjustment', id: null, label: 'missed award', missing: false,
+    });
+  });
+});
+
+describe('GET /api/points/config', () => {
+  test('returns every award amount', async () => {
+    const res = await request(app).get('/api/points/config');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({
+      gamePlacementAmounts: { 1: 10, 2: 7, 3: 4, 4: 2 },
+      gameSubmittedAmount: 2,
+      gameVerifiedAmount: 1,
+      gameDailyCap: 60,
+      gameDailyWindowHours: 24,
+      repeatGroupMaxGames: 6,
+      repeatGroupWindowDays: 7,
+      tournamentParticipationAmount: 15,
+      tournamentPlacementAmounts: [200, 100, 70, 50],
+      rankedQualificationAmount: 10,
+      rankedPlacementAmounts: [150, 100, 50],
+      quizCompletionAmount: 1,
+      quizWeeklyCapCount: 5,
+      weeklyStreakAmounts: [2, 3, 4, 5],
+    });
+  });
 });
