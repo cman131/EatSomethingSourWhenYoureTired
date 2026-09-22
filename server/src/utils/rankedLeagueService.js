@@ -149,4 +149,35 @@ async function updateRankedPoints(game) {
   await awardQualificationPoints(newlyQualifiedPlayerIds, league._id);
 }
 
-module.exports = { getCurrentLeague, updateRankedPoints, RANKED_GAMES_THRESHOLD };
+// Reverses the ranked delta and gamesPlayed applied for this game, leaving any ranked_league_qualified
+// bonus already paid in place — qualification is not revoked by a later delete or edit. A game
+// verified in an earlier season is looked up by which league's appliedGames contains it, not
+// getCurrentLeague(), so the right season's standings are adjusted. Idempotent: removing gameId from
+// appliedGames means a repeat call finds nothing to reverse.
+async function reverseRankedPoints(game) {
+  if (!game.isRanked || !game._id) {
+    return;
+  }
+
+  const league = await RankedLeague.findOne({ appliedGames: game._id });
+  if (!league) {
+    return;
+  }
+
+  for (const gamePlayer of game.players) {
+    const playerId = gamePlayer.player.toString ? gamePlayer.player.toString() : String(gamePlayer.player);
+    const leaguePlayer = findLeaguePlayer(league, playerId);
+    if (!leaguePlayer) continue;
+
+    const umaBase = (Number(gamePlayer.score) - RANKED_STARTING_POINT) / 1000;
+    const rankBonus = RANK_UMA_BONUS[gamePlayer.rank] ?? 0;
+    leaguePlayer.rankedPoints -= umaBase + rankBonus;
+    leaguePlayer.gamesPlayed = Math.max(0, leaguePlayer.gamesPlayed - 1);
+  }
+
+  league.appliedGames = league.appliedGames.filter(id => id.toString() !== game._id.toString());
+  league.markModified('players');
+  await league.save();
+}
+
+module.exports = { getCurrentLeague, updateRankedPoints, reverseRankedPoints, RANKED_GAMES_THRESHOLD };

@@ -8,6 +8,7 @@ const POINT_TRANSACTION_TYPES = [
   'game_placement_4',
   'game_submitted',
   'game_verified',
+  'game_points_reversal', // negates a game_placement_*/game_submitted/game_verified row when a verified game is deleted
   'tournament_participated',
   'tournament_placement_1',
   'tournament_placement_2',
@@ -43,6 +44,12 @@ const pointTransactionSchema = new mongoose.Schema({
     leagueId: { type: mongoose.Schema.Types.ObjectId, ref: 'RankedLeague', default: null },
     placement: { type: Number, default: null },
     groupKey: { type: String, default: null },
+    // Set only on a game_points_reversal row: the original transaction it negates.
+    reversalOf: { type: mongoose.Schema.Types.ObjectId, ref: 'PointTransaction', default: null },
+    // Set only on a game_points_reversal row: the game it was for, kept separate from `gameId` so
+    // reversal rows (which share one type value) don't collide with the per-game unique index below
+    // — a user can have several original transactions, and so several reversals, for the same game.
+    reversedGameId: { type: mongoose.Schema.Types.ObjectId, ref: 'Game', default: null },
   },
 }, {
   timestamps: true,
@@ -64,6 +71,13 @@ pointTransactionSchema.index(
 pointTransactionSchema.index(
   { user: 1, type: 1, 'metadata.gameId': 1 },
   { unique: true, partialFilterExpression: { 'metadata.gameId': { $type: 'objectId' } } }
+);
+// Backs idempotent reversal: at most one reversal row per original transaction, keyed on the
+// transaction being reversed rather than the game, since a user can have several transactions
+// (placement, submitted, verified) for the same game.
+pointTransactionSchema.index(
+  { user: 1, type: 1, 'metadata.reversalOf': 1 },
+  { unique: true, partialFilterExpression: { 'metadata.reversalOf': { $type: 'objectId' } } }
 );
 
 module.exports = mongoose.model('PointTransaction', pointTransactionSchema);

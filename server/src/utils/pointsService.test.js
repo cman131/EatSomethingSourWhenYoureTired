@@ -7,6 +7,8 @@ const {
   getRecentEarnings,
   spendPoints,
   awardGamePoints,
+  reverseGamePoints,
+  undoGamePoints,
   awardTournamentPoints,
   awardRankedQualificationPoints,
   awardRankedSeasonPlacementPoints,
@@ -749,6 +751,161 @@ describe('awardGamePoints', () => {
         expect(new Set(rows.map(r => r.metadata.groupKey))).toEqual(new Set([expectedKey]));
       });
     });
+  });
+});
+
+describe('reverseGamePoints', () => {
+  let p1, p2, p3, p4;
+
+  beforeEach(async () => {
+    [p1, p2, p3, p4] = await User.create([
+      { displayName: 'test-points-p1', email: 'p1@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+      { displayName: 'test-points-p2', email: 'p2@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+      { displayName: 'test-points-p3', email: 'p3@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+      { displayName: 'test-points-p4', email: 'p4@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+    ]);
+  });
+
+  const balanceOf = async u => (await User.findById(u._id)).pointsBalance;
+  const earnedOf = async u => (await User.findById(u._id)).totalPointsEarned;
+
+  function makeGame(overrides = {}) {
+    return {
+      _id: new mongoose.Types.ObjectId(),
+      players: [
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
+      ],
+      submittedBy: p1._id,
+      ...overrides,
+    };
+  }
+
+  test('negates every game-scoped transaction for that game', async () => {
+    const game = makeGame();
+    await awardGamePoints(game, p2._id);
+
+    await reverseGamePoints(game._id);
+
+    expect(await balanceOf(p1)).toBe(0); // 10 placement + 2 submitted, reversed
+    expect(await balanceOf(p2)).toBe(0); // 7 placement + 1 verified, reversed
+    expect(await balanceOf(p3)).toBe(0);
+    expect(await balanceOf(p4)).toBe(0);
+  });
+
+  test('also reverses totalPointsEarned', async () => {
+    const game = makeGame();
+    await awardGamePoints(game, p2._id);
+
+    await reverseGamePoints(game._id);
+
+    expect(await earnedOf(p1)).toBe(0);
+  });
+
+  test('preserves the original transactions and adds reversal rows referencing them', async () => {
+    const game = makeGame();
+    await awardGamePoints(game, p2._id);
+
+    await reverseGamePoints(game._id);
+
+    const original = await PointTransaction.findOne({ user: p1._id, type: 'game_placement_1' });
+    expect(original).not.toBeNull();
+    const reversal = await PointTransaction.findOne({ user: p1._id, type: 'game_points_reversal', 'metadata.reversalOf': original._id });
+    expect(reversal).not.toBeNull();
+    expect(reversal.amount).toBe(-10);
+    expect(reversal.metadata.reversedGameId.toString()).toBe(game._id.toString());
+  });
+
+  test('is idempotent: a repeat call does not reverse twice', async () => {
+    const game = makeGame();
+    await awardGamePoints(game, p2._id);
+
+    await reverseGamePoints(game._id);
+    await reverseGamePoints(game._id);
+
+    expect(await balanceOf(p1)).toBe(0);
+    expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_points_reversal' })).toBe(2); // placement + submitted
+  });
+
+  test('does nothing for a game with no recorded points', async () => {
+    const game = makeGame();
+
+    await expect(reverseGamePoints(game._id)).resolves.not.toThrow();
+    expect(await PointTransaction.countDocuments({ 'metadata.gameId': game._id })).toBe(0);
+  });
+});
+
+describe('undoGamePoints', () => {
+  let p1, p2, p3, p4;
+
+  beforeEach(async () => {
+    [p1, p2, p3, p4] = await User.create([
+      { displayName: 'test-points-p1', email: 'p1@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+      { displayName: 'test-points-p2', email: 'p2@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+      { displayName: 'test-points-p3', email: 'p3@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+      { displayName: 'test-points-p4', email: 'p4@example.com', password: 'password123', clubAffiliation: 'Charleston' },
+    ]);
+  });
+
+  const balanceOf = async u => (await User.findById(u._id)).pointsBalance;
+  const earnedOf = async u => (await User.findById(u._id)).totalPointsEarned;
+
+  function makeGame(overrides = {}) {
+    return {
+      _id: new mongoose.Types.ObjectId(),
+      players: [
+        { player: p1._id, rank: 1 },
+        { player: p2._id, rank: 2 },
+        { player: p3._id, rank: 3 },
+        { player: p4._id, rank: 4 },
+      ],
+      submittedBy: p1._id,
+      ...overrides,
+    };
+  }
+
+  test('deletes the game-scoped transactions and reverses balances', async () => {
+    const game = makeGame();
+    await awardGamePoints(game, p2._id);
+
+    await undoGamePoints(game._id);
+
+    expect(await balanceOf(p1)).toBe(0);
+    expect(await earnedOf(p1)).toBe(0);
+    expect(await PointTransaction.countDocuments({ 'metadata.gameId': game._id })).toBe(0);
+  });
+
+  test('clears pointsAwardedAt on the game', async () => {
+    const game = await Game.create({
+      submittedBy: p1._id,
+      players: [p1, p2, p3, p4].map((p, i) => ({ player: p._id, score: 40000 - i * 5000, position: i + 1 })),
+    });
+    await awardGamePoints(game, p2._id);
+    expect((await Game.findById(game._id)).pointsAwardedAt).toBeInstanceOf(Date);
+
+    await undoGamePoints(game._id);
+
+    expect((await Game.findById(game._id)).pointsAwardedAt).toBeUndefined();
+    await Game.deleteOne({ _id: game._id });
+  });
+
+  test('allows re-awarding the same game afterward without a duplicate-key collision', async () => {
+    const game = makeGame();
+    await awardGamePoints(game, p2._id);
+    await undoGamePoints(game._id);
+
+    await awardGamePoints(game, p2._id);
+
+    expect(await balanceOf(p1)).toBe(12);
+    expect(await PointTransaction.countDocuments({ user: p1._id, type: 'game_placement_1' })).toBe(1);
+  });
+
+  test('does nothing for a game with no recorded points', async () => {
+    const game = makeGame();
+
+    await expect(undoGamePoints(game._id)).resolves.not.toThrow();
   });
 });
 
