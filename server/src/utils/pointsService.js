@@ -201,16 +201,13 @@ async function awardRankedSeasonPlacementPoints(league) {
 
   const placementAwards = rankQualifiedPlayers(league)
     .filter(({ placement }) => placement <= RANKED_PLACEMENT_TYPES.length)
-    .map(({ playerId, placement }) =>
-      awardPointsOnce(
-        playerId,
-        RANKED_PLACEMENT_TYPES[placement - 1],
-        RANKED_PLACEMENT_AMOUNTS[placement - 1],
-        { leagueId, placement },
-        'leagueId'
-      )
-    );
-  await Promise.all(placementAwards);
+    .map(({ playerId, placement }) => ({
+      userId: playerId,
+      type: RANKED_PLACEMENT_TYPES[placement - 1],
+      amount: RANKED_PLACEMENT_AMOUNTS[placement - 1],
+      metadata: { leagueId, placement },
+    }));
+  await awardAllOnce(placementAwards);
 }
 
 module.exports = {
