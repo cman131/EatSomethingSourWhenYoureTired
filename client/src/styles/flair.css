@@ -352,9 +352,11 @@
 }
 
 /* ==========================================================================
-   Profile backdrops: a decorative banner strip behind the profile header (ProfileBackdrop).
-   No text is ever drawn on it, so the gradient text-clip fallbacks above do not apply; when
-   forced-colors or print drop the background the strip simply disappears.
+   Profile backdrops. The same classes back two renderings: a small decorative strip
+   (ProfileBackdrop, used in the Shop/My Flair preview boxes) and a full-page layer behind the
+   actual profile page (ProfilePageBackdrop, registered with Layout's <main> — see below). No
+   text is ever drawn on either, so the gradient text-clip fallbacks above do not apply; when
+   forced-colors or print drop the background, both simply disappear.
    ========================================================================== */
 
 /* Entry: a flat wash */
@@ -374,6 +376,38 @@
 .flair-backdrop-koi {
   background-size: 300% 100%;
   animation: flair-flow 12s linear infinite;
+}
+
+/* Full-page layer (ProfilePageBackdrop): breaks out of the centered content column to the full
+   browser width, and fills the height of its positioned ancestor (Layout's <main>, flush with
+   the navbar and footer) rather than taking an explicit height like the small preview strip. */
+.profile-page-backdrop {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  z-index: -1;
+}
+
+/* Cards sit on top of the full-page layer translucently, so the backdrop reads through the page
+   instead of only showing in the gaps between cards. Scoped to Profile.tsx's own
+   data-flair-backdrop attribute, set only when a valid backdrop is equipped, so no other page's
+   .card (used in 30+ other places) is affected. */
+[data-flair-backdrop] .card {
+  background-color: rgb(255 255 255 / 0.85);
+  backdrop-filter: blur(3px);
+}
+
+@media print {
+  .profile-page-backdrop {
+    display: none;
+  }
+
+  [data-flair-backdrop] .card {
+    background-color: #fff;
+    backdrop-filter: none;
+  }
 }
 
 /* ==========================================================================
