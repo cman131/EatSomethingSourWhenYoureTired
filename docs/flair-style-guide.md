@@ -126,7 +126,7 @@ Prestige is not a shop tier and cannot be bought. A tournament winner or ranked-
 | `flair-ring-*` | Entry | `box-shadow` direct on avatar |
 | `flair-mid-*` | Mid | Static gradient wrapper element |
 | `flair-border-*` | Premium | Wrapper with a spinning `::before` ring |
-| `flair-backdrop-*` | Any | Banner strip behind the profile header (`ProfileBackdrop`) |
+| `flair-backdrop-*` | Any | Full-page layer on the profile page (`ProfilePageBackdrop`); small preview strip elsewhere (`ProfileBackdrop`) |
 | `flair-color-*` | Any | Color class on the name span (`FlairName`) |
 | `flair-sparkle*` | Premium | Sparkle overlays and palettes (`FlairName`) |
 | `flair-icon-*` | Mid/Premium | Class on the icon wrapper (`FlairIcon`) |

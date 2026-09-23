@@ -74,7 +74,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <PageBackdropContext.Provider value={setPageBackdrop}>
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
+      {/* `relative z-20` gives nav its own stacking context, same reasoning as <main>'s `z-0`
+          below: without it, nav's dropdown menus (z-50, further down) would compete at the
+          document root against anything inside <main> that also escapes to the root — including
+          fixed-position modals, which are plain DOM descendants of <main> (nothing in this app
+          uses portals) and are therefore now contained within <main>'s stacking context by its
+          z-0. Nav needs a higher root-level z-index than <main> so its dropdowns are guaranteed
+          to stay on top of page content, deliberately rather than by incidental DOM order. */}
+      <nav className="relative z-20 bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
