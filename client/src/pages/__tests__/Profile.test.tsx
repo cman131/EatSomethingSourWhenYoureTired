@@ -90,3 +90,81 @@ describe('Profile page admin points link', () => {
     expect(screen.queryByRole('link', { name: /adjust points/i })).not.toBeInTheDocument();
   });
 });
+
+describe('Profile page backdrop', () => {
+  function setupBackdrop({
+    id,
+    currentUser,
+    viewedUserOverrides = {},
+  }: {
+    id: string | undefined;
+    currentUser: Record<string, unknown>;
+    viewedUserOverrides?: Record<string, unknown>;
+  }) {
+    mockUseParams.mockReturnValue({ id });
+    mockUseAuth.mockReturnValue({
+      user: { _id: 'admin-1', isAdmin: false, ...currentUser },
+      updateProfile: jest.fn(),
+    });
+    let callCount = 0;
+    const user = { ...viewedUser, ...viewedUserOverrides };
+    mockUseApi.mockImplementation(() => {
+      callCount += 1;
+      const isProfileCall = callCount % 2 === 1;
+      return isProfileCall
+        ? { data: user, loading: false, error: null, refetch: jest.fn() }
+        : { data: [], loading: false, error: null, refetch: jest.fn() };
+    });
+  }
+
+  test('sets data-flair-backdrop when the viewed user has a known backdrop equipped and is not private', () => {
+    setupBackdrop({
+      id: 'user-2',
+      currentUser: {},
+      viewedUserOverrides: { equippedFlair: { profileBackdrop: 'flair-backdrop-fuji' } },
+    });
+
+    const { container } = render(<Profile />);
+
+    expect(container.querySelector('[data-flair-backdrop]')).not.toBeNull();
+  });
+
+  test('omits data-flair-backdrop when no backdrop is equipped', () => {
+    setupBackdrop({
+      id: 'user-2',
+      currentUser: {},
+      viewedUserOverrides: { equippedFlair: { profileBackdrop: null } },
+    });
+
+    const { container } = render(<Profile />);
+
+    expect(container.querySelector('[data-flair-backdrop]')).toBeNull();
+  });
+
+  test('omits data-flair-backdrop for an unknown backdrop value', () => {
+    setupBackdrop({
+      id: 'user-2',
+      currentUser: {},
+      viewedUserOverrides: { equippedFlair: { profileBackdrop: 'not-a-real-backdrop' } },
+    });
+
+    const { container } = render(<Profile />);
+
+    expect(container.querySelector('[data-flair-backdrop]')).toBeNull();
+  });
+
+  test('omits data-flair-backdrop on your own profile when private mode is on', () => {
+    setupBackdrop({
+      id: undefined,
+      currentUser: {
+        _id: 'admin-1',
+        privateMode: true,
+        equippedFlair: { profileBackdrop: 'flair-backdrop-fuji' },
+      },
+    });
+
+    const { container } = render(<Profile />);
+
+    expect(container.querySelector('[data-flair-backdrop]')).toBeNull();
+  });
+});

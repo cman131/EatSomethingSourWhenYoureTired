@@ -13,6 +13,9 @@ import TournamentResultsSection from '../components/profile/TournamentResultsSec
 import UserInfoSection from '../components/profile/UserInfoSection';
 import MyFlairSection from '../components/profile/MyFlairSection';
 import PointsSection from '../components/profile/PointsSection';
+import { getBackdropStyle } from '../utils/flairUtils';
+import { usePageBackdrop } from '../contexts/PageBackdropContext';
+import ProfilePageBackdrop from '../components/user/ProfilePageBackdrop';
 
 const Profile: React.FC = () => {
   useRequireAuth();
@@ -84,6 +87,22 @@ const Profile: React.FC = () => {
     await refetchProfileUser();
   }, [refetchProfileUser]);
 
+  // Full-page backdrop: shown on any profile (yours or another member's) that isn't private and
+  // has a known backdrop equipped — the same privacy gate the server already applies to
+  // equippedFlair.profileBackdrop in User.toJSON().
+  const backdropValue = !user?.privateMode ? user?.equippedFlair?.profileBackdrop ?? null : null;
+  const hasBackdrop = !!backdropValue && !!getBackdropStyle(backdropValue);
+  // Memoized so the registered node's identity is stable across re-renders where hasBackdrop/
+  // backdropValue haven't changed. usePageBackdrop's effect re-registers whenever the node
+  // reference changes; an unmemoized JSX literal here would be a new reference every render
+  // (Layout re-renders Profile whenever pageBackdrop state changes), which would re-run the
+  // effect every render.
+  const pageBackdropNode = React.useMemo(
+    () => (hasBackdrop ? <ProfilePageBackdrop value={backdropValue} /> : null),
+    [hasBackdrop, backdropValue]
+  );
+  usePageBackdrop(pageBackdropNode);
+
   if (profileUserLoading || !user) {
     return (
       <div className="space-y-8">
@@ -111,7 +130,7 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-flair-backdrop={hasBackdrop ? '' : undefined}>
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">
           {isOwnProfile ? 'Profile' : `${user.displayName}'s Profile`}
