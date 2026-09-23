@@ -55,7 +55,7 @@ A spinning conic gradient on a wrapper. **Only the `::before` layer rotates**; t
 
 ## Profile Backdrops (`flair-backdrop-*`)
 
-A decorative banner strip rendered by `ProfileBackdrop` above the header on the profile page (`UserInfoSection`) and in the shop preview. It is **profile-only**: `equippedFlair.profileBackdrop` is left out of `PLAYER_POPULATE_FIELDS` (which lists the inline slots explicitly), so it never rides along on game, tournament or member payloads, and a private-mode profile returns it as `null` (see `User.toJSON`).
+On the profile page itself, the equipped backdrop fills the whole page behind every section (`ProfilePageBackdrop`, registered with `Layout`'s `<main>` via `usePageBackdrop` from `Profile.tsx`), flush with the navbar and footer. The same classes also back a small decorative strip (`ProfileBackdrop`) used in the Shop and My Flair preview boxes. It is **profile-only**: `equippedFlair.profileBackdrop` is left out of `PLAYER_POPULATE_FIELDS` (which lists the inline slots explicitly), so it never rides along on game, tournament or member payloads, and a private-mode profile returns it as `null` (see `User.toJSON`).
 
 - **Entry:** a flat `background-color` wash.
 - **Mid:** a static 2-3 stop `linear-gradient(90deg, …)`.
@@ -64,7 +64,7 @@ A decorative banner strip rendered by `ProfileBackdrop` above the header on the 
 Rules specific to backdrops:
 
 - **Never draw text on a backdrop.** It is a separate strip, not a background behind the name, so no contrast fallbacks are needed; forced-colors and print simply drop the strip.
-- **The value is used as a class name, so `ProfileBackdrop` only renders values registered in `BACKDROP_STYLES`** (`flairUtils.ts`). A stale or hostile stored value renders nothing.
+- **The value is used as a class name, so both `ProfileBackdrop` and `ProfilePageBackdrop` only render values registered in `BACKDROP_STYLES`** (`flairUtils.ts`). A stale or hostile stored value renders nothing.
 - Add a backdrop by adding its class (premium ones also join the shared flow rule and the reduced-motion block), a `BACKDROP_STYLES` entry and a catalog item. `flairCatalog.test.ts` fails if any is missing.
 
 ## Profile Showcase

@@ -172,7 +172,7 @@ describe('UserInfoSection flair rendering', () => {
   });
 });
 
-describe('UserInfoSection backdrop and showcase', () => {
+describe('UserInfoSection showcase', () => {
   const renderSection = (
     user: any,
     { isOwnProfile = false, onUpdateProfile = noopAsync, onRefetchProfile = noopAsync } = {}
