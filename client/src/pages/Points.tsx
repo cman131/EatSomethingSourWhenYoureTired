@@ -24,7 +24,7 @@ const POINT_TYPE_LABELS: Record<string, string> = {
   ranked_league_placement_2: 'Ranked Season 2nd Place',
   ranked_league_placement_3: 'Ranked Season 3rd Place',
   shop_purchase: 'Shop Purchase',
-  admin_adjustment: 'Admin Adjustment',
+  admin_adjustment: 'Deus Ex Machina',
   quiz_completed: 'Quiz Completed',
   weekly_streak_bonus: 'Weekly Streak Bonus',
 };

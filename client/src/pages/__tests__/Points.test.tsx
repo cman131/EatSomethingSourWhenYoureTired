@@ -133,6 +133,11 @@ describe('Points page', () => {
     expect(screen.getByText('Ranked Season 1st Place')).toBeInTheDocument();
   });
 
+  test('renders the label for admin_adjustment as Deus Ex Machina', () => {
+    renderLoaded(historyWith([transaction({ _id: 'tx-dem', type: 'admin_adjustment', amount: -10 })]));
+    expect(screen.getByText('Deus Ex Machina')).toBeInTheDocument();
+  });
+
   test('closes the help modal when the X button is clicked', () => {
     renderLoaded();
     fireEvent.click(screen.getByRole('button', { name: /how to earn points/i }));
