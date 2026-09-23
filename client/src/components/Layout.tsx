@@ -18,6 +18,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { FaFacebook, FaInstagram, FaDiscord, FaMeetup } from 'react-icons/fa';
+import { PageBackdropContext } from '../contexts/PageBackdropContext';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -29,6 +30,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isMobileResourcesOpen, setIsMobileResourcesOpen] = useState(false);
   const [isPlayMenuOpen, setIsPlayMenuOpen] = useState(false);
   const [isMobilePlayOpen, setIsMobilePlayOpen] = useState(false);
+  const [pageBackdrop, setPageBackdrop] = useState<React.ReactNode>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
@@ -69,6 +71,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (href: string) => location.pathname.startsWith(href);
 
   return (
+    <PageBackdropContext.Provider value={setPageBackdrop}>
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -408,7 +411,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full">
+      <main data-testid="layout-main" className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full relative">
+        {pageBackdrop}
         {children}
       </main>
 
@@ -435,6 +439,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </footer>
     </div>
+    </PageBackdropContext.Provider>
   );
 };
 
