@@ -93,10 +93,11 @@ const Profile: React.FC = () => {
   const backdropValue = !user?.privateMode ? user?.equippedFlair?.profileBackdrop ?? null : null;
   const hasBackdrop = !!backdropValue && !!getBackdropStyle(backdropValue);
   // Memoized so the registered node's identity is stable across re-renders where hasBackdrop/
-  // backdropValue haven't changed. usePageBackdrop's effect re-registers whenever the node
-  // reference changes; an unmemoized JSX literal here would be a new reference every render
-  // (Layout re-renders Profile whenever pageBackdrop state changes), which would re-run the
-  // effect every render.
+  // backdropValue haven't changed. `user` (and therefore an unmemoized JSX literal built from it)
+  // can get a new object/element reference on re-renders that don't actually change these derived
+  // primitives — e.g. after refetchProfile() resolves. usePageBackdrop's effect is keyed on the
+  // node reference, so without memoization it would re-register with Layout unnecessarily on
+  // every such re-render.
   const pageBackdropNode = React.useMemo(
     () => (hasBackdrop ? <ProfilePageBackdrop value={backdropValue} /> : null),
     [hasBackdrop, backdropValue]

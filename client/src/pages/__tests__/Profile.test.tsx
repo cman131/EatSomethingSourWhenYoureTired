@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Profile from '../Profile';
+import { PageBackdropContext } from '../../contexts/PageBackdropContext';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(),
@@ -166,5 +167,66 @@ describe('Profile page backdrop', () => {
     const { container } = render(<Profile />);
 
     expect(container.querySelector('[data-flair-backdrop]')).toBeNull();
+  });
+
+  test('registers a ProfilePageBackdrop with the expected value via usePageBackdrop', () => {
+    setupBackdrop({
+      id: 'user-2',
+      currentUser: {},
+      viewedUserOverrides: { equippedFlair: { profileBackdrop: 'flair-backdrop-fuji' } },
+    });
+    const setBackdrop = jest.fn();
+
+    render(
+      <PageBackdropContext.Provider value={setBackdrop}>
+        <Profile />
+      </PageBackdropContext.Provider>
+    );
+
+    expect(setBackdrop).toHaveBeenCalled();
+    const lastCallNode = setBackdrop.mock.calls[setBackdrop.mock.calls.length - 1][0];
+    expect(lastCallNode).not.toBeNull();
+    // Render the registered node in isolation to confirm it's a ProfilePageBackdrop with the right value.
+    const { getByTestId } = render(<>{lastCallNode}</>);
+    expect(getByTestId('profile-page-backdrop')).toHaveClass('flair-backdrop-fuji');
+  });
+
+  test('registers null via usePageBackdrop when no backdrop applies', () => {
+    setupBackdrop({
+      id: 'user-2',
+      currentUser: {},
+      viewedUserOverrides: { equippedFlair: { profileBackdrop: null } },
+    });
+    const setBackdrop = jest.fn();
+
+    render(
+      <PageBackdropContext.Provider value={setBackdrop}>
+        <Profile />
+      </PageBackdropContext.Provider>
+    );
+
+    expect(setBackdrop).toHaveBeenCalled();
+    const lastCallNode = setBackdrop.mock.calls[setBackdrop.mock.calls.length - 1][0];
+    expect(lastCallNode).toBeNull();
+  });
+
+  test('clears the registered backdrop when Profile unmounts', () => {
+    setupBackdrop({
+      id: 'user-2',
+      currentUser: {},
+      viewedUserOverrides: { equippedFlair: { profileBackdrop: 'flair-backdrop-fuji' } },
+    });
+    const setBackdrop = jest.fn();
+
+    const { unmount } = render(
+      <PageBackdropContext.Provider value={setBackdrop}>
+        <Profile />
+      </PageBackdropContext.Provider>
+    );
+    expect(setBackdrop).toHaveBeenLastCalledWith(expect.anything());
+
+    unmount();
+
+    expect(setBackdrop).toHaveBeenLastCalledWith(null);
   });
 });
