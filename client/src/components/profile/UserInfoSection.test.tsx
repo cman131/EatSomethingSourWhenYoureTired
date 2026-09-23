@@ -196,24 +196,6 @@ describe('UserInfoSection backdrop and showcase', () => {
     jest.restoreAllMocks();
   });
 
-  test('renders the equipped backdrop behind the header', () => {
-    renderSection({ ...baseUser, equippedFlair: { profileBackdrop: 'flair-backdrop-fuji' } });
-
-    expect(screen.getByTestId('profile-backdrop')).toHaveClass('flair-backdrop-fuji');
-  });
-
-  test('renders no backdrop when none is equipped', () => {
-    renderSection({ ...baseUser, equippedFlair: { profileBackdrop: null } });
-
-    expect(screen.queryByTestId('profile-backdrop')).not.toBeInTheDocument();
-  });
-
-  test('renders no backdrop in private mode even if one comes through', () => {
-    renderSection({ ...baseUser, privateMode: true, equippedFlair: { profileBackdrop: 'flair-backdrop-fuji' } });
-
-    expect(screen.queryByTestId('profile-backdrop')).not.toBeInTheDocument();
-  });
-
   test('shows a visitor the pinned showcase entries', () => {
     renderSection({ ...baseUser, favoriteYaku: 'Riichi', showcase: [{ type: 'favoriteYaku' }] });
 

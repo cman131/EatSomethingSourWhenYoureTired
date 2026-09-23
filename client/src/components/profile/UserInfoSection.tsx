@@ -6,7 +6,6 @@ import RiichiMusicModal from '../RiichiMusicModal';
 import EditProfileModal from '../EditProfileModal';
 import RiichiMusicDisplay from './RiichiMusicDisplay';
 import ProfileShowcase from './ProfileShowcase';
-import ProfileBackdrop from '../user/ProfileBackdrop';
 import UserAvatar from '../user/UserAvatar';
 import TitleBadge from '../user/TitleBadge';
 import FlairName from '../user/FlairName';
@@ -102,11 +101,6 @@ const UserInfoSection: React.FC<UserInfoSectionProps> = ({
       )}
 
       <div className="space-y-4">
-          {/* Backdrop banner: profile-only flair, hidden in private mode */}
-          {!user?.privateMode && (
-            <ProfileBackdrop value={user?.equippedFlair?.profileBackdrop} className="h-20" />
-          )}
-
           {/* Avatar and Display Name */}
           <div className="flex items-center gap-6">
             <div className="flex-shrink-0">
