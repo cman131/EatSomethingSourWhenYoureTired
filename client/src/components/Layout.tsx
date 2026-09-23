@@ -411,7 +411,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Main content */}
-      <main data-testid="layout-main" className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full relative">
+      {/* `z-0` (alongside `relative`) is required, not decorative: it's what makes this element
+          establish its own stacking context. Without it, a negative z-index descendant (e.g. the
+          profile page's full-bleed backdrop layer) escapes past this element and paints behind
+          the root div's own opaque bg-gray-50 background instead of behind this element's
+          content, making it invisible. */}
+      <main data-testid="layout-main" className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full relative z-0">
         {pageBackdrop}
         {children}
       </main>

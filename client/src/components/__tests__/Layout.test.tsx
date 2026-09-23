@@ -64,4 +64,21 @@ describe('Layout page backdrop', () => {
 
     expect(screen.queryByTestId('test-backdrop')).not.toBeInTheDocument();
   });
+
+  // Regression guard: <main> must establish its own stacking context (relative + a non-auto
+  // z-index), or a negative z-index descendant (the profile page's full-bleed backdrop layer)
+  // escapes past it and paints behind the root div's own opaque background, becoming invisible.
+  // jsdom doesn't compute real layout/paint order, so this only pins the class is present — the
+  // actual visual behavior was confirmed with a real browser (see Task 6 of the plan).
+  test('<main> establishes a stacking context so a negative z-index child is contained', () => {
+    render(
+      <Layout>
+        <div data-testid="page-content" />
+      </Layout>
+    );
+
+    const main = screen.getByTestId('layout-main');
+    expect(main.className).toMatch(/\brelative\b/);
+    expect(main.className).toMatch(/\bz-0\b/);
+  });
 });
