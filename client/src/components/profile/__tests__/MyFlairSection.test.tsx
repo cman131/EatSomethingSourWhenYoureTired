@@ -112,6 +112,34 @@ describe('MyFlairSection', () => {
     await waitFor(() => expect(shopApi.equip).toHaveBeenCalledWith('backdrop1', 'profileBackdrop'));
   });
 
+  test('shows the equipped backdrop in the live preview box', () => {
+    mockInventory(baseInventory({
+      purchasedItems: [
+        { item: colorItem, purchasedAt: '2026-01-01' },
+        { item: backdropItem, purchasedAt: '2026-01-01' },
+      ],
+      equippedFlair: { nameColor: null, nameIcon: null, profileBorder: null, profileBackdrop: backdropItem.value, title: null },
+    }));
+
+    render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
+
+    expect(screen.getByTestId('my-flair-preview-backdrop')).toHaveClass(backdropItem.value);
+  });
+
+  test('previews a hovered backdrop in the live preview box', () => {
+    mockInventory(baseInventory({
+      purchasedItems: [
+        { item: colorItem, purchasedAt: '2026-01-01' },
+        { item: backdropItem, purchasedAt: '2026-01-01' },
+      ],
+    }));
+
+    render(<MyFlairSection onRefetchProfile={onRefetchProfile} />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /fuji dawn/i }));
+
+    expect(screen.getByTestId('my-flair-preview-backdrop')).toHaveClass(backdropItem.value);
+  });
+
   test('shows "no saved loadouts" when there are none', () => {
     mockInventory(baseInventory());
 

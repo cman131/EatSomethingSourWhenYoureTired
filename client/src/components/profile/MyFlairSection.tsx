@@ -7,6 +7,7 @@ import { useFlairEquip } from '../../hooks/useFlairEquip';
 import FlairName from '../user/FlairName';
 import FlairIcon from '../user/FlairIcon';
 import TitleBadge from '../user/TitleBadge';
+import ProfileBackdrop from '../user/ProfileBackdrop';
 
 const SLOTS: { key: FlairCategory; label: string }[] = [
   { key: 'nameColor', label: 'Name Color' },
@@ -137,6 +138,7 @@ const MyFlairSection: React.FC<MyFlairSectionProps> = ({ onRefetchProfile }) => 
       {/* Live preview */}
       <div data-testid="my-flair-preview-box" className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
         <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</div>
+        <ProfileBackdrop value={preview.backdrop} className="h-10 mb-3" testId="my-flair-preview-backdrop" />
         <div className="flex items-center gap-3">
           {previewNeedsGradientBorder ? (
             <div className={preview.border} data-testid="my-flair-preview-avatar">
