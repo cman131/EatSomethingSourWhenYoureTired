@@ -116,6 +116,11 @@ const Profile: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-900">
           {isOwnProfile ? 'Profile' : `${user.displayName}'s Profile`}
         </h1>
+        {currentUser?.isAdmin && (
+          <Link to={`/admin/points?userId=${profileUserId}`} className="btn-secondary">
+            Adjust Points
+          </Link>
+        )}
       </div>
 
       {/* User Info */}

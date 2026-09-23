@@ -601,7 +601,7 @@ import '@testing-library/jest-dom';
 import Profile from '../Profile';
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn(() => ({ id: 'user-2' })),
+  useParams: jest.fn(),
   useNavigate: () => jest.fn(),
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
@@ -636,9 +636,11 @@ jest.mock('../../components/profile/UserInfoSection', () => () => <div />);
 jest.mock('../../components/profile/MyFlairSection', () => () => <div />);
 jest.mock('../../components/profile/PointsSection', () => () => <div />);
 
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useApi } from '../../hooks/useApi';
 
+const mockUseParams = useParams as jest.Mock;
 const mockUseAuth = useAuth as jest.Mock;
 const mockUseApi = useApi as jest.Mock;
 
@@ -649,6 +651,7 @@ const viewedUser = {
 };
 
 function setup({ currentUser, isAdmin }: { currentUser: Record<string, unknown>; isAdmin: boolean }) {
+  mockUseParams.mockReturnValue({ id: 'user-2' });
   mockUseAuth.mockReturnValue({
     user: { _id: currentUser._id, isAdmin, ...currentUser },
     updateProfile: jest.fn(),
