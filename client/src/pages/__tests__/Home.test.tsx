@@ -177,3 +177,22 @@ describe('Home ranked league card', () => {
     expect(rankedLink).toBeInTheDocument();
   });
 });
+
+describe('Home — guest league fetch', () => {
+  test('does not call rankedLeaguesApi.getCurrent for a guest', async () => {
+    const { rankedLeaguesApi } = require('../../services/api');
+    useAuth.mockReturnValue({ isAuthenticated: false, user: null });
+    usePaginatedApi.mockReturnValue({ data: [], loading: false });
+    useApi.mockReturnValue({ data: null, loading: false });
+
+    render(<Home />);
+
+    // useApi is mocked, so it never actually invokes the callbacks passed to it.
+    // The first call is the tournaments fetch, the second is the league fetch —
+    // invoke that one directly to exercise its real gating logic.
+    const leagueCallback = useApi.mock.calls[1][0];
+    await leagueCallback();
+
+    expect(rankedLeaguesApi.getCurrent).not.toHaveBeenCalled();
+  });
+});
