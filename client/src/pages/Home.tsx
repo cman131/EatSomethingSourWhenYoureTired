@@ -49,11 +49,13 @@ const Home: React.FC = () => {
   );
   const { data: games, loading: gamesLoading } = usePaginatedApi<Game>(getGames, 1, 5);
 
-  const getLeague = React.useCallback(
-    () => rankedLeaguesApi.getCurrent(),
-    []
-  );
-  const { data: leagueResponse, loading: leagueLoading } = useApi<ApiResponse<{ league: RankedLeague }>>(getLeague);
+  const getLeague = React.useCallback(() => {
+    if (!isAuthenticated) {
+      return Promise.resolve(null);
+    }
+    return rankedLeaguesApi.getCurrent();
+  }, [isAuthenticated]);
+  const { data: leagueResponse, loading: leagueLoading } = useApi<ApiResponse<{ league: RankedLeague }> | null>(getLeague);
 
   const league = leagueResponse?.data?.league ?? null;
   const rankedGamesThreshold = league?.rankedGamesThreshold ?? 0;
