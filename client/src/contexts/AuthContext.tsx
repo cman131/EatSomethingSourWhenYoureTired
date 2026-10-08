@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi, usersApi, User } from '../services/api';
+import { authApi, usersApi, setUnauthorizedHandler, User } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -104,6 +104,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(null);
     setUser(null);
   };
+
+  // Any 401 from any API call means the session is no longer valid — clear it the
+  // same way an explicit logout would. Pages that require auth will react to
+  // isAuthenticated flipping to false via useRequireAuth; guest-facing pages just
+  // fall back to their logged-out view.
+  useEffect(() => {
+    setUnauthorizedHandler(logout);
+  }, []);
 
   const updateProfile = async (userData: Partial<User>) => {
     try {
