@@ -286,7 +286,7 @@ const Home: React.FC = () => {
         <p className="text-xs text-primary-200 uppercase tracking-widest mb-2">Charleston, SC</p>
         <h1 className="text-3xl font-black mb-3 leading-tight">Riichi Mahjong Club</h1>
         <p className="text-primary-100 mb-7 text-sm">
-          Sundays 10am–1pm · <Link to={MEETUP_URL} target="_blank" rel="noreferrer" className="underline">
+          Sundays 10am–1pm and Wednesdays 6pm-9pm · <Link to={MEETUP_URL} target="_blank" rel="noreferrer" className="underline">
             On Meetup
           </Link> · All skill levels welcome!
         </p>
