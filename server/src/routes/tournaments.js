@@ -9,7 +9,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { generateRoundPairings, getFinalsMatchCount } = require('../utils/roundGenerationService');
 const { createGame } = require('../utils/gameService');
 const { sendRoundPairingNotificationEmail, sendNewTournamentNotificationEmail, sendWaitlistPromotionNotificationEmail, sendTournamentUpdateNotificationEmail } = require('../utils/emailService');
-const { awardTournamentPoints } = require('../utils/pointsService');
+const { awardTournamentPoints, awardGamePoints } = require('../utils/pointsService');
+const { updateRankedPoints } = require('../utils/rankedLeagueService');
 const { grantTournamentChampionTitle } = require('../utils/flairGrantService');
 const { normalizeWinnerTitle } = require('../utils/prestigeTitle');
 
@@ -1513,6 +1514,61 @@ router.put('/:id/reconcile-active-round', authenticateToken, validateMongoId('id
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to reconcile active round'
+    });
+  }
+});
+
+// @route   POST /api/tournaments/:id/swap-filler
+// @desc    Swap a filler player for the real walk-in who was actually sitting in their seat (Admin only)
+// @access  Private (Admin only)
+router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requireAdmin, async (req, res) => {
+  try {
+    const { realPlayerId, roundSelections } = req.body;
+
+    if (!realPlayerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'realPlayerId is required'
+      });
+    }
+
+    if (!Array.isArray(roundSelections) || roundSelections.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'roundSelections must be a non-empty array'
+      });
+    }
+
+    const roundNumbers = roundSelections.map(s => s.roundNumber);
+    if (new Set(roundNumbers).size !== roundNumbers.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'roundSelections cannot contain duplicate round numbers'
+      });
+    }
+
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    if (tournament.status !== 'InProgress') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only swap a filler while the tournament is in progress'
+      });
+    }
+
+    res.status(501).json({ success: false, message: 'Not yet implemented' });
+  } catch (error) {
+    console.error('Swap filler error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to swap filler for walk-in player'
     });
   }
 });
