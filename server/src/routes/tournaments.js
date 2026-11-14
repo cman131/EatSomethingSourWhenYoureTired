@@ -1654,7 +1654,44 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
       resolvedSelections.push({ roundNumber, round, pairing: foundPairing, playerEntry: foundPlayerEntry, fillerId });
     }
 
-    res.status(501).json({ success: false, message: 'Not yet implemented' });
+    resolvedSelections.sort((a, b) => a.roundNumber - b.roundNumber);
+
+    let playerAdded = false;
+    const activeRoundSelections = [];
+
+    for (const selection of resolvedSelections) {
+      const { pairing, playerEntry, fillerId } = selection;
+
+      if (pairing.game) {
+        playerEntry.player = realPlayer._id;
+        tournament.markModified('rounds');
+
+        const game = await Game.findById(pairing.game);
+        if (game) {
+          const gamePlayerEntry = game.players.find(p => p.player.toString() === fillerId);
+          if (gamePlayerEntry) {
+            gamePlayerEntry.player = realPlayer._id;
+            await game.save();
+          }
+        }
+      } else {
+        activeRoundSelections.push(selection);
+      }
+    }
+
+    if (!playerAdded) {
+      tournament.players.push({ player: realPlayer._id, dropped: false });
+      tournament.markModified('players');
+      playerAdded = true;
+    }
+
+    await tournament.save();
+
+    res.json({
+      success: true,
+      message: 'Filler swapped for walk-in player successfully',
+      data: { tournament }
+    });
   } catch (error) {
     console.error('Swap filler error:', error);
     res.status(500).json({

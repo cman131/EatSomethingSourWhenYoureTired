@@ -48,6 +48,7 @@ jest.mock('../../utils/emailService', () => ({
 
 const Tournament = require('../../models/Tournament');
 const User = require('../../models/User');
+const Game = require('../../models/Game');
 const router = require('../tournaments');
 
 const app = express();
@@ -113,6 +114,47 @@ function mockFillerLookup(fillerIds, { isGuest = true } = {}) {
       fillerIds.map(id => ({ _id: { toString: () => id }, isGuest }))
     )
   });
+}
+
+function makeCompletedRoundTournament() {
+  return makeMockTournament({
+    players: [],
+    waitlist: [],
+    rounds: [
+      {
+        roundNumber: 1,
+        pairings: [
+          {
+            tableNumber: 1,
+            game: '507f1f77bcf86cd799439077',
+            players: [
+              { player: { toString: () => FILLER_ID }, seat: 'East' },
+              { player: { toString: () => 'p2' }, seat: 'South' },
+              { player: { toString: () => 'p3' }, seat: 'West' },
+              { player: { toString: () => 'p4' }, seat: 'North' }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+}
+
+function makeMockGame(overrides = {}) {
+  return {
+    _id: '507f1f77bcf86cd799439077',
+    verified: true,
+    verifiedBy: 'verifierId',
+    isRanked: false,
+    players: [
+      { player: { toString: () => FILLER_ID }, score: 25000, position: 1, rank: 1 },
+      { player: { toString: () => 'p2' }, score: 25000, position: 2, rank: 2 },
+      { player: { toString: () => 'p3' }, score: 25000, position: 3, rank: 3 },
+      { player: { toString: () => 'p4' }, score: 25000, position: 4, rank: 4 }
+    ],
+    save: jest.fn().mockResolvedValue(undefined),
+    ...overrides
+  };
 }
 
 describe('POST /tournaments/:id/swap-filler', () => {
@@ -319,5 +361,58 @@ describe('POST /tournaments/:id/swap-filler', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/already played/i);
+  });
+
+  describe('completed-round swap', () => {
+    test('replaces the filler with the real player in the pairing and the linked game', async () => {
+      const tournament = makeCompletedRoundTournament();
+      const game = makeMockGame();
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(game);
+
+      const res = await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(res.status).toBe(200);
+      const pairingPlayer = tournament.rounds[0].pairings[0].players[0];
+      expect(pairingPlayer.player).toBe(REAL_PLAYER_ID);
+      expect(game.players[0].player).toBe(REAL_PLAYER_ID);
+      expect(game.save).toHaveBeenCalled();
+    });
+
+    test('adds the real player to tournament.players exactly once', async () => {
+      const tournament = makeCompletedRoundTournament();
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(makeMockGame());
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(tournament.players).toHaveLength(1);
+      expect(tournament.players[0]).toEqual({ player: REAL_PLAYER_ID, dropped: false });
+    });
+
+    test('saves the tournament once', async () => {
+      const tournament = makeCompletedRoundTournament();
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(makeMockGame());
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(tournament.save).toHaveBeenCalledTimes(1);
+    });
   });
 });
