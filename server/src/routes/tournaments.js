@@ -1695,6 +1695,29 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
       }
     }
 
+    if (activeRoundSelections.length > 0) {
+      if (!playerAdded) {
+        tournament.players.push({ player: realPlayer._id, dropped: false });
+        tournament.markModified('players');
+        playerAdded = true;
+      }
+
+      await tournament.populate('rounds.pairings.game');
+
+      for (const { round } of activeRoundSelections) {
+        const newPairings = await generateRoundPairings(tournament, round.roundNumber);
+        round.pairings = newPairings.map(p => ({
+          tableNumber: p.tableNumber,
+          players: p.players.map(pl => ({
+            player: new mongoose.Types.ObjectId(pl.player),
+            seat: pl.seat
+          })),
+          game: null
+        }));
+      }
+      tournament.markModified('rounds');
+    }
+
     if (!playerAdded) {
       tournament.players.push({ player: realPlayer._id, dropped: false });
       tournament.markModified('players');

@@ -51,6 +51,7 @@ const User = require('../../models/User');
 const Game = require('../../models/Game');
 const { awardGamePoints } = require('../../utils/pointsService');
 const { updateRankedPoints } = require('../../utils/rankedLeagueService');
+const { generateRoundPairings } = require('../../utils/roundGenerationService');
 const router = require('../tournaments');
 
 const app = express();
@@ -499,6 +500,116 @@ describe('POST /tournaments/:id/swap-filler', () => {
 
       expect(res.status).toBe(200);
       expect(tournament.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('active-round reshuffle', () => {
+    function makeActiveRoundTournament() {
+      return makeMockTournament({
+        players: [{ player: { toString: () => '507f1f77bcf86cd799439102' }, dropped: false }],
+        waitlist: [],
+        rounds: [
+          {
+            roundNumber: 1,
+            pairings: [
+              {
+                tableNumber: 1,
+                game: null,
+                players: [
+                  { player: { toString: () => FILLER_ID }, seat: 'East' },
+                  { player: { toString: () => '507f1f77bcf86cd799439102' }, seat: 'South' },
+                  { player: { toString: () => '507f1f77bcf86cd799439103' }, seat: 'West' },
+                  { player: { toString: () => '507f1f77bcf86cd799439104' }, seat: 'North' }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+    }
+
+    test('adds the real player to tournament.players before regenerating pairings', async () => {
+      const tournament = makeActiveRoundTournament();
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      generateRoundPairings.mockResolvedValue([
+        {
+          tableNumber: 1,
+          players: [
+            { player: REAL_PLAYER_ID, seat: 'East' },
+            { player: '507f1f77bcf86cd799439102', seat: 'South' },
+            { player: '507f1f77bcf86cd799439103', seat: 'West' },
+            { player: '507f1f77bcf86cd799439104', seat: 'North' }
+          ]
+        }
+      ]);
+
+      const res = await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(res.status).toBe(200);
+      expect(tournament.players).toHaveLength(2);
+      expect(tournament.players.some(p => p.player === REAL_PLAYER_ID)).toBe(true);
+      expect(generateRoundPairings).toHaveBeenCalledWith(tournament, 1);
+    });
+
+    test('replaces the round pairings with the freshly generated ones', async () => {
+      const tournament = makeActiveRoundTournament();
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      generateRoundPairings.mockResolvedValue([
+        {
+          tableNumber: 1,
+          players: [
+            { player: REAL_PLAYER_ID, seat: 'North' },
+            { player: '507f1f77bcf86cd799439102', seat: 'East' },
+            { player: '507f1f77bcf86cd799439103', seat: 'South' },
+            { player: '507f1f77bcf86cd799439104', seat: 'West' }
+          ]
+        }
+      ]);
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      const newPairing = tournament.rounds[0].pairings[0];
+      expect(newPairing.game).toBeNull();
+      expect(newPairing.players.map(p => p.seat)).toEqual(['North', 'East', 'South', 'West']);
+      expect(newPairing.players.find(p => p.player.toString() === REAL_PLAYER_ID)).toBeTruthy();
+      expect(
+        newPairing.players.some(p => p.player.toString() === FILLER_ID)
+      ).toBe(false);
+    });
+
+    test('populates rounds.pairings.game before regenerating (for UMA-based strategies)', async () => {
+      const tournament = makeActiveRoundTournament();
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      generateRoundPairings.mockResolvedValue([
+        {
+          tableNumber: 1,
+          players: [
+            { player: REAL_PLAYER_ID, seat: 'East' },
+            { player: '507f1f77bcf86cd799439102', seat: 'South' },
+            { player: '507f1f77bcf86cd799439103', seat: 'West' },
+            { player: '507f1f77bcf86cd799439104', seat: 'North' }
+          ]
+        }
+      ]);
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(tournament.populate).toHaveBeenCalledWith('rounds.pairings.game');
     });
   });
 });
