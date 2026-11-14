@@ -1672,6 +1672,22 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
           if (gamePlayerEntry) {
             gamePlayerEntry.player = realPlayer._id;
             await game.save();
+
+            if (game.verified) {
+              try {
+                await awardGamePoints(game, game.verifiedBy);
+              } catch (err) {
+                console.error(`Failed to award game points after filler swap for game ${game._id}:`, err);
+              }
+
+              if (game.isRanked) {
+                try {
+                  await updateRankedPoints(game);
+                } catch (err) {
+                  console.error(`Failed to update ranked points after filler swap for game ${game._id}:`, err);
+                }
+              }
+            }
           }
         }
       } else {

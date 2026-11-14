@@ -49,6 +49,8 @@ jest.mock('../../utils/emailService', () => ({
 const Tournament = require('../../models/Tournament');
 const User = require('../../models/User');
 const Game = require('../../models/Game');
+const { awardGamePoints } = require('../../utils/pointsService');
+const { updateRankedPoints } = require('../../utils/rankedLeagueService');
 const router = require('../tournaments');
 
 const app = express();
@@ -413,6 +415,90 @@ describe('POST /tournaments/:id/swap-filler', () => {
       });
 
       expect(tournament.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('retroactive points for completed-round swap', () => {
+    test('awards game points for a verified game', async () => {
+      const tournament = makeCompletedRoundTournament();
+      const game = makeMockGame({ verified: true });
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(game);
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(awardGamePoints).toHaveBeenCalledWith(game, game.verifiedBy);
+    });
+
+    test('does not award points for an unverified game', async () => {
+      const tournament = makeCompletedRoundTournament();
+      const game = makeMockGame({ verified: false });
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(game);
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(awardGamePoints).not.toHaveBeenCalled();
+    });
+
+    test('updates ranked points for a verified ranked game', async () => {
+      const tournament = makeCompletedRoundTournament();
+      const game = makeMockGame({ verified: true, isRanked: true });
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(game);
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(updateRankedPoints).toHaveBeenCalledWith(game);
+    });
+
+    test('does not update ranked points for a non-ranked game', async () => {
+      const tournament = makeCompletedRoundTournament();
+      const game = makeMockGame({ verified: true, isRanked: false });
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(game);
+
+      await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(updateRankedPoints).not.toHaveBeenCalled();
+    });
+
+    test('a failed point award does not fail the request', async () => {
+      const tournament = makeCompletedRoundTournament();
+      const game = makeMockGame({ verified: true });
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID]);
+      Game.findById.mockResolvedValue(game);
+      awardGamePoints.mockRejectedValueOnce(new Error('boom'));
+
+      const res = await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+      });
+
+      expect(res.status).toBe(200);
+      expect(tournament.save).toHaveBeenCalled();
     });
   });
 });
