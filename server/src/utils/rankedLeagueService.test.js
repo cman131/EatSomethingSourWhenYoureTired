@@ -183,6 +183,39 @@ describe('updateRankedPoints', () => {
       const league = await currentLeague();
       expect(find(league, p1Id).gamesPlayed).toBe(2);
     });
+
+    // Known gap (see docs/superpowers/specs/2026-11-14-swap-filler-for-walk-in-player-design.md): idempotency is
+    // keyed on game._id only, not on (game._id, player). When a swap-filler replay re-calls updateRankedPoints
+    // for a game whose _id was already applied, it skips the point delta entirely — even though game.players now
+    // names a different real player than whoever occupied that seat when the game was first applied. This test
+    // documents that no-op so a future fix to per-player idempotency has a failing test to update deliberately,
+    // not an accidental regression.
+    test('a game already applied is a no-op even when its players identity changed (swap-filler replay gap)', async () => {
+      const gameId = new mongoose.Types.ObjectId();
+      const league = await currentLeague();
+      league.appliedGames.push(gameId);
+      await league.save();
+
+      // Post-swap: the game's _id is unchanged, but p1Id now occupies a seat that belonged to a filler
+      // when the game was originally applied.
+      const postSwapGame = {
+        _id: gameId,
+        players: [
+          { player: p1Id, score: 40000, rank: 1 },
+          { player: p2Id, score: 32000, rank: 2 },
+          { player: p3Id, score: 25000, rank: 3 },
+          { player: p4Id, score: 23000, rank: 4 },
+        ],
+      };
+
+      await updateRankedPoints(postSwapGame);
+
+      const reloaded = await currentLeague();
+      // Documents the known gap: the swapped-in real player's points/gamesPlayed are untouched because
+      // the game's _id was already in appliedGames, regardless of the player identity change.
+      expect(find(reloaded, p1Id).rankedPoints).toBe(500);
+      expect(find(reloaded, p1Id).gamesPlayed).toBe(0);
+    });
   });
 });
 
