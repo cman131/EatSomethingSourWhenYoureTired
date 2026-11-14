@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import SwapFillerModal from './SwapFillerModal';
-import { Tournament } from '../../services/api';
+import { AuthProvider } from '../../contexts/AuthContext';
+import { Tournament, usersApi, tournamentsApi } from '../../services/api';
 
 jest.mock('../../services/api', () => {
   const actual = jest.requireActual('../../services/api');
@@ -12,6 +13,9 @@ jest.mock('../../services/api', () => {
     tournamentsApi: { swapFiller: jest.fn() },
   };
 });
+
+const mockedSearchUsers = usersApi.searchUsers as jest.Mock;
+const mockedSwapFiller = tournamentsApi.swapFiller as jest.Mock;
 
 function buildTournament(overrides: Partial<Tournament> = {}): Tournament {
   return {
@@ -60,12 +64,14 @@ function buildTournament(overrides: Partial<Tournament> = {}): Tournament {
 
 function renderModal(tournament: Tournament) {
   return render(
-    <SwapFillerModal
-      isOpen={true}
-      onClose={jest.fn()}
-      onSwapped={jest.fn()}
-      tournament={tournament}
-    />
+    <AuthProvider>
+      <SwapFillerModal
+        isOpen={true}
+        onClose={jest.fn()}
+        onSwapped={jest.fn()}
+        tournament={tournament}
+      />
+    </AuthProvider>
   );
 }
 
@@ -105,5 +111,90 @@ describe('SwapFillerModal round/filler derivation', () => {
     }));
 
     expect(screen.getByText(/no filler-occupied seats/i)).toBeInTheDocument();
+  });
+});
+
+describe('SwapFillerModal player search and submit', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('excludes a search result who is already registered or waitlisted', async () => {
+    mockedSearchUsers.mockResolvedValue({
+      data: {
+        users: [
+          { _id: 'walkin-1', displayName: 'Walkin', isGuest: false },
+          { _id: 'registered-1', displayName: 'AlreadyIn', isGuest: false },
+          { _id: 'waitlisted-1', displayName: 'OnWaitlist', isGuest: false },
+        ],
+      },
+    });
+    renderModal(buildTournament({
+      players: [{ player: { _id: 'registered-1' }, dropped: false } as any],
+      waitlist: [{ player: { _id: 'waitlisted-1' } } as any],
+    }));
+
+    fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'a' } });
+    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+
+    expect(screen.queryByText('AlreadyIn')).not.toBeInTheDocument();
+    expect(screen.queryByText('OnWaitlist')).not.toBeInTheDocument();
+  });
+
+  test('submit is disabled until a player is picked and at least one round is mapped', async () => {
+    mockedSearchUsers.mockResolvedValue({ data: { users: [{ _id: 'walkin-1', displayName: 'Walkin', isGuest: false }] } });
+    renderModal(buildTournament());
+
+    expect(screen.getByRole('button', { name: /swap/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Walk' } });
+    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Walkin'));
+
+    expect(screen.getByRole('button', { name: /swap/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/round 1/i), { target: { value: 'filler-1' } });
+
+    expect(screen.getByRole('button', { name: /swap/i })).not.toBeDisabled();
+  });
+
+  test('submits the real player id and the mapped round selections', async () => {
+    mockedSearchUsers.mockResolvedValue({ data: { users: [{ _id: 'walkin-1', displayName: 'Walkin', isGuest: false }] } });
+    const updatedTournament = buildTournament();
+    mockedSwapFiller.mockResolvedValue({ data: { tournament: updatedTournament } });
+    const onSwapped = jest.fn();
+    const onClose = jest.fn();
+    render(
+      <AuthProvider>
+        <SwapFillerModal isOpen={true} onClose={onClose} onSwapped={onSwapped} tournament={buildTournament()} />
+      </AuthProvider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Walk' } });
+    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Walkin'));
+    fireEvent.change(screen.getByLabelText(/round 1/i), { target: { value: 'filler-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /swap/i }));
+
+    await waitFor(() => expect(mockedSwapFiller).toHaveBeenCalledWith('tournament-1', {
+      realPlayerId: 'walkin-1',
+      roundSelections: [{ roundNumber: 1, fillerId: 'filler-1' }],
+    }));
+    await waitFor(() => expect(onSwapped).toHaveBeenCalledWith(updatedTournament));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  test('shows the server error on a failed submit', async () => {
+    mockedSearchUsers.mockResolvedValue({ data: { users: [{ _id: 'walkin-1', displayName: 'Walkin', isGuest: false }] } });
+    mockedSwapFiller.mockRejectedValue(new Error('Round 1 has some tables already played'));
+    renderModal(buildTournament());
+
+    fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Walk' } });
+    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Walkin'));
+    fireEvent.change(screen.getByLabelText(/round 1/i), { target: { value: 'filler-1' } });
+    fireEvent.click(screen.getByRole('button', { name: /swap/i }));
+
+    await waitFor(() => expect(screen.getByText(/already played/i)).toBeInTheDocument());
   });
 });
