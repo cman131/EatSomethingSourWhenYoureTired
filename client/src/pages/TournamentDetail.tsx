@@ -11,6 +11,7 @@ import CurrentRoundPairing from '../components/tournaments/CurrentRoundPairing';
 import EditTournamentModal from '../components/tournaments/EditTournamentModal';
 import TournamentGamesList from '../components/tournaments/TournamentGamesList';
 import AddPlayerModal from '../components/tournaments/AddPlayerModal';
+import SwapFillerModal from '../components/tournaments/SwapFillerModal';
 import DescriptionDisplay from '../components/tournaments/DescriptionDisplay';
 import EtiquetteDisplay from '../components/tournaments/EtiquetteDisplay';
 import RulesDisplay from '../components/tournaments/RulesDisplay';
@@ -29,6 +30,7 @@ const TournamentDetail: React.FC = () => {
   const [allRoundsHaveGames, setAllRoundsHaveGames] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
+  const [isSwapFillerModalOpen, setIsSwapFillerModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchTournament = async () => {
@@ -286,6 +288,10 @@ const TournamentDetail: React.FC = () => {
     }
   };
 
+  const handleFillerSwapped = (updatedTournament: Tournament) => {
+    setTournament(updatedTournament);
+  };
+
   const handleUpdateTournament = async (data: {
     name?: string;
     description?: string;
@@ -541,6 +547,16 @@ const TournamentDetail: React.FC = () => {
                     {actionLoading ? 'Reconciling...' : 'Reconcile active round'}
                   </button>
                 )}
+                {user?.isAdmin && (
+                  <button
+                    onClick={() => setIsSwapFillerModalOpen(true)}
+                    disabled={actionLoading}
+                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Swap a filler's seat for the real walk-in player who was actually playing it"
+                  >
+                    Swap in a walk-in player
+                  </button>
+                )}
                 {roundToStart && (
                   <button
                     onClick={handleStartRound}
@@ -657,6 +673,13 @@ const TournamentDetail: React.FC = () => {
         onClose={() => setIsAddPlayerModalOpen(false)}
         onAdd={handleAddPlayer}
         existingPlayerIds={tournament.players.map((p) => p.player._id || p.player.toString())}
+      />
+
+      <SwapFillerModal
+        isOpen={isSwapFillerModalOpen}
+        onClose={() => setIsSwapFillerModalOpen(false)}
+        onSwapped={handleFillerSwapped}
+        tournament={tournament}
       />
     </div>
   );
