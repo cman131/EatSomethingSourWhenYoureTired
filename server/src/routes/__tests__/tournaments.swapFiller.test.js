@@ -610,6 +610,82 @@ describe('POST /tournaments/:id/swap-filler', () => {
       });
 
       expect(tournament.populate).toHaveBeenCalledWith('rounds.pairings.game');
+
+      // Proves ORDER, not just that both were called: UMA-based round strategies
+      // read pairing.game.players, so populate must resolve before generateRoundPairings runs.
+      const populateCallOrder = tournament.populate.mock.invocationCallOrder[0];
+      const generateCallOrder = generateRoundPairings.mock.invocationCallOrder[0];
+      expect(populateCallOrder).toBeLessThan(generateCallOrder);
+    });
+  });
+
+  describe('mixed completed-round and active-round selections', () => {
+    test('adds the real player to tournament.players exactly once when one request swaps a completed round and an active round', async () => {
+      const ROUND2_FILLER_ID = '507f1f77bcf86cd799439201';
+      const tournament = makeMockTournament({
+        players: [],
+        waitlist: [],
+        rounds: [
+          {
+            roundNumber: 1,
+            pairings: [
+              {
+                tableNumber: 1,
+                game: '507f1f77bcf86cd799439077',
+                players: [
+                  { player: { toString: () => FILLER_ID }, seat: 'East' },
+                  { player: { toString: () => 'p2' }, seat: 'South' },
+                  { player: { toString: () => 'p3' }, seat: 'West' },
+                  { player: { toString: () => 'p4' }, seat: 'North' }
+                ]
+              }
+            ]
+          },
+          {
+            roundNumber: 2,
+            pairings: [
+              {
+                tableNumber: 1,
+                game: null,
+                players: [
+                  { player: { toString: () => ROUND2_FILLER_ID }, seat: 'East' },
+                  { player: { toString: () => '507f1f77bcf86cd799439202' }, seat: 'South' },
+                  { player: { toString: () => '507f1f77bcf86cd799439203' }, seat: 'West' },
+                  { player: { toString: () => '507f1f77bcf86cd799439204' }, seat: 'North' }
+                ]
+              }
+            ]
+          }
+        ]
+      });
+
+      Tournament.findById.mockResolvedValue(tournament);
+      mockEligibleRealPlayer();
+      mockFillerLookup([FILLER_ID, ROUND2_FILLER_ID]);
+      Game.findById.mockResolvedValue(makeMockGame());
+      generateRoundPairings.mockResolvedValue([
+        {
+          tableNumber: 1,
+          players: [
+            { player: REAL_PLAYER_ID, seat: 'East' },
+            { player: '507f1f77bcf86cd799439202', seat: 'South' },
+            { player: '507f1f77bcf86cd799439203', seat: 'West' },
+            { player: '507f1f77bcf86cd799439204', seat: 'North' }
+          ]
+        }
+      ]);
+
+      const res = await swapRequest({
+        realPlayerId: REAL_PLAYER_ID,
+        roundSelections: [
+          { roundNumber: 1, fillerId: FILLER_ID },
+          { roundNumber: 2, fillerId: ROUND2_FILLER_ID }
+        ]
+      });
+
+      expect(res.status).toBe(200);
+      expect(tournament.players).toHaveLength(1);
+      expect(tournament.players[0]).toEqual({ player: REAL_PLAYER_ID, dropped: false });
     });
   });
 });
