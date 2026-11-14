@@ -1599,6 +1599,61 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
       });
     }
 
+    const fillerIds = [...new Set(roundSelections.map(s => s.fillerId))];
+    const fillerUsers = await User.find({ _id: { $in: fillerIds } }).select('isGuest');
+    const fillerUsersById = new Map(fillerUsers.map(u => [u._id.toString(), u]));
+
+    for (const fillerId of fillerIds) {
+      const fillerUser = fillerUsersById.get(fillerId);
+      if (!fillerUser || !fillerUser.isGuest) {
+        return res.status(400).json({
+          success: false,
+          message: `${fillerId} is not a filler (guest) user`
+        });
+      }
+    }
+
+    // Resolve each selection to its round/pairing/player-entry, validating presence as we go.
+    const resolvedSelections = [];
+    for (const selection of roundSelections) {
+      const { roundNumber, fillerId } = selection;
+      const round = tournament.rounds.find(r => r.roundNumber === roundNumber);
+
+      if (!round || !round.pairings || round.pairings.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Round ${roundNumber} has no pairings`
+        });
+      }
+
+      let foundPairing = null;
+      let foundPlayerEntry = null;
+      for (const pairing of round.pairings) {
+        const entry = pairing.players.find(p => p.player.toString() === fillerId);
+        if (entry) {
+          foundPairing = pairing;
+          foundPlayerEntry = entry;
+          break;
+        }
+      }
+
+      if (!foundPairing) {
+        return res.status(400).json({
+          success: false,
+          message: `Filler ${fillerId} was not found in round ${roundNumber}`
+        });
+      }
+
+      if (!foundPairing.game && round.pairings.some(p => p.game)) {
+        return res.status(400).json({
+          success: false,
+          message: `Round ${roundNumber} has some tables already played; wait until the round fully ends before swapping its active seat`
+        });
+      }
+
+      resolvedSelections.push({ roundNumber, round, pairing: foundPairing, playerEntry: foundPlayerEntry, fillerId });
+    }
+
     res.status(501).json({ success: false, message: 'Not yet implemented' });
   } catch (error) {
     console.error('Swap filler error:', error);

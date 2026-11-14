@@ -78,6 +78,43 @@ function swapRequest(body) {
     .send(body);
 }
 
+function makeValidTournament(overrides = {}) {
+  return makeMockTournament({
+    players: [],
+    waitlist: [],
+    rounds: [
+      {
+        roundNumber: 1,
+        pairings: [
+          {
+            tableNumber: 1,
+            game: null,
+            players: [
+              { player: { toString: () => FILLER_ID }, seat: 'East' },
+              { player: { toString: () => 'p2' }, seat: 'South' },
+              { player: { toString: () => 'p3' }, seat: 'West' },
+              { player: { toString: () => 'p4' }, seat: 'North' }
+            ]
+          }
+        ]
+      }
+    ],
+    ...overrides
+  });
+}
+
+function mockEligibleRealPlayer() {
+  User.findById.mockResolvedValue({ _id: REAL_PLAYER_ID, isGuest: false });
+}
+
+function mockFillerLookup(fillerIds, { isGuest = true } = {}) {
+  User.find.mockReturnValue({
+    select: jest.fn().mockResolvedValue(
+      fillerIds.map(id => ({ _id: { toString: () => id }, isGuest }))
+    )
+  });
+}
+
 describe('POST /tournaments/:id/swap-filler', () => {
   afterEach(() => jest.clearAllMocks());
 
@@ -196,5 +233,91 @@ describe('POST /tournaments/:id/swap-filler', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/waitlist/i);
+  });
+
+  test('returns 400 when the selected round does not exist', async () => {
+    Tournament.findById.mockResolvedValue(makeValidTournament());
+    mockEligibleRealPlayer();
+    mockFillerLookup([FILLER_ID]);
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 99, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/round 99/i);
+  });
+
+  test('returns 400 when the filler is not a guest user', async () => {
+    Tournament.findById.mockResolvedValue(makeValidTournament());
+    mockEligibleRealPlayer();
+    mockFillerLookup([FILLER_ID], { isGuest: false });
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/not a filler/i);
+  });
+
+  test('returns 400 when the filler is not seated in the named round', async () => {
+    Tournament.findById.mockResolvedValue(makeValidTournament());
+    mockEligibleRealPlayer();
+    const otherFillerId = '507f1f77bcf86cd799439055';
+    mockFillerLookup([otherFillerId]);
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: otherFillerId }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/not found in round 1/i);
+  });
+
+  test('returns 400 when the active round has another table with a game already', async () => {
+    const tournament = makeValidTournament({
+      rounds: [
+        {
+          roundNumber: 1,
+          pairings: [
+            {
+              tableNumber: 1,
+              game: null,
+              players: [
+                { player: { toString: () => FILLER_ID }, seat: 'East' },
+                { player: { toString: () => 'p2' }, seat: 'South' },
+                { player: { toString: () => 'p3' }, seat: 'West' },
+                { player: { toString: () => 'p4' }, seat: 'North' }
+              ]
+            },
+            {
+              tableNumber: 2,
+              game: '507f1f77bcf86cd799439066',
+              players: [
+                { player: { toString: () => 'p5' }, seat: 'East' },
+                { player: { toString: () => 'p6' }, seat: 'South' },
+                { player: { toString: () => 'p7' }, seat: 'West' },
+                { player: { toString: () => 'p8' }, seat: 'North' }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+    Tournament.findById.mockResolvedValue(tournament);
+    mockEligibleRealPlayer();
+    mockFillerLookup([FILLER_ID]);
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/already played/i);
   });
 });
