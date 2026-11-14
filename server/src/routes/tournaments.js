@@ -1726,10 +1726,19 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
 
     await tournament.save();
 
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
+
     res.json({
       success: true,
       message: 'Filler swapped for walk-in player successfully',
-      data: { tournament }
+      data: {
+        tournament
+      }
     });
   } catch (error) {
     console.error('Swap filler error:', error);

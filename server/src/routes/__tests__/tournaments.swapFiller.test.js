@@ -688,4 +688,93 @@ describe('POST /tournaments/:id/swap-filler', () => {
       expect(tournament.players[0]).toEqual({ player: REAL_PLAYER_ID, dropped: false });
     });
   });
+
+  test('populates the response the same way other tournament-mutation routes do', async () => {
+    const tournament = makeCompletedRoundTournament();
+    Tournament.findById.mockResolvedValue(tournament);
+    mockEligibleRealPlayer();
+    mockFillerLookup([FILLER_ID]);
+    Game.findById.mockResolvedValue(makeMockGame());
+
+    await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(tournament.populate).toHaveBeenCalledWith('players.player', 'displayName avatar');
+    expect(tournament.populate).toHaveBeenCalledWith('waitlist.player', 'displayName avatar');
+    expect(tournament.populate).toHaveBeenCalledWith('createdBy', 'displayName avatar');
+    expect(tournament.populate).toHaveBeenCalledWith('rounds.pairings.players.player', 'displayName avatar');
+  });
+
+  test('a single request can swap a completed round and reshuffle the active round together', async () => {
+    const tournament = makeMockTournament({
+      players: [],
+      waitlist: [],
+      rounds: [
+        {
+          roundNumber: 1,
+          pairings: [
+            {
+              tableNumber: 1,
+              game: '507f1f77bcf86cd799439077',
+              players: [
+                { player: { toString: () => FILLER_ID }, seat: 'East' },
+                { player: { toString: () => '507f1f77bcf86cd799439102' }, seat: 'South' },
+                { player: { toString: () => '507f1f77bcf86cd799439103' }, seat: 'West' },
+                { player: { toString: () => '507f1f77bcf86cd799439104' }, seat: 'North' }
+              ]
+            }
+          ]
+        },
+        {
+          roundNumber: 2,
+          pairings: [
+            {
+              tableNumber: 1,
+              game: null,
+              players: [
+                { player: { toString: () => '507f1f77bcf86cd799439055' }, seat: 'East' },
+                { player: { toString: () => '507f1f77bcf86cd799439102' }, seat: 'South' },
+                { player: { toString: () => '507f1f77bcf86cd799439103' }, seat: 'West' },
+                { player: { toString: () => '507f1f77bcf86cd799439104' }, seat: 'North' }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+    Tournament.findById.mockResolvedValue(tournament);
+    mockEligibleRealPlayer();
+    mockFillerLookup([FILLER_ID, '507f1f77bcf86cd799439055']);
+    Game.findById.mockResolvedValue(makeMockGame());
+    generateRoundPairings.mockResolvedValue([
+      {
+        tableNumber: 1,
+        players: [
+          { player: REAL_PLAYER_ID, seat: 'East' },
+          { player: '507f1f77bcf86cd799439102', seat: 'South' },
+          { player: '507f1f77bcf86cd799439103', seat: 'West' },
+          { player: '507f1f77bcf86cd799439104', seat: 'North' }
+        ]
+      }
+    ]);
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [
+        { roundNumber: 2, fillerId: '507f1f77bcf86cd799439055' },
+        { roundNumber: 1, fillerId: FILLER_ID }
+      ]
+    });
+
+    expect(res.status).toBe(200);
+    // Round 1 (completed) was corrected in place:
+    expect(tournament.rounds[0].pairings[0].players[0].player).toBe(REAL_PLAYER_ID);
+    // Round 2 (active) was fully regenerated, and round 1's history was already corrected
+    // by the time generateRoundPairings ran for round 2:
+    expect(generateRoundPairings).toHaveBeenCalledWith(tournament, 2);
+    // tournament.players gained exactly one entry despite two selections both needing it:
+    expect(tournament.players).toHaveLength(1);
+  });
 });
