@@ -135,7 +135,7 @@ describe('SwapFillerModal player search and submit', () => {
     }));
 
     fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'a' } });
-    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    await screen.findByText('Walkin');
 
     expect(screen.queryByText('AlreadyIn')).not.toBeInTheDocument();
     expect(screen.queryByText('OnWaitlist')).not.toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('SwapFillerModal player search and submit', () => {
     expect(screen.getByRole('button', { name: /swap/i })).toBeDisabled();
 
     fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Walk' } });
-    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    await screen.findByText('Walkin');
     fireEvent.click(screen.getByText('Walkin'));
 
     expect(screen.getByRole('button', { name: /swap/i })).toBeDisabled();
@@ -171,7 +171,7 @@ describe('SwapFillerModal player search and submit', () => {
     );
 
     fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Walk' } });
-    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    await screen.findByText('Walkin');
     fireEvent.click(screen.getByText('Walkin'));
     fireEvent.change(screen.getByLabelText(/round 1/i), { target: { value: 'filler-1' } });
     fireEvent.click(screen.getByRole('button', { name: /swap/i }));
@@ -190,11 +190,47 @@ describe('SwapFillerModal player search and submit', () => {
     renderModal(buildTournament());
 
     fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Walk' } });
-    await waitFor(() => expect(screen.getByText('Walkin')).toBeInTheDocument());
+    await screen.findByText('Walkin');
     fireEvent.click(screen.getByText('Walkin'));
     fireEvent.change(screen.getByLabelText(/round 1/i), { target: { value: 'filler-1' } });
     fireEvent.click(screen.getByRole('button', { name: /swap/i }));
 
-    await waitFor(() => expect(screen.getByText(/already played/i)).toBeInTheDocument());
+    await screen.findByText(/already played/i);
+  });
+
+  test('clears a stale search error once a subsequent search succeeds', async () => {
+    mockedSearchUsers.mockRejectedValueOnce(new Error('network blip'));
+    renderModal(buildTournament());
+
+    fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'W' } });
+    await screen.findByText(/network blip/i);
+
+    mockedSearchUsers.mockResolvedValueOnce({
+      data: { users: [{ _id: 'walkin-1', displayName: 'Walkin', isGuest: false }] },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/type to search/i), { target: { value: 'Wa' } });
+    await screen.findByText('Walkin');
+
+    expect(screen.queryByText(/network blip/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('SwapFillerModal keyboard interaction', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('closes on Escape key press', () => {
+    mockedSearchUsers.mockResolvedValue({ data: { users: [] } });
+    const onClose = jest.fn();
+    render(
+      <AuthProvider>
+        <SwapFillerModal isOpen={true} onClose={onClose} onSwapped={jest.fn()} tournament={buildTournament()} />
+      </AuthProvider>
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalled();
   });
 });

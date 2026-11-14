@@ -81,6 +81,7 @@ const SwapFillerModal: React.FC<SwapFillerModalProps> = ({ isOpen, onClose, onSw
         setSearchResults(
           response.data.users.filter((u) => !u.isGuest && !excludedPlayerIds.has(u._id))
         );
+        setError(null);
       } catch (err: any) {
         setError(err.message || 'Failed to search users');
       } finally {
@@ -97,6 +98,17 @@ const SwapFillerModal: React.FC<SwapFillerModalProps> = ({ isOpen, onClose, onSw
       searchInputRef.current.focus();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   const handlePickRound = (roundNumber: number, fillerId: string) => {
     setRoundSelections((prev) => {
