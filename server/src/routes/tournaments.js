@@ -1563,6 +1563,42 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
       });
     }
 
+    const realPlayer = await User.findById(realPlayerId);
+
+    if (!realPlayer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Real player not found'
+      });
+    }
+
+    if (realPlayer.isGuest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot swap in a guest user'
+      });
+    }
+
+    const alreadyRegistered = tournament.players.some(
+      p => p.player.toString() === realPlayerId
+    );
+    if (alreadyRegistered) {
+      return res.status(400).json({
+        success: false,
+        message: 'Player is already registered in this tournament; this tool is only for walk-ins who never signed up'
+      });
+    }
+
+    const alreadyWaitlisted = (tournament.waitlist || []).some(
+      w => w.player.toString() === realPlayerId
+    );
+    if (alreadyWaitlisted) {
+      return res.status(400).json({
+        success: false,
+        message: 'Player is on the waitlist; this tool is only for walk-ins who never signed up'
+      });
+    }
+
     res.status(501).json({ success: false, message: 'Not yet implemented' });
   } catch (error) {
     console.error('Swap filler error:', error);

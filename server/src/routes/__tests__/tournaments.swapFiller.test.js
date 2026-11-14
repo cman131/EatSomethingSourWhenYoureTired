@@ -141,4 +141,60 @@ describe('POST /tournaments/:id/swap-filler', () => {
       expect(res.body.message).toMatch(/in progress/i);
     }
   );
+
+  test('returns 404 when real player does not exist', async () => {
+    Tournament.findById.mockResolvedValue(makeMockTournament());
+    User.findById.mockResolvedValue(null);
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/real player/i);
+  });
+
+  test('returns 400 when real player is a guest', async () => {
+    Tournament.findById.mockResolvedValue(makeMockTournament());
+    User.findById.mockResolvedValue({ _id: REAL_PLAYER_ID, isGuest: true });
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/guest/i);
+  });
+
+  test('returns 400 when real player is already in tournament.players', async () => {
+    Tournament.findById.mockResolvedValue(makeMockTournament({
+      players: [{ player: { toString: () => REAL_PLAYER_ID }, dropped: true }]
+    }));
+    User.findById.mockResolvedValue({ _id: REAL_PLAYER_ID, isGuest: false });
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/already registered/i);
+  });
+
+  test('returns 400 when real player is on the waitlist', async () => {
+    Tournament.findById.mockResolvedValue(makeMockTournament({
+      waitlist: [{ player: { toString: () => REAL_PLAYER_ID } }]
+    }));
+    User.findById.mockResolvedValue({ _id: REAL_PLAYER_ID, isGuest: false });
+
+    const res = await swapRequest({
+      realPlayerId: REAL_PLAYER_ID,
+      roundSelections: [{ roundNumber: 1, fillerId: FILLER_ID }]
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/waitlist/i);
+  });
 });
