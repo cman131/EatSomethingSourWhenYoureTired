@@ -653,6 +653,16 @@ export const tournamentsApi = {
     });
   },
 
+  swapFiller: async (
+    tournamentId: string,
+    payload: { realPlayerId: string; roundSelections: { roundNumber: number; fillerId: string }[] }
+  ) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/swap-filler`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   addPlayer: async (tournamentId: string, playerId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/players`, {
       method: 'POST',
