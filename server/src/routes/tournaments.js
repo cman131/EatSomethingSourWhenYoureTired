@@ -1749,6 +1749,117 @@ router.post('/:id/swap-filler', authenticateToken, validateMongoId('id'), requir
   }
 });
 
+// @route   PUT /api/tournaments/:id/repair-active-round
+// @desc    Regenerate the active round's pairings — recomputes top4 by UMA for a finals
+//          round, or re-runs pairing generation for a regular round (Admin only)
+// @access  Private (Admin only)
+router.put('/:id/repair-active-round', authenticateToken, validateMongoId('id'), requireAdmin, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tournament not found'
+      });
+    }
+
+    if (tournament.status !== 'InProgress') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only repair the active round while the tournament is in progress'
+      });
+    }
+
+    const roundsWithPairings = (tournament.rounds || [])
+      .filter(r => r.pairings && r.pairings.length > 0)
+      .sort((a, b) => b.roundNumber - a.roundNumber);
+
+    const activeRound = roundsWithPairings[0];
+
+    if (!activeRound) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active round with pairings'
+      });
+    }
+
+    if (activeRound.pairings.some(p => p.game)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot repair a round that already has a reported result; wait until it fully ends'
+      });
+    }
+
+    // Needed before reading tournament.players[].uma (TieredPoints strategies and the
+    // finals top4 recomputation below both depend on it being populated).
+    await tournament.populate('rounds.pairings.game');
+
+    const prelimCount = tournament.preliminaryRoundCount ?? tournament.maxRounds;
+    const isFinalsRound = activeRound.roundNumber > prelimCount;
+
+    if (isFinalsRound) {
+      const activePlayers = tournament.players
+        .filter(p => !p.dropped)
+        .sort((a, b) => (b.uma ?? 0) - (a.uma ?? 0))
+        .slice(0, 4);
+
+      if (activePlayers.length < 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'Not enough active players remain to fill a finals table'
+        });
+      }
+
+      const seats = ['East', 'South', 'West', 'North'];
+      const shuffledSeats = [...seats].sort(() => Math.random() - 0.5);
+
+      activeRound.pairings = [{
+        tableNumber: 1,
+        players: activePlayers.map((playerEntry, index) => ({
+          player: new mongoose.Types.ObjectId(playerEntry.player),
+          seat: shuffledSeats[index]
+        })),
+        game: null
+      }];
+    } else {
+      const newPairings = await generateRoundPairings(tournament, activeRound.roundNumber);
+      activeRound.pairings = newPairings.map(p => ({
+        tableNumber: p.tableNumber,
+        players: p.players.map(pl => ({
+          player: new mongoose.Types.ObjectId(pl.player),
+          seat: pl.seat
+        })),
+        game: null
+      }));
+    }
+
+    tournament.markModified('rounds');
+    await tournament.save();
+
+    await tournament.populate('players.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('waitlist.player', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('createdBy', PLAYER_POPULATE_FIELDS);
+    await tournament.populate('rounds.pairings.players.player', PLAYER_POPULATE_FIELDS);
+
+    await prepareTournamentForResponse(tournament);
+
+    res.json({
+      success: true,
+      message: 'Active round repaired successfully',
+      data: {
+        tournament
+      }
+    });
+  } catch (error) {
+    console.error('Repair active round error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to repair active round'
+    });
+  }
+});
+
 // @route   POST /api/tournaments/:id/signup
 // @desc    Sign up for a tournament
 // @access  Private

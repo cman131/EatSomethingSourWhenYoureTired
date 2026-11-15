@@ -292,6 +292,27 @@ const TournamentDetail: React.FC = () => {
     setTournament(updatedTournament);
   };
 
+  const handleRepairActiveRound = async () => {
+    if (!id) return;
+    if (!user?.isAdmin) {
+      setActionError('Only admins can repair the active round');
+      return;
+    }
+    if (!window.confirm('Are you sure you want to repair the active round? This discards its current pairing and regenerates it from scratch.')) {
+      return;
+    }
+    try {
+      setActionLoading(true);
+      setActionError(null);
+      const response = await tournamentsApi.repairActiveRound(id);
+      setTournament(response.data.tournament);
+    } catch (err: any) {
+      setActionError(err?.message || 'Failed to repair active round');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleUpdateTournament = async (data: {
     name?: string;
     description?: string;
@@ -552,9 +573,19 @@ const TournamentDetail: React.FC = () => {
                     onClick={() => setIsSwapFillerModalOpen(true)}
                     disabled={actionLoading}
                     className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Swap a filler's seat for the real walk-in player who was actually playing it"
+                    title="Swap a filler's seat for the real player who was actually playing it"
                   >
-                    Swap in a walk-in player
+                    Upgrade filler player
+                  </button>
+                )}
+                {user?.isAdmin && (
+                  <button
+                    onClick={handleRepairActiveRound}
+                    disabled={actionLoading}
+                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Regenerate the active round's pairing — recomputes top4 by UMA for a finals round, or re-runs pairing generation for a regular round"
+                  >
+                    {actionLoading ? 'Repairing...' : 'Repair active round'}
                   </button>
                 )}
                 {roundToStart && (

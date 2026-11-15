@@ -663,6 +663,12 @@ export const tournamentsApi = {
     });
   },
 
+  repairActiveRound: async (tournamentId: string) => {
+    return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/repair-active-round`, {
+      method: 'PUT',
+    });
+  },
+
   addPlayer: async (tournamentId: string, playerId: string) => {
     return apiRequest<ApiResponse<{ tournament: Tournament }>>(`/tournaments/${tournamentId}/players`, {
       method: 'POST',
